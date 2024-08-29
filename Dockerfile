@@ -3,7 +3,7 @@ FROM vertx/vertx4
 
 #                                                       (1)
 ENV VERTICLE_NAME=exDock.MainVerticle
-ENV VERTICLE_FILE=build/exDock-main-verticle-0.0.1-SNAPSHOT.jar
+ENV VERTICLE_FILE=target/ex-dock-0.0.1-SNAPSHOT.jar
 
 # Set the location of the verticles
 ENV VERTICLE_HOME=/usr/verticles
