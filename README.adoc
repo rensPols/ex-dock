@@ -1,27 +1,41 @@
 = exDock
 
-An ecommerce platform build with Vert.x Kotlin and Docker
+An ecommerce platform built with Vert.x, Kotlin, and Docker
+
+== Why exDock?
+
+exDock addresses key limitations of existing open-source ecommerce solutions:
+
+1. *Performance:* Most platforms are built on PHP, an interpreted language, which can lead to slower performance. exDock leverages Kotlin and Vert.x for improved speed and reduced CPU usage.
+
+2. *Efficiency:* The combination of Kotlin and Vert.x has the potential to significantly reduce load times and operational costs.
+
+3. *Easy Deployment:* Built with Docker, exDock simplifies the setup process. Users can pull the Docker image and complete the configuration through their browser, streamlining deployment.
+
+By focusing on these aspects, exDock aims to provide a faster, more cost-effective, and user-friendly ecommerce solution.
 
 image:https://img.shields.io/badge/vert.x-4.5.9-purple.svg[link="https://vertx.io"]
-
-This application was generated using http://start.vertx.io
 
 == Building
 
 To launch your tests:
-```
+
+[source]
+----
 ./mvnw clean test
-```
+----
 
 To package your application:
-```
+[source]
+----
 ./mvnw clean package
-```
+----
 
 To run your application:
-```
+[source]
+----
 ./mvnw clean compile exec:java
-```
+----
 
 == Help
 
