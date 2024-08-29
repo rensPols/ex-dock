@@ -1,6 +1,6 @@
 = exDock
 
-An ecommerce platform built with Vert.x, Kotlin, and Docker
+An ecommerce platform built with Kotlin, Vert.x, and Docker
 
 == Why exDock?
 
