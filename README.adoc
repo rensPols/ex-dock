@@ -14,30 +14,27 @@ exDock addresses key limitations of existing open-source ecommerce solutions:
 
 By focusing on these aspects, exDock aims to provide a faster, more cost-effective, and user-friendly ecommerce solution.
 
+== How to deploy exDock
 image:https://img.shields.io/badge/vert.x-4.5.9-purple.svg[link="https://vertx.io"]
 
-== Building
+1. *Pull* the Docker image
+2. *Run* the Docker image
+3. Follow the *GUI settings*
 
-To launch your tests:
+== How it works
+exDock is a Vert.x server that is run in a Docker container.
+This is the basis for the eCommerce platform.
+In order to extend the exDock functionality, you need to pull an additional Docker image.
+This image can then collaborate with the exDock main container and extend the functionality.
 
-[source]
-----
-./mvnw clean test
-----
+When extra core functionality is required,
+it is possible to fork this repository and as long as the connection layer isn't altered,
+it should work fine. +
+!attention: Although possible, it is not recommended behaviour.
 
-To package your application:
-[source]
-----
-./mvnw clean package
-----
+=== Vert.x documentation
 
-To run your application:
-[source]
-----
-./mvnw clean compile exec:java
-----
-
-== Help
+We use the Kotlin version of Vert.x
 
 * https://vertx.io/docs/[Vert.x Documentation]
 * https://stackoverflow.com/questions/tagged/vert.x?sort=newest&pageSize=15[Vert.x Stack Overflow]
