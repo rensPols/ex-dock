@@ -98,8 +98,8 @@ COPY . /project/
 RUN mvn package -DskipTests -B
 
 # 2nd Docker build stage: copy builder output and configure entry point
-#FROM adoptopenjdk:11-jre-hotspot
-FROM openjdk:21-jdk
+#FROM openjdk:21-jdk
+FROM eclipse-temurin:21-jre
 ENV APP_DIR /application
 ENV APP_FILE ex-dock-0.0.1-SNAPSHOT.jar
 
