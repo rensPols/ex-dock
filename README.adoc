@@ -2,6 +2,9 @@
 
 An ecommerce platform built with Kotlin, Vert.x, and Docker
 
+This application is managed via the following Github project:
+https://github.com/users/rensPols/projects/2/views/1
+
 == Why exDock?
 
 exDock addresses key limitations of existing open-source ecommerce solutions:
