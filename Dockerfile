@@ -1,19 +1,20 @@
-# Extend vert.x image
-FROM vertx/vertx4
+# -- V4 --
+# 1st Docker build stage: build the project with Maven
+FROM maven:3.6.3-openjdk-11 as builder
+WORKDIR /project
+COPY . /project/
+RUN mvn package -DskipTests -B
 
-#                                                       (1)
-ENV VERTICLE_NAME=exDock.MainVerticle
-ENV VERTICLE_FILE=target/ex-dock-0.0.1-SNAPSHOT.jar
-
-# Set the location of the verticles
-ENV VERTICLE_HOME=/usr/verticles
+# 2nd Docker build stage: copy builder output and configure entry point
+#FROM openjdk:21-jdk
+FROM eclipse-temurin:21-jre
+ENV APP_DIR /application
+ENV APP_FILE ex-dock-0.0.1-SNAPSHOT.jar
 
 EXPOSE 8888
 
-# Copy your verticle to the container                   (2)
-COPY $VERTICLE_FILE $VERTICLE_HOME/
+WORKDIR $APP_DIR
+COPY --from=builder /project/target/*-fat.jar $APP_DIR/$APP_FILE
 
-# Launch the verticle
-WORKDIR $VERTICLE_HOME
 ENTRYPOINT ["sh", "-c"]
-CMD ["exec vertx run $VERTICLE_NAME -cp $VERTICLE_HOME/*"]
+CMD ["exec java -jar $APP_FILE"]
