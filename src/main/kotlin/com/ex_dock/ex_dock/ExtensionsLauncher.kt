@@ -1,7 +1,7 @@
 package com.ex_dock.ex_dock
 
 import com.ex_dock.ex_dock.database.JDBCVerticle
-import com.ex_dock.ex_dock.frontend.FrontendStarter
+import com.ex_dock.ex_dock.frontend.FrontendVerticle
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
@@ -45,6 +45,6 @@ override fun start(startPromise: Promise<Void>) {
     // ADD JDBC Vertex
     extension.add(VerticleDeployHelper.deployHelper(vertx, JDBCVerticle::class.qualifiedName.toString()))
     // ADD frontend Verticles
-    extension.add(VerticleDeployHelper.deployHelper(vertx, FrontendStarter::class.qualifiedName.toString()))
+    extension.add(VerticleDeployHelper.deployHelper(vertx, FrontendVerticle::class.qualifiedName.toString()))
   }
 }

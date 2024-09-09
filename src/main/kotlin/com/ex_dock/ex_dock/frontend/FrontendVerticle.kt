@@ -9,7 +9,7 @@ import com.ex_dock.ex_dock.frontend.text_pages.TextPagesFrontendVerticle
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import io.vertx.core.AbstractVerticle
 
-class FrontendStarter: AbstractVerticle() {
+class FrontendVerticle: AbstractVerticle() {
   override fun start() {
     VerticleDeployHelper.deployHelper(vertx, HomeFrontendVerticle::class.qualifiedName.toString())
     VerticleDeployHelper.deployHelper(vertx, ProductFrontendVerticle::class.qualifiedName.toString())
