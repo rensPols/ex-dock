@@ -54,7 +54,7 @@ class VerticleDeployHelper {
     return promise.future()
   }
 
-  fun deployVertualVerticle(vertx: Vertx, name: String): Future<Void> {
+  fun deployVirtualVerticle(vertx: Vertx, name: String): Future<Void> {
     val promise: Promise<Void> = Promise.promise<Void>()
     val options: DeploymentOptions = DeploymentOptions().setThreadingModel(ThreadingModel.VIRTUAL_THREAD)
     vertx.deployVerticle(name, options)
