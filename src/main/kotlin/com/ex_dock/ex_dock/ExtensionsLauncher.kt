@@ -42,8 +42,9 @@ override fun start(startPromise: Promise<Void>) {
   private fun checkExtensions() {
     val client = WebClient.create(vertx)
 
-    //ADD JDBC Vertex
+    // ADD JDBC Vertex
     extension.add(VerticleDeployHelper.deployHelper(vertx, JDBCVerticle::class.qualifiedName.toString()))
+    // ADD frontend Verticles
     extension.add(VerticleDeployHelper.deployHelper(vertx, FrontendStarter::class.qualifiedName.toString()))
   }
 }
