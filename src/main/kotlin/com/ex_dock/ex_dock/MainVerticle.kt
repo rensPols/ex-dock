@@ -1,5 +1,11 @@
 package com.ex_dock.ex_dock
 
+import com.ex_dock.ex_dock.frontend.account.router.initAccount
+import com.ex_dock.ex_dock.frontend.category.router.initCategory
+import com.ex_dock.ex_dock.frontend.checkout.router.initCheckout
+import com.ex_dock.ex_dock.frontend.home.router.initHome
+import com.ex_dock.ex_dock.frontend.product.router.initProduct
+import com.ex_dock.ex_dock.frontend.text_pages.router.initTextPages
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Promise
 import io.vertx.ext.web.Router
@@ -29,6 +35,13 @@ class MainVerticle : AbstractVerticle() {
       }
 
     val mainRouter : Router = Router.router(vertx)
+
+    mainRouter.initHome()
+    mainRouter.initProduct(vertx)
+    mainRouter.initCategory(vertx)
+    mainRouter.initTextPages(vertx)
+    mainRouter.initCheckout(vertx)
+    mainRouter.initAccount(vertx)
 
     vertx
       .createHttpServer()
