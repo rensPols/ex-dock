@@ -48,8 +48,4 @@ class JDBCVerticle: CoroutineVerticle() {
       ctx.response().setStatusCode(404).end()
     }
   }
-
-  private suspend fun checkActivation(ctx: RoutingContext) {
-    ctx.response().end("Activated!")
-  }
   }
