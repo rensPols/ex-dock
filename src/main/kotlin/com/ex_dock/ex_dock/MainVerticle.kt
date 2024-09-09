@@ -13,7 +13,7 @@ class MainVerticle : AbstractVerticle() {
  * @return Nothing is returned from this function.
  */
 override fun start(startPromise: Promise<Void>) {
-    vertx.deployVerticle(ExtensionLauncher())
+    vertx.deployVerticle(ExtensionsLauncher())
       .onSuccess{ _ -> (
         println("MainVerticle started successfully")
         )}

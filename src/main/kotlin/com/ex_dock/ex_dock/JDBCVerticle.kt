@@ -48,4 +48,4 @@ class JDBCVerticle: CoroutineVerticle() {
       ctx.response().setStatusCode(404).end()
     }
   }
-  }
+}

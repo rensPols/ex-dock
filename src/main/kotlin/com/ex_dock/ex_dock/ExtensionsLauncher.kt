@@ -7,7 +7,7 @@ import io.vertx.core.Promise
 import io.vertx.ext.web.client.WebClient
 import java.util.Properties
 
-class ExtensionLauncher: AbstractVerticle() {
+class ExtensionsLauncher: AbstractVerticle() {
 
   private var extension: MutableList<Future<Void>> = emptyList<Future<Void>>().toMutableList()
 
