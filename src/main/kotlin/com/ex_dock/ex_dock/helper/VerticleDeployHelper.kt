@@ -11,10 +11,18 @@ class VerticleDeployHelper {
       vertx.deployVerticle(name)
         .onComplete{ res ->
           if (res.failed()) {
-            println("Failed to deploy $name Verticle!")
+            println(buildString {
+              append("\u001b[31m")
+              append("⨯ - Failed to deploy Verticle: $name")
+              append("\u001b[0m")
+            })
             promise.fail(res.cause())
           } else {
-            println("$name Verticle deployed successfully!")
+            println(buildString {
+              append("\u001b[32m")
+              append("✓ - $name Verticle was successfully deployed")
+              append("\u001b[0m")
+            })
             promise.complete()
           }
         }
