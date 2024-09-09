@@ -1,7 +1,5 @@
-package com.ex_dock.ex_dock
+package com.ex_dock.ex_dock.database
 
-import com.ex_dock.ex_dock.helper.coroutineHandler
-import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.jdbcclient.JDBCConnectOptions
 import io.vertx.jdbcclient.JDBCPool
