@@ -13,20 +13,13 @@ class MainVerticle : AbstractVerticle() {
  * @return Nothing is returned from this function.
  */
 override fun start(startPromise: Promise<Void>) {
-    vertx
-      .createHttpServer()
-      .requestHandler { req ->
-        req.response()
-          .putHeader("content-type", "text/plain")
-          .end("Hello from Vert.x!")
-      }
-      .listen(8888).onComplete { http ->
-        if (http.succeeded()) {
-          startPromise.complete()
-          println("HTTP server started on port 8888")
-        } else {
-          startPromise.fail(http.cause())
-        }
+    vertx.deployVerticle(ExtensionsLauncher())
+      .onSuccess{ _ -> (
+        println("MainVerticle started successfully")
+        )}
+     .onFailure { err ->
+        println("Failed to start MainVerticle: $err")
+        startPromise.fail(err)
       }
   }
 }

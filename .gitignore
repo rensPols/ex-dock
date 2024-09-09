@@ -183,3 +183,6 @@ nbdist/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+### Secret Variables ###
+/src/main/resources/secret.properties
