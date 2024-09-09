@@ -11,13 +11,13 @@ class JDBCVerticle: AbstractVerticle() {
          .putHeader("content-type", "text/plain")
          .end("Hello from JDBC Vert.x!")
       }
-     .listen(8888)
-     .onComplete { http ->
+      .listen(8888)
+      .onComplete { http ->
         if (http.succeeded()) {
           println("HTTP server started on port 8888")
         } else {
           println("Failed to start HTTP server: ${http.cause()}")
         }
       }
-     }
+    }
   }
