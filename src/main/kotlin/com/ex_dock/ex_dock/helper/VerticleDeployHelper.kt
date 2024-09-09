@@ -5,20 +5,21 @@ import io.vertx.core.Promise
 import io.vertx.core.Vertx
 
 class VerticleDeployHelper {
-
-  fun deployHelper(vertx: Vertx, name: String): Future<Void> {
-    val promise: Promise<Void> = Promise.promise<Void>()
-    vertx.deployVerticle(name)
-      .onComplete{ res ->
-        if (res.failed()) {
-          println("Failed to deploy $name Verticle!")
-          promise.fail(res.cause())
-        } else {
-          println("$name Verticle deployed successfully!")
-          promise.complete()
+  companion object {
+    fun deployHelper(vertx: Vertx, name: String): Future<Void> {
+      val promise: Promise<Void> = Promise.promise<Void>()
+      vertx.deployVerticle(name)
+        .onComplete{ res ->
+          if (res.failed()) {
+            println("Failed to deploy $name Verticle!")
+            promise.fail(res.cause())
+          } else {
+            println("$name Verticle deployed successfully!")
+            promise.complete()
+          }
         }
-      }
 
-    return promise.future()
+      return promise.future()
+    }
   }
 }

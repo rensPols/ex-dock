@@ -13,8 +13,6 @@ class ExtensionsLauncher: AbstractVerticle() {
 
   private var extension: MutableList<Future<Void>> = emptyList<Future<Void>>().toMutableList()
 
-  private val verticleDeployHelper: VerticleDeployHelper = VerticleDeployHelper()
-
   private lateinit var props: Properties
 
   /**
@@ -45,7 +43,7 @@ override fun start(startPromise: Promise<Void>) {
     val client = WebClient.create(vertx)
 
     //ADD JDBC Vertex
-    extension.add(verticleDeployHelper.deployHelper(vertx, JDBCVerticle::class.qualifiedName.toString()))
-    extension.add(verticleDeployHelper.deployHelper(vertx, FrontendStarter::class.qualifiedName.toString()))
+    extension.add(VerticleDeployHelper.deployHelper(vertx, JDBCVerticle::class.qualifiedName.toString()))
+    extension.add(VerticleDeployHelper.deployHelper(vertx, FrontendStarter::class.qualifiedName.toString()))
   }
 }
