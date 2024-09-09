@@ -31,20 +31,8 @@ class ExtensionLauncher: AbstractVerticle() {
 
   private fun checkExtensions() {
     val client = WebClient.create(vertx)
-    val url: String = props.getProperty("JDBC_URL")
 
-    // Check for JDBC extension
-    client.get(8889, url, "/activate")
-     .send()
-     .onSuccess { response ->
-       if (response.bodyAsString().contains("Activated!")) {
-         extension.add(verticleDeployHelper.deployHelper(vertx, JDBCVerticle::class.qualifiedName.toString()))
-       } else {
-         println("Something else is running on port 8889")
-       }
-     }
-     .onFailure {
-       println("Failed to check for JDBC extension: ${it.message}")
-     }
+    //ADD JDBC Vertex
+    extension.add(verticleDeployHelper.deployHelper(vertx, JDBCVerticle::class.qualifiedName.toString()))
   }
 }

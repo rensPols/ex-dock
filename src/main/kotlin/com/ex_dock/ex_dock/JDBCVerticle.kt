@@ -1,23 +1,55 @@
 package com.ex_dock.ex_dock
 
-import io.vertx.core.AbstractVerticle
+import com.ex_dock.ex_dock.helper.coroutineHandler
+import io.vertx.ext.web.Router
+import io.vertx.ext.web.RoutingContext
+import io.vertx.jdbcclient.JDBCConnectOptions
+import io.vertx.jdbcclient.JDBCPool
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.coAwait
+import io.vertx.sqlclient.Pool
+import io.vertx.sqlclient.PoolOptions
+import java.util.*
 
-class JDBCVerticle: AbstractVerticle() {
+class JDBCVerticle: CoroutineVerticle() {
 
-  override fun start() {
-    vertx.createHttpServer()
-      .requestHandler { req ->
-        req.response()
-         .putHeader("content-type", "text/plain")
-         .end("Hello from JDBC Vert.x!")
-      }
-      .listen(8888)
-      .onComplete { http ->
-        if (http.succeeded()) {
-          println("HTTP server started on port 8888")
-        } else {
-          println("Failed to start HTTP server: ${http.cause()}")
-        }
-      }
+  private lateinit var client: Pool
+
+  private lateinit var props: Properties
+
+
+  override suspend fun start() {
+    props = javaClass.classLoader.getResourceAsStream("secret.properties").use {
+      Properties().apply { load(it) }
     }
+
+    val connectOptions = JDBCConnectOptions()
+      .setJdbcUrl(props.getProperty("DATABASE_URL"))
+      .setUser(props.getProperty("DATABASE_USERNAME"))
+      .setPassword(props.getProperty("DATABASE_PASSWORD"))
+
+    val poolOptions = PoolOptions()
+      .setMaxSize(16)
+      .setName("ex-dock")
+
+
+    client = JDBCPool.pool(vertx, connectOptions, poolOptions)
+  }
+
+  private suspend fun getAll(ctx: RoutingContext) {
+    val rows = client.preparedQuery("SELECT * FROM importance").execute().coAwait()
+    if (rows.size() > 0) {
+      ctx.response().end(json {
+        obj("importance_levels" to rows.iterator().next().getInteger("importance_levels")).encode()
+      })
+    } else {
+      ctx.response().setStatusCode(404).end()
+    }
+  }
+
+  private suspend fun checkActivation(ctx: RoutingContext) {
+    ctx.response().end("Activated!")
+  }
   }
