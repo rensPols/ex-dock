@@ -1,7 +1,7 @@
 package com.ex_dock.ex_dock
 
 import com.ex_dock.ex_dock.database.JDBCVerticle
-import com.ex_dock.ex_dock.frontend.FrontendStarter
+import com.ex_dock.ex_dock.frontend.FrontendVerticle
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
@@ -12,8 +12,6 @@ import java.util.Properties
 class ExtensionsLauncher: AbstractVerticle() {
 
   private var extension: MutableList<Future<Void>> = emptyList<Future<Void>>().toMutableList()
-
-  private val verticleDeployHelper: VerticleDeployHelper = VerticleDeployHelper()
 
   private lateinit var props: Properties
 
@@ -44,8 +42,9 @@ override fun start(startPromise: Promise<Void>) {
   private fun checkExtensions() {
     val client = WebClient.create(vertx)
 
-    //ADD JDBC Vertex
-    extension.add(verticleDeployHelper.deployHelper(vertx, JDBCVerticle::class.qualifiedName.toString()))
-    extension.add(verticleDeployHelper.deployHelper(vertx, FrontendStarter::class.qualifiedName.toString()))
+    // ADD JDBC Vertex
+    extension.add(VerticleDeployHelper.deployHelper(vertx, JDBCVerticle::class.qualifiedName.toString()))
+    // ADD frontend Verticles
+    extension.add(VerticleDeployHelper.deployHelper(vertx, FrontendVerticle::class.qualifiedName.toString()))
   }
 }
