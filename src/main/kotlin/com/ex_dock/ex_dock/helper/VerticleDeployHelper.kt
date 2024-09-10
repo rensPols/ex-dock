@@ -11,7 +11,7 @@ class VerticleDeployHelper {
           if (res.failed()) {
             println(buildString {
               append("\u001b[31m")
-              append("⨯ - Failed to deploy Verticle: $name")
+              append("⨯ - Failed to deploy Verticle: $name\nCause: ${res.cause()}")
               append("\u001b[0m")
             })
             promise.fail(res.cause())
