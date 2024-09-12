@@ -30,12 +30,18 @@ class JDBCStarter: AbstractVerticle() {
   }
 
   private fun addAllVerticles() {
-    verticles.add(verticleDeployHelper.deployWorkerHelper(vertx, AccountJdbcVerticle::class.qualifiedName.toString()))
-    verticles.add(verticleDeployHelper.deployWorkerHelper(vertx, CategoryJdbcVerticle::class.qualifiedName.toString()))
-    verticles.add(verticleDeployHelper.deployWorkerHelper(vertx, CheckoutJdbcVerticle::class.qualifiedName.toString()))
-    verticles.add(verticleDeployHelper.deployWorkerHelper(vertx, HomeJdbcVerticle::class.qualifiedName.toString()))
-    verticles.add(verticleDeployHelper.deployWorkerHelper(vertx, ProductJdbcVerticle::class.qualifiedName.toString()))
-    verticles.add(verticleDeployHelper.deployWorkerHelper(vertx, Text_pagesJdbcVerticle::class.qualifiedName.toString()))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, AccountJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, CategoryJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, CheckoutJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, HomeJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, ProductJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, Text_pagesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
   }
 
 }

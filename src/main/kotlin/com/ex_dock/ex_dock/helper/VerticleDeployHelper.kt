@@ -29,9 +29,14 @@ class VerticleDeployHelper {
     }
   }
 
-  fun deployWorkerHelper(vertx: Vertx, name: String): Future<Void> {
+  fun deployWorkerHelper(vertx: Vertx, name: String, workerPoolSize: Int, instances: Int): Future<Void> {
     val promise: Promise<Void> = Promise.promise<Void>()
-    val options: DeploymentOptions = DeploymentOptions().setThreadingModel(ThreadingModel.WORKER)
+    val options: DeploymentOptions = DeploymentOptions()
+      .setThreadingModel(ThreadingModel.WORKER)
+      .setWorkerPoolName(name)
+      .setWorkerPoolSize(workerPoolSize)
+      .setInstances(instances)
+
     vertx.deployVerticle(name, options)
       .onComplete{ res ->
         if (res.failed()) {
