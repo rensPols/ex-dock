@@ -23,10 +23,10 @@ class AccountJdbcVerticle: AbstractVerticle() {
   }
 
   private fun getAccountData() {
-    val consumer = eventBus.localConsumer<String>("process.account.getData")
+    val consumer = eventBus.localConsumer<Any>("process.account.getData")
     consumer.handler { message ->
       val rowsFuture = client.preparedQuery("SELECT * FROM users").execute()
-      var json: Unit
+      var json: String
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
