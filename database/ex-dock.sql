@@ -16,6 +16,47 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: index; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.index AS ENUM (
+    'index, follow',
+    'index, nofollow',
+    'noindex, follow',
+    'noindex nofollow'
+);
+
+
+ALTER TYPE public.index OWNER TO postgres;
+
+--
+-- Name: p_index; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.p_index AS ENUM (
+    'index, follow',
+    'index, nofollow',
+    'noindex, follow',
+    'noindex nofollow'
+);
+
+
+ALTER TYPE public.p_index OWNER TO postgres;
+
+--
+-- Name: p_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.p_type AS ENUM (
+    'product',
+    'category',
+    'text_page'
+);
+
+
+ALTER TYPE public.p_type OWNER TO postgres;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -40,6 +81,83 @@ CREATE TABLE public.backend_permissions (
 
 
 ALTER TABLE public.backend_permissions OWNER TO postgres;
+
+--
+-- Name: categories; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.categories (
+    category_id integer NOT NULL,
+    upper_category integer NOT NULL,
+    name character varying(100) NOT NULL,
+    short_description text NOT NULL,
+    description text NOT NULL
+);
+
+
+ALTER TABLE public.categories OWNER TO postgres;
+
+--
+-- Name: categories_category_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.categories_category_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.categories_category_id_seq OWNER TO postgres;
+
+--
+-- Name: categories_category_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.categories_category_id_seq OWNED BY public.categories.category_id;
+
+
+--
+-- Name: categories_products; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.categories_products (
+    category_id integer NOT NULL,
+    product_id integer NOT NULL
+);
+
+
+ALTER TABLE public.categories_products OWNER TO postgres;
+
+--
+-- Name: categories_seo; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.categories_seo (
+    category_id integer NOT NULL,
+    meta_title text,
+    meta_description text,
+    meta_keywords text,
+    page_index public.p_index NOT NULL
+);
+
+
+ALTER TABLE public.categories_seo OWNER TO postgres;
+
+--
+-- Name: category_urls; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.category_urls (
+    url_key character varying(100) NOT NULL,
+    upper_key character varying(100) NOT NULL,
+    category_id integer NOT NULL
+);
+
+
+ALTER TABLE public.category_urls OWNER TO postgres;
 
 --
 -- Name: custom_product_attributes; Type: TABLE; Schema: public; Owner: postgres
@@ -378,6 +496,19 @@ CREATE TABLE public.multi_select_attributes_string (
 ALTER TABLE public.multi_select_attributes_string OWNER TO postgres;
 
 --
+-- Name: product_urls; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.product_urls (
+    url_key character varying(100) NOT NULL,
+    upper_key character varying(100) NOT NULL,
+    product_id integer NOT NULL
+);
+
+
+ALTER TABLE public.product_urls OWNER TO postgres;
+
+--
 -- Name: products; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -429,6 +560,21 @@ ALTER SEQUENCE public.products_product_id_seq OWNED BY public.products.product_i
 
 
 --
+-- Name: products_seo; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.products_seo (
+    product_id integer NOT NULL,
+    meta_title text,
+    meta_description text,
+    meta_keywords text,
+    page_index public.p_index NOT NULL
+);
+
+
+ALTER TABLE public.products_seo OWNER TO postgres;
+
+--
 -- Name: server_data; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -439,6 +585,21 @@ CREATE TABLE public.server_data (
 
 
 ALTER TABLE public.server_data OWNER TO postgres;
+
+--
+-- Name: server_version; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.server_version (
+    major integer NOT NULL,
+    minor integer NOT NULL,
+    patch integer NOT NULL,
+    version_name character varying(64) NOT NULL,
+    version_description text NOT NULL
+);
+
+
+ALTER TABLE public.server_version OWNER TO postgres;
 
 --
 -- Name: store_view; Type: TABLE; Schema: public; Owner: postgres
@@ -473,6 +634,62 @@ ALTER SEQUENCE public.store_view_store_view_id_seq OWNER TO postgres;
 
 ALTER SEQUENCE public.store_view_store_view_id_seq OWNED BY public.store_view.store_view_id;
 
+
+--
+-- Name: text_page_urls; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.text_page_urls (
+    url_key character varying(100) NOT NULL,
+    upper_key character varying(100) NOT NULL,
+    text_pages_id integer NOT NULL
+);
+
+
+ALTER TABLE public.text_page_urls OWNER TO postgres;
+
+--
+-- Name: text_pages; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.text_pages (
+    text_pages_id integer NOT NULL,
+    name character varying(128) NOT NULL,
+    short_text text NOT NULL,
+    text text NOT NULL
+);
+
+
+ALTER TABLE public.text_pages OWNER TO postgres;
+
+--
+-- Name: text_pages_seo; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.text_pages_seo (
+    text_pages_id integer NOT NULL,
+    meta_title text,
+    meta_description text,
+    meta_keywords text,
+    page_index public.p_index NOT NULL
+);
+
+
+ALTER TABLE public.text_pages_seo OWNER TO postgres;
+
+--
+-- Name: url_keys; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.url_keys (
+    url_key character varying(100) NOT NULL,
+    upper_key character varying(100) NOT NULL,
+    page_type public.p_type NOT NULL,
+    CONSTRAINT check_no_cycle CHECK (((url_key)::text <> (upper_key)::text))
+);
+
+
+ALTER TABLE public.url_keys OWNER TO postgres;
 
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: postgres
@@ -543,6 +760,13 @@ ALTER SEQUENCE public.websites_website_id_seq OWNED BY public.websites.website_i
 
 
 --
+-- Name: categories category_id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.categories ALTER COLUMN category_id SET DEFAULT nextval('public.categories_category_id_seq'::regclass);
+
+
+--
 -- Name: products product_id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -575,6 +799,38 @@ ALTER TABLE ONLY public.websites ALTER COLUMN website_id SET DEFAULT nextval('pu
 --
 
 COPY public.backend_permissions (user_id, user_permissions, server_settings, template, category_content, category_products, product_content, product_price, product_warehouse, text_pages, "API_KEY") FROM stdin;
+\.
+
+
+--
+-- Data for Name: categories; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.categories (category_id, upper_category, name, short_description, description) FROM stdin;
+\.
+
+
+--
+-- Data for Name: categories_products; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.categories_products (category_id, product_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: categories_seo; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.categories_seo (category_id, meta_title, meta_description, meta_keywords, page_index) FROM stdin;
+\.
+
+
+--
+-- Data for Name: category_urls; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.category_urls (url_key, upper_key, category_id) FROM stdin;
 \.
 
 
@@ -779,6 +1035,14 @@ COPY public.multi_select_attributes_string (attribute_key, option, value) FROM s
 
 
 --
+-- Data for Name: product_urls; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.product_urls (url_key, upper_key, product_id) FROM stdin;
+\.
+
+
+--
 -- Data for Name: products; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -795,6 +1059,14 @@ COPY public.products_pricing (product_id, price, sale_price, cost_price) FROM st
 
 
 --
+-- Data for Name: products_seo; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.products_seo (product_id, meta_title, meta_description, meta_keywords, page_index) FROM stdin;
+\.
+
+
+--
 -- Data for Name: server_data; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -803,10 +1075,50 @@ COPY public.server_data (key, value) FROM stdin;
 
 
 --
+-- Data for Name: server_version; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.server_version (major, minor, patch, version_name, version_description) FROM stdin;
+\.
+
+
+--
 -- Data for Name: store_view; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.store_view (store_view_id, website_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: text_page_urls; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.text_page_urls (url_key, upper_key, text_pages_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: text_pages; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.text_pages (text_pages_id, name, short_text, text) FROM stdin;
+\.
+
+
+--
+-- Data for Name: text_pages_seo; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.text_pages_seo (text_pages_id, meta_title, meta_description, meta_keywords, page_index) FROM stdin;
+\.
+
+
+--
+-- Data for Name: url_keys; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.url_keys (url_key, upper_key, page_type) FROM stdin;
 \.
 
 
@@ -824,6 +1136,13 @@ COPY public.users (user_id, email, password) FROM stdin;
 
 COPY public.websites (website_id) FROM stdin;
 \.
+
+
+--
+-- Name: categories_category_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.categories_category_id_seq', 1, false);
 
 
 --
@@ -852,6 +1171,54 @@ SELECT pg_catalog.setval('public.users_user_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.websites_website_id_seq', 1, false);
+
+
+--
+-- Name: url_keys UK_1; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.url_keys
+    ADD CONSTRAINT "UK_1" UNIQUE (url_key);
+
+
+--
+-- Name: url_keys UK_2; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.url_keys
+    ADD CONSTRAINT "UK_2" UNIQUE (upper_key);
+
+
+--
+-- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.categories
+    ADD CONSTRAINT categories_pkey PRIMARY KEY (category_id);
+
+
+--
+-- Name: categories_products categories_products_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.categories_products
+    ADD CONSTRAINT categories_products_pkey PRIMARY KEY (category_id, product_id);
+
+
+--
+-- Name: categories_seo categories_seo_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.categories_seo
+    ADD CONSTRAINT categories_seo_pkey PRIMARY KEY (category_id);
+
+
+--
+-- Name: category_urls category_urls_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.category_urls
+    ADD CONSTRAINT category_urls_pkey PRIMARY KEY (url_key, upper_key);
 
 
 --
@@ -1055,6 +1422,14 @@ ALTER TABLE ONLY public.multi_select_attributes_string
 
 
 --
+-- Name: product_urls product_urls_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.product_urls
+    ADD CONSTRAINT product_urls_pkey PRIMARY KEY (url_key, upper_key);
+
+
+--
 -- Name: products products_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1071,6 +1446,14 @@ ALTER TABLE ONLY public.products_pricing
 
 
 --
+-- Name: products_seo products_seo_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.products_seo
+    ADD CONSTRAINT products_seo_pkey PRIMARY KEY (product_id);
+
+
+--
 -- Name: server_data server_data_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1079,11 +1462,51 @@ ALTER TABLE ONLY public.server_data
 
 
 --
+-- Name: server_version server_version_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.server_version
+    ADD CONSTRAINT server_version_pkey PRIMARY KEY (major, minor, patch);
+
+
+--
 -- Name: store_view store_view_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.store_view
     ADD CONSTRAINT store_view_pkey PRIMARY KEY (store_view_id);
+
+
+--
+-- Name: text_page_urls text_page_urls_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.text_page_urls
+    ADD CONSTRAINT text_page_urls_pkey PRIMARY KEY (url_key, upper_key);
+
+
+--
+-- Name: text_pages text_pages_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.text_pages
+    ADD CONSTRAINT text_pages_pkey PRIMARY KEY (text_pages_id);
+
+
+--
+-- Name: text_pages_seo text_pages_seo_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.text_pages_seo
+    ADD CONSTRAINT text_pages_seo_pkey PRIMARY KEY (text_pages_id);
+
+
+--
+-- Name: url_keys url_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.url_keys
+    ADD CONSTRAINT url_keys_pkey PRIMARY KEY (url_key, upper_key);
 
 
 --
@@ -1124,219 +1547,112 @@ CREATE INDEX "fki_FK_3" ON public.eav_store_view_bool USING btree (attribute_key
 
 
 --
+-- Name: fki_FK_61; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "fki_FK_61" ON public.categories_seo USING btree (category_id);
+
+
+--
+-- Name: fki_FK_62; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "fki_FK_62" ON public.url_keys USING btree (upper_key);
+
+
+--
+-- Name: fki_FK_67; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "fki_FK_67" ON public.categories USING btree (upper_category);
+
+
+--
 -- Name: backend_permissions FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.backend_permissions
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (user_id) REFERENCES public.users(user_id) NOT VALID;
+    ADD CONSTRAINT "FK_1" FOREIGN KEY (user_id) REFERENCES public.users(user_id);
 
 
 --
--- Name: eav FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_global_bool FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_global_bool
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_global_float FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_global_float
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_global_int FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_global_int
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_global_money FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_global_money
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_global_multi_select FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_global_multi_select
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_global_string FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_global_string
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_store_view_bool FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_bool
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_store_view_float FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_float
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_store_view_int FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_int
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_store_view_money FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_money
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_store_view_multi_select FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_multi_select
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_store_view_string FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_string
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_website_bool FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_bool
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_website_float FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_float
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_website_int FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_int
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_website_money FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_money
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_website_multi_select FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_multi_select
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: eav_website_string FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_string
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
-
-
---
--- Name: multi_select_attributes_bool FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.multi_select_attributes_bool
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: multi_select_attributes_float FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.multi_select_attributes_float
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: multi_select_attributes_int FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.multi_select_attributes_int
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: multi_select_attributes_money FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: multi_select_attributes_money FK_10; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_money
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+    ADD CONSTRAINT "FK_10" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
--- Name: multi_select_attributes_string FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: multi_select_attributes_bool FK_11; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.multi_select_attributes_string
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: products_pricing FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.products_pricing
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id) NOT VALID;
+ALTER TABLE ONLY public.multi_select_attributes_bool
+    ADD CONSTRAINT "FK_11" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
--- Name: store_view FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_global_string FK_12; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.store_view
-    ADD CONSTRAINT "FK_1" FOREIGN KEY (website_id) REFERENCES public.websites(website_id) NOT VALID;
+ALTER TABLE ONLY public.eav_global_string
+    ADD CONSTRAINT "FK_12" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_global_string FK_13; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_global_string
+    ADD CONSTRAINT "FK_13" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_global_int FK_14; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_global_int
+    ADD CONSTRAINT "FK_14" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_global_int FK_15; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_global_int
+    ADD CONSTRAINT "FK_15" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_global_float FK_16; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_global_float
+    ADD CONSTRAINT "FK_16" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_global_float FK_17; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_global_float
+    ADD CONSTRAINT "FK_17" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_global_money FK_18; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_global_money
+    ADD CONSTRAINT "FK_18" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_global_money FK_19; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_global_money
+    ADD CONSTRAINT "FK_19" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1344,247 +1660,479 @@ ALTER TABLE ONLY public.store_view
 --
 
 ALTER TABLE ONLY public.eav
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+    ADD CONSTRAINT "FK_2" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
--- Name: eav_global_bool FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_global_bool FK_20; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.eav_global_bool
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+    ADD CONSTRAINT "FK_20" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
--- Name: eav_global_float FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_global_bool FK_21; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.eav_global_float
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: eav_global_int FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_global_int
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+ALTER TABLE ONLY public.eav_global_bool
+    ADD CONSTRAINT "FK_21" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
--- Name: eav_global_money FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_global_money
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: eav_global_multi_select FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_global_multi_select FK_22; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.eav_global_multi_select
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+    ADD CONSTRAINT "FK_22" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
--- Name: eav_global_string FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: store_view FK_22_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.eav_global_string
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: eav_store_view_bool FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_bool
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id) NOT VALID;
+ALTER TABLE ONLY public.store_view
+    ADD CONSTRAINT "FK_22_1" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
 
 
 --
--- Name: eav_store_view_float FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_global_multi_select FK_23; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.eav_store_view_float
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id) NOT VALID;
-
-
---
--- Name: eav_store_view_int FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_int
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id) NOT VALID;
+ALTER TABLE ONLY public.eav_global_multi_select
+    ADD CONSTRAINT "FK_23" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
--- Name: eav_store_view_money FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_money
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id) NOT VALID;
-
-
---
--- Name: eav_store_view_multi_select FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_multi_select
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id) NOT VALID;
-
-
---
--- Name: eav_store_view_string FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_string
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id) NOT VALID;
-
-
---
--- Name: eav_website_bool FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_website_bool FK_23_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.eav_website_bool
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (website_id) REFERENCES public.websites(website_id) NOT VALID;
+    ADD CONSTRAINT "FK_23_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
--- Name: eav_website_float FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_float
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (website_id) REFERENCES public.websites(website_id) NOT VALID;
-
-
---
--- Name: eav_website_int FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_int
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (website_id) REFERENCES public.websites(website_id) NOT VALID;
-
-
---
--- Name: eav_website_money FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_money
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (website_id) REFERENCES public.websites(website_id) NOT VALID;
-
-
---
--- Name: eav_website_multi_select FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_multi_select
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (website_id) REFERENCES public.websites(website_id) NOT VALID;
-
-
---
--- Name: eav_website_string FK_2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_website_string
-    ADD CONSTRAINT "FK_2" FOREIGN KEY (website_id) REFERENCES public.websites(website_id) NOT VALID;
-
-
---
--- Name: eav_store_view_bool FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_bool
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: eav_store_view_float FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_float
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: eav_store_view_int FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_int
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: eav_store_view_money FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_money
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: eav_store_view_multi_select FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_multi_select
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: eav_store_view_string FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.eav_store_view_string
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
-
-
---
--- Name: eav_website_bool FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_website_bool FK_24; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.eav_website_bool
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+    ADD CONSTRAINT "FK_24" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
 
 
 --
--- Name: eav_website_float FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_website_bool FK_25; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_bool
+    ADD CONSTRAINT "FK_25" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_website_float FK_26; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.eav_website_float
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+    ADD CONSTRAINT "FK_26" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
--- Name: eav_website_int FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_website_float FK_27; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_float
+    ADD CONSTRAINT "FK_27" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+
+
+--
+-- Name: eav_website_float FK_28; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_float
+    ADD CONSTRAINT "FK_28" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_website_int FK_29; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.eav_website_int
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+    ADD CONSTRAINT "FK_29" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
--- Name: eav_website_money FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav
+    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_website_int FK_30; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_int
+    ADD CONSTRAINT "FK_30" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+
+
+--
+-- Name: eav_website_int FK_31; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_int
+    ADD CONSTRAINT "FK_31" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_website_money FK_32; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.eav_website_money
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+    ADD CONSTRAINT "FK_32" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
--- Name: eav_website_multi_select FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_website_money FK_33; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_money
+    ADD CONSTRAINT "FK_33" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+
+
+--
+-- Name: eav_website_money FK_34; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_money
+    ADD CONSTRAINT "FK_34" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_website_multi_select FK_35; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.eav_website_multi_select
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+    ADD CONSTRAINT "FK_35" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
--- Name: eav_website_string FK_3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: eav_website_multi_select FK_36; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_multi_select
+    ADD CONSTRAINT "FK_36" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+
+
+--
+-- Name: eav_website_multi_select FK_37; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_multi_select
+    ADD CONSTRAINT "FK_37" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_website_string FK_38; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.eav_website_string
-    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key) NOT VALID;
+    ADD CONSTRAINT "FK_38" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_website_string FK_39; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_string
+    ADD CONSTRAINT "FK_39" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+
+
+--
+-- Name: eav_website_string FK_40; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_website_string
+    ADD CONSTRAINT "FK_40" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_store_view_bool FK_41; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_bool
+    ADD CONSTRAINT "FK_41" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_store_view_bool FK_42; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_bool
+    ADD CONSTRAINT "FK_42" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+
+
+--
+-- Name: eav_store_view_bool FK_43; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_bool
+    ADD CONSTRAINT "FK_43" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_store_view_float FK_44; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_float
+    ADD CONSTRAINT "FK_44" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_store_view_float FK_45; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_float
+    ADD CONSTRAINT "FK_45" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+
+
+--
+-- Name: eav_store_view_float FK_46; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_float
+    ADD CONSTRAINT "FK_46" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_store_view_int FK_47; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_int
+    ADD CONSTRAINT "FK_47" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_store_view_int FK_48; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_int
+    ADD CONSTRAINT "FK_48" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+
+
+--
+-- Name: eav_store_view_int FK_49; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_int
+    ADD CONSTRAINT "FK_49" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_store_view_money FK_50; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_money
+    ADD CONSTRAINT "FK_50" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_store_view_money FK_51; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_money
+    ADD CONSTRAINT "FK_51" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+
+
+--
+-- Name: eav_store_view_money FK_52; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_money
+    ADD CONSTRAINT "FK_52" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_store_view_multi_select FK_53; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_multi_select
+    ADD CONSTRAINT "FK_53" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_store_view_multi_select FK_54; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_multi_select
+    ADD CONSTRAINT "FK_54" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+
+
+--
+-- Name: eav_store_view_multi_select FK_55; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_multi_select
+    ADD CONSTRAINT "FK_55" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: eav_store_view_string FK_56; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_string
+    ADD CONSTRAINT "FK_56" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: eav_store_view_string FK_57; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_string
+    ADD CONSTRAINT "FK_57" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+
+
+--
+-- Name: eav_store_view_string FK_58; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eav_store_view_string
+    ADD CONSTRAINT "FK_58" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: categories_products FK_59; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.categories_products
+    ADD CONSTRAINT "FK_59" FOREIGN KEY (category_id) REFERENCES public.categories(category_id);
+
+
+--
+-- Name: multi_select_attributes_string FK_6; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.multi_select_attributes_string
+    ADD CONSTRAINT "FK_6" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: categories_products FK_60; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.categories_products
+    ADD CONSTRAINT "FK_60" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: categories_seo FK_61; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.categories_seo
+    ADD CONSTRAINT "FK_61" FOREIGN KEY (category_id) REFERENCES public.categories(category_id);
+
+
+--
+-- Name: url_keys FK_62; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.url_keys
+    ADD CONSTRAINT "FK_62" FOREIGN KEY (upper_key) REFERENCES public.url_keys(url_key);
+
+
+--
+-- Name: product_urls FK_63; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.product_urls
+    ADD CONSTRAINT "FK_63" FOREIGN KEY (url_key, upper_key) REFERENCES public.url_keys(url_key, upper_key);
+
+
+--
+-- Name: product_urls FK_64; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.product_urls
+    ADD CONSTRAINT "FK_64" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: category_urls FK_65; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.category_urls
+    ADD CONSTRAINT "FK_65" FOREIGN KEY (url_key, upper_key) REFERENCES public.url_keys(url_key, upper_key);
+
+
+--
+-- Name: category_urls FK_66; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.category_urls
+    ADD CONSTRAINT "FK_66" FOREIGN KEY (category_id) REFERENCES public.categories(category_id);
+
+
+--
+-- Name: categories FK_67; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.categories
+    ADD CONSTRAINT "FK_67" FOREIGN KEY (upper_category) REFERENCES public.categories(category_id);
+
+
+--
+-- Name: products_seo FK_68; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.products_seo
+    ADD CONSTRAINT "FK_68" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: text_pages_seo FK_69; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.text_pages_seo
+    ADD CONSTRAINT "FK_69" FOREIGN KEY (text_pages_id) REFERENCES public.text_pages(text_pages_id);
+
+
+--
+-- Name: products_pricing FK_7; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.products_pricing
+    ADD CONSTRAINT "FK_7" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+
+
+--
+-- Name: text_page_urls FK_70; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.text_page_urls
+    ADD CONSTRAINT "FK_70" FOREIGN KEY (url_key, upper_key) REFERENCES public.url_keys(url_key, upper_key);
+
+
+--
+-- Name: text_page_urls FK_71; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.text_page_urls
+    ADD CONSTRAINT "FK_71" FOREIGN KEY (text_pages_id) REFERENCES public.text_pages(text_pages_id);
+
+
+--
+-- Name: multi_select_attributes_int FK_8; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.multi_select_attributes_int
+    ADD CONSTRAINT "FK_8" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+
+--
+-- Name: multi_select_attributes_float FK_9; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.multi_select_attributes_float
+    ADD CONSTRAINT "FK_9" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
