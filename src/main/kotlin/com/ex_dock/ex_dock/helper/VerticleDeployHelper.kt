@@ -11,7 +11,7 @@ class VerticleDeployHelper {
           if (res.failed()) {
             println(buildString {
               append("\u001b[31m")
-              append("⨯ - Failed to deploy Verticle: $name")
+              append("⨯ - Failed to deploy Verticle: $name\nCause: ${res.cause()}")
               append("\u001b[0m")
             })
             promise.fail(res.cause())
@@ -29,9 +29,14 @@ class VerticleDeployHelper {
     }
   }
 
-  fun deployWorkerHelper(vertx: Vertx, name: String): Future<Void> {
+  fun deployWorkerHelper(vertx: Vertx, name: String, workerPoolSize: Int, instances: Int): Future<Void> {
     val promise: Promise<Void> = Promise.promise<Void>()
-    val options: DeploymentOptions = DeploymentOptions().setThreadingModel(ThreadingModel.WORKER)
+    val options: DeploymentOptions = DeploymentOptions()
+      .setThreadingModel(ThreadingModel.WORKER)
+      .setWorkerPoolName(name)
+      .setWorkerPoolSize(workerPoolSize)
+      .setInstances(instances)
+
     vertx.deployVerticle(name, options)
       .onComplete{ res ->
         if (res.failed()) {
