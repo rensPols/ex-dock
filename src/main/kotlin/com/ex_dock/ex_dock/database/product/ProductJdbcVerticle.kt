@@ -25,8 +25,8 @@ class ProductJdbcVerticle: AbstractVerticle() {
   }
 
   private fun getAllProducts() {
-    val consumer = eventBus.localConsumer<JsonObject>("process.products.getAll")
-    consumer.handler { message ->
+    val allProductsConsumer = eventBus.localConsumer<JsonObject>("process.products.getAll")
+    allProductsConsumer.handler { message ->
       val rowsFuture = client.preparedQuery("SELECT * FROM products").execute()
       var json: JsonObject;
 
@@ -58,8 +58,8 @@ class ProductJdbcVerticle: AbstractVerticle() {
   }
 
   private fun getProductById() {
-    val consumer = eventBus.localConsumer<JsonObject>("process.products.getProductById")
-    consumer.handler { message ->
+    val getByIdConsumer = eventBus.localConsumer<JsonObject>("process.products.getProductById")
+    getByIdConsumer.handler { message ->
       var json: JsonObject
       val productId = message.body().getString("productId")
       val rowsFuture = client.preparedQuery("SELECT * FROM products WHERE product_id = ?")
@@ -90,8 +90,8 @@ class ProductJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createProduct() {
-    val consumer = eventBus.localConsumer<JsonObject>("process.products.createProduct")
-    consumer.handler { message ->
+    val createProductConsumer = eventBus.localConsumer<JsonObject>("process.products.createProduct")
+    createProductConsumer.handler { message ->
       val product = message.body()
       val rowsFuture = client.preparedQuery("INSERT INTO products (name, short_name, description, short_description) VALUES (?,?,?,?)")
        .execute(Tuple.of(
