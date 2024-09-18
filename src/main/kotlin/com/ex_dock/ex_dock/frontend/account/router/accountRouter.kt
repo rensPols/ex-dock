@@ -10,13 +10,12 @@ fun Router.initAccount(vertx: Vertx) {
   val eventBus: EventBus = vertx.eventBus()
 
   accountRouter.get("/").handler { ctx ->
-    ctx.end("request to accountRouter successful")
     eventBus.request<Any>("process.account.getData", "testUser")
       .onSuccess{ reply ->
-        println("Account data: ${Json.decodeValue(reply.body().toString())}")
+        ctx.end(reply.body().toString())
       }
       .onFailure { error ->
-        println("Error retrieving account data: ${error.localizedMessage}")
+        ctx.end("Error retrieving account data: ${error.localizedMessage}")
       }
   }
 
