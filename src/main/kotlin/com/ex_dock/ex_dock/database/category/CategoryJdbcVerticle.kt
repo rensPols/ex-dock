@@ -133,7 +133,8 @@ class CategoryJdbcVerticle: AbstractVerticle() {
     val editCategoryConsumer = eventBus.localConsumer<JsonObject>("process.categories.edit")
     editCategoryConsumer.handler { message ->
       val query =
-        "UPDATE categories SET upper_category =?, name =?, short_description =?, description =? WHERE category_id =?"
+        "UPDATE categories SET upper_category = ?, name = ?" +
+          ", short_description = ?, description = ? WHERE category_id = ?"
       val category = message.body()
       val queryTuple = makeCategoryTuple(category, true)
 
@@ -430,7 +431,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
         body.getString("name"),
         body.getString("short_description"),
         body.getString("description"),
-        body.getInteger("id"),
+        body.getInteger("category_id"),
       )
     } else {
       categoryTuple = Tuple.of(
@@ -469,7 +470,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
         metaDescription,
         metaKeywords,
         body.getString("page_index"),
-        body.getInteger("id"),
+        body.getInteger("category_id"),
       )
     } else {
       categorySeoTuple = Tuple.of(
