@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.13
--- Dumped by pg_dump version 14.13
+-- Dumped from database version 16.1
+-- Dumped by pg_dump version 16.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -21,11 +21,11 @@ SET row_security = off;
 --
 
 CREATE TYPE public.index AS ENUM (
-  'index, follow',
-  'index, nofollow',
-  'noindex, follow',
-  'noindex nofollow'
-  );
+    'index, follow',
+    'index, nofollow',
+    'noindex, follow',
+    'noindex nofollow'
+);
 
 
 ALTER TYPE public.index OWNER TO postgres;
@@ -35,11 +35,11 @@ ALTER TYPE public.index OWNER TO postgres;
 --
 
 CREATE TYPE public.p_index AS ENUM (
-  'index, follow',
-  'index, nofollow',
-  'noindex, follow',
-  'noindex nofollow'
-  );
+    'index, follow',
+    'index, nofollow',
+    'noindex, follow',
+    'noindex nofollow'
+);
 
 
 ALTER TYPE public.p_index OWNER TO postgres;
@@ -49,29 +49,13 @@ ALTER TYPE public.p_index OWNER TO postgres;
 --
 
 CREATE TYPE public.p_type AS ENUM (
-  'product',
-  'category',
-  'text_page'
-  );
+    'product',
+    'category',
+    'text_page'
+);
 
 
 ALTER TYPE public.p_type OWNER TO postgres;
-
---
--- Name: check_root_url(); Type: FUNCTION; Schema: public; Owner: postgres
---
-
-CREATE FUNCTION public.check_root_url() RETURNS trigger
-  LANGUAGE plpgsql
-AS $$BEGIN
-  IF (SELECT COUNT(*) FROM url_keys WHERE (url_key = '/' AND upper_key != '/') OR (url_key != '/' AND upper_key='/')) > 0
-  THEN RAISE EXCEPTION 'The root is only allowed to be combined with the root!';
-  END IF;
-  RETURN NEW;
-END;$$;
-
-
-ALTER FUNCTION public.check_root_url() OWNER TO postgres;
 
 SET default_tablespace = '';
 
@@ -82,17 +66,17 @@ SET default_table_access_method = heap;
 --
 
 CREATE TABLE public.backend_permissions (
-                                          user_id integer NOT NULL,
-                                          user_permissions integer NOT NULL,
-                                          server_settings integer NOT NULL,
-                                          template integer NOT NULL,
-                                          category_content integer NOT NULL,
-                                          category_products integer NOT NULL,
-                                          product_content integer NOT NULL,
-                                          product_price integer NOT NULL,
-                                          product_warehouse integer NOT NULL,
-                                          text_pages integer NOT NULL,
-                                          "API_KEY" character varying(128)
+    user_id integer NOT NULL,
+    user_permissions integer NOT NULL,
+    server_settings integer NOT NULL,
+    template integer NOT NULL,
+    category_content integer NOT NULL,
+    category_products integer NOT NULL,
+    product_content integer NOT NULL,
+    product_price integer NOT NULL,
+    product_warehouse integer NOT NULL,
+    text_pages integer NOT NULL,
+    "API_KEY" character varying(128)
 );
 
 
@@ -103,11 +87,11 @@ ALTER TABLE public.backend_permissions OWNER TO postgres;
 --
 
 CREATE TABLE public.categories (
-                                 category_id integer NOT NULL,
-                                 upper_category integer,
-                                 name character varying(100) NOT NULL,
-                                 short_description text NOT NULL,
-                                 description text NOT NULL
+    category_id integer NOT NULL,
+    upper_category integer NOT NULL,
+    name character varying(100) NOT NULL,
+    short_description text NOT NULL,
+    description text NOT NULL
 );
 
 
@@ -118,15 +102,15 @@ ALTER TABLE public.categories OWNER TO postgres;
 --
 
 CREATE SEQUENCE public.categories_category_id_seq
-  AS integer
-  START WITH 1
-  INCREMENT BY 1
-  NO MINVALUE
-  NO MAXVALUE
-  CACHE 1;
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
 
-ALTER TABLE public.categories_category_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.categories_category_id_seq OWNER TO postgres;
 
 --
 -- Name: categories_category_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -140,8 +124,8 @@ ALTER SEQUENCE public.categories_category_id_seq OWNED BY public.categories.cate
 --
 
 CREATE TABLE public.categories_products (
-                                          category_id integer NOT NULL,
-                                          product_id integer NOT NULL
+    category_id integer NOT NULL,
+    product_id integer NOT NULL
 );
 
 
@@ -152,11 +136,11 @@ ALTER TABLE public.categories_products OWNER TO postgres;
 --
 
 CREATE TABLE public.categories_seo (
-                                     category_id integer NOT NULL,
-                                     meta_title text,
-                                     meta_description text,
-                                     meta_keywords text,
-                                     page_index public.p_index NOT NULL
+    category_id integer NOT NULL,
+    meta_title text,
+    meta_description text,
+    meta_keywords text,
+    page_index public.p_index NOT NULL
 );
 
 
@@ -167,9 +151,9 @@ ALTER TABLE public.categories_seo OWNER TO postgres;
 --
 
 CREATE TABLE public.category_urls (
-                                    url_key character varying(100) NOT NULL,
-                                    upper_key character varying(100) NOT NULL,
-                                    category_id integer NOT NULL
+    url_key character varying(100) NOT NULL,
+    upper_key character varying(100) NOT NULL,
+    category_id integer NOT NULL
 );
 
 
@@ -180,12 +164,12 @@ ALTER TABLE public.category_urls OWNER TO postgres;
 --
 
 CREATE TABLE public.custom_product_attributes (
-                                                attribute_key character varying(64) NOT NULL,
-                                                scope integer NOT NULL,
-                                                name character varying(64) NOT NULL,
-                                                type integer NOT NULL,
-                                                multiselect bit(1) NOT NULL,
-                                                required bit(1) NOT NULL
+    attribute_key character varying(64) NOT NULL,
+    scope integer NOT NULL,
+    name character varying(64) NOT NULL,
+    type integer NOT NULL,
+    multiselect bit(1) NOT NULL,
+    required bit(1) NOT NULL
 );
 
 
@@ -196,8 +180,8 @@ ALTER TABLE public.custom_product_attributes OWNER TO postgres;
 --
 
 CREATE TABLE public.eav (
-                          product_id integer NOT NULL,
-                          attribute_key character varying(64) NOT NULL
+    product_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL
 );
 
 
@@ -208,9 +192,9 @@ ALTER TABLE public.eav OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_global_bool (
-                                      product_id integer NOT NULL,
-                                      attribute_key character varying(64) NOT NULL,
-                                      bool bit(1) NOT NULL
+    product_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    bool bit(1) NOT NULL
 );
 
 
@@ -221,9 +205,9 @@ ALTER TABLE public.eav_global_bool OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_global_float (
-                                       product_id integer NOT NULL,
-                                       attribute_key character varying(64) NOT NULL,
-                                       value double precision NOT NULL
+    product_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value double precision NOT NULL
 );
 
 
@@ -234,9 +218,9 @@ ALTER TABLE public.eav_global_float OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_global_int (
-                                     product_id integer NOT NULL,
-                                     attribute_key character varying(64) NOT NULL,
-                                     value integer NOT NULL
+    product_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value integer NOT NULL
 );
 
 
@@ -247,9 +231,9 @@ ALTER TABLE public.eav_global_int OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_global_money (
-                                       product_id integer NOT NULL,
-                                       attribute_key character varying(64) NOT NULL,
-                                       value numeric(11,2) NOT NULL
+    product_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value numeric(11,2) NOT NULL
 );
 
 
@@ -260,9 +244,9 @@ ALTER TABLE public.eav_global_money OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_global_multi_select (
-                                              product_id integer NOT NULL,
-                                              attribute_key character varying(64) NOT NULL,
-                                              value integer NOT NULL
+    product_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value integer NOT NULL
 );
 
 
@@ -273,9 +257,9 @@ ALTER TABLE public.eav_global_multi_select OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_global_string (
-                                        product_id integer NOT NULL,
-                                        attribute_key character varying(64) NOT NULL,
-                                        value text NOT NULL
+    product_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value text NOT NULL
 );
 
 
@@ -286,10 +270,10 @@ ALTER TABLE public.eav_global_string OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_store_view_bool (
-                                          product_id integer NOT NULL,
-                                          store_view_id integer NOT NULL,
-                                          attribute_key character varying(64) NOT NULL,
-                                          value bit(1) NOT NULL
+    product_id integer NOT NULL,
+    store_view_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value bit(1) NOT NULL
 );
 
 
@@ -300,10 +284,10 @@ ALTER TABLE public.eav_store_view_bool OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_store_view_float (
-                                           product_id integer NOT NULL,
-                                           store_view_id integer NOT NULL,
-                                           attribute_key character varying(64) NOT NULL,
-                                           value double precision NOT NULL
+    product_id integer NOT NULL,
+    store_view_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value double precision NOT NULL
 );
 
 
@@ -314,10 +298,10 @@ ALTER TABLE public.eav_store_view_float OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_store_view_int (
-                                         product_id integer NOT NULL,
-                                         store_view_id integer NOT NULL,
-                                         attribute_key character varying(64) NOT NULL,
-                                         value integer NOT NULL
+    product_id integer NOT NULL,
+    store_view_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value integer NOT NULL
 );
 
 
@@ -328,10 +312,10 @@ ALTER TABLE public.eav_store_view_int OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_store_view_money (
-                                           product_id integer NOT NULL,
-                                           store_view_id integer NOT NULL,
-                                           attribute_key character varying(64) NOT NULL,
-                                           value numeric(11,2) NOT NULL
+    product_id integer NOT NULL,
+    store_view_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value numeric(11,2) NOT NULL
 );
 
 
@@ -342,10 +326,10 @@ ALTER TABLE public.eav_store_view_money OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_store_view_multi_select (
-                                                  product_id integer NOT NULL,
-                                                  store_view_id integer NOT NULL,
-                                                  attribute_key character varying(64) NOT NULL,
-                                                  value integer NOT NULL
+    product_id integer NOT NULL,
+    store_view_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value integer NOT NULL
 );
 
 
@@ -356,10 +340,10 @@ ALTER TABLE public.eav_store_view_multi_select OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_store_view_string (
-                                            product_id integer NOT NULL,
-                                            store_view_id integer NOT NULL,
-                                            attribute_key character varying(64) NOT NULL,
-                                            value text NOT NULL
+    product_id integer NOT NULL,
+    store_view_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value text NOT NULL
 );
 
 
@@ -370,10 +354,10 @@ ALTER TABLE public.eav_store_view_string OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_website_bool (
-                                       product_id integer NOT NULL,
-                                       website_id integer NOT NULL,
-                                       attribute_key character varying(64) NOT NULL,
-                                       value bit(1) NOT NULL
+    product_id integer NOT NULL,
+    website_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value bit(1) NOT NULL
 );
 
 
@@ -384,9 +368,9 @@ ALTER TABLE public.eav_website_bool OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_website_float (
-                                        product_id integer NOT NULL,
-                                        website_id integer NOT NULL,
-                                        attribute_key character varying(64) NOT NULL
+    product_id integer NOT NULL,
+    website_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL
 );
 
 
@@ -397,9 +381,9 @@ ALTER TABLE public.eav_website_float OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_website_int (
-                                      product_id integer NOT NULL,
-                                      website_id integer NOT NULL,
-                                      attribute_key character varying(64) NOT NULL
+    product_id integer NOT NULL,
+    website_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL
 );
 
 
@@ -410,10 +394,10 @@ ALTER TABLE public.eav_website_int OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_website_money (
-                                        product_id integer NOT NULL,
-                                        website_id integer NOT NULL,
-                                        attribute_key character varying(64) NOT NULL,
-                                        value numeric(11,2) NOT NULL
+    product_id integer NOT NULL,
+    website_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value numeric(11,2) NOT NULL
 );
 
 
@@ -424,9 +408,9 @@ ALTER TABLE public.eav_website_money OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_website_multi_select (
-                                               product_id integer NOT NULL,
-                                               website_id integer NOT NULL,
-                                               attribute_key character varying(64) NOT NULL
+    product_id integer NOT NULL,
+    website_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL
 );
 
 
@@ -437,10 +421,10 @@ ALTER TABLE public.eav_website_multi_select OWNER TO postgres;
 --
 
 CREATE TABLE public.eav_website_string (
-                                         product_id integer NOT NULL,
-                                         website_id integer NOT NULL,
-                                         attribute_key character varying(64) NOT NULL,
-                                         value text NOT NULL
+    product_id integer NOT NULL,
+    website_id integer NOT NULL,
+    attribute_key character varying(64) NOT NULL,
+    value text NOT NULL
 );
 
 
@@ -451,9 +435,9 @@ ALTER TABLE public.eav_website_string OWNER TO postgres;
 --
 
 CREATE TABLE public.multi_select_attributes_bool (
-                                                   attribute_key character varying(64) NOT NULL,
-                                                   option integer NOT NULL,
-                                                   value bit(1) NOT NULL
+    attribute_key character varying(64) NOT NULL,
+    option integer NOT NULL,
+    value bit(1) NOT NULL
 );
 
 
@@ -464,9 +448,9 @@ ALTER TABLE public.multi_select_attributes_bool OWNER TO postgres;
 --
 
 CREATE TABLE public.multi_select_attributes_float (
-                                                    attribute_key character varying(64) NOT NULL,
-                                                    option integer NOT NULL,
-                                                    value double precision NOT NULL
+    attribute_key character varying(64) NOT NULL,
+    option integer NOT NULL,
+    value double precision NOT NULL
 );
 
 
@@ -477,9 +461,9 @@ ALTER TABLE public.multi_select_attributes_float OWNER TO postgres;
 --
 
 CREATE TABLE public.multi_select_attributes_int (
-                                                  attribute_key character varying(64) NOT NULL,
-                                                  option integer NOT NULL,
-                                                  value integer NOT NULL
+    attribute_key character varying(64) NOT NULL,
+    option integer NOT NULL,
+    value integer NOT NULL
 );
 
 
@@ -490,9 +474,9 @@ ALTER TABLE public.multi_select_attributes_int OWNER TO postgres;
 --
 
 CREATE TABLE public.multi_select_attributes_money (
-                                                    attribute_key character varying(64) NOT NULL,
-                                                    option integer NOT NULL,
-                                                    value numeric(11,2) NOT NULL
+    attribute_key character varying(64) NOT NULL,
+    option integer NOT NULL,
+    value numeric(11,2) NOT NULL
 );
 
 
@@ -503,9 +487,9 @@ ALTER TABLE public.multi_select_attributes_money OWNER TO postgres;
 --
 
 CREATE TABLE public.multi_select_attributes_string (
-                                                     attribute_key character varying(64) NOT NULL,
-                                                     option integer NOT NULL,
-                                                     value text NOT NULL
+    attribute_key character varying(64) NOT NULL,
+    option integer NOT NULL,
+    value text NOT NULL
 );
 
 
@@ -516,9 +500,9 @@ ALTER TABLE public.multi_select_attributes_string OWNER TO postgres;
 --
 
 CREATE TABLE public.product_urls (
-                                   url_key character varying(100) NOT NULL,
-                                   upper_key character varying(100) NOT NULL,
-                                   product_id integer NOT NULL
+    url_key character varying(100) NOT NULL,
+    upper_key character varying(100) NOT NULL,
+    product_id integer NOT NULL
 );
 
 
@@ -529,11 +513,11 @@ ALTER TABLE public.product_urls OWNER TO postgres;
 --
 
 CREATE TABLE public.products (
-                               product_id integer NOT NULL,
-                               name character varying(250) NOT NULL,
-                               short_name character varying(100) NOT NULL,
-                               description text NOT NULL,
-                               short_description text NOT NULL
+    product_id integer NOT NULL,
+    name character varying(250) NOT NULL,
+    short_name character varying(100) NOT NULL,
+    description text NOT NULL,
+    short_description text NOT NULL
 );
 
 
@@ -544,10 +528,10 @@ ALTER TABLE public.products OWNER TO postgres;
 --
 
 CREATE TABLE public.products_pricing (
-                                       product_id integer NOT NULL,
-                                       price numeric(11,2) NOT NULL,
-                                       sale_price numeric(11,2) NOT NULL,
-                                       cost_price numeric(11,2) NOT NULL
+    product_id integer NOT NULL,
+    price numeric(11,2) NOT NULL,
+    sale_price numeric(11,2) NOT NULL,
+    cost_price numeric(11,2) NOT NULL
 );
 
 
@@ -558,15 +542,15 @@ ALTER TABLE public.products_pricing OWNER TO postgres;
 --
 
 CREATE SEQUENCE public.products_product_id_seq
-  AS integer
-  START WITH 1
-  INCREMENT BY 1
-  NO MINVALUE
-  NO MAXVALUE
-  CACHE 1;
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
 
-ALTER TABLE public.products_product_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.products_product_id_seq OWNER TO postgres;
 
 --
 -- Name: products_product_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -580,11 +564,11 @@ ALTER SEQUENCE public.products_product_id_seq OWNED BY public.products.product_i
 --
 
 CREATE TABLE public.products_seo (
-                                   product_id integer NOT NULL,
-                                   meta_title text,
-                                   meta_description text,
-                                   meta_keywords text,
-                                   page_index public.p_index NOT NULL
+    product_id integer NOT NULL,
+    meta_title text,
+    meta_description text,
+    meta_keywords text,
+    page_index public.p_index NOT NULL
 );
 
 
@@ -595,8 +579,8 @@ ALTER TABLE public.products_seo OWNER TO postgres;
 --
 
 CREATE TABLE public.server_data (
-                                  key character varying(45) NOT NULL,
-                                  value text NOT NULL
+    key character varying(45) NOT NULL,
+    value text NOT NULL
 );
 
 
@@ -607,11 +591,11 @@ ALTER TABLE public.server_data OWNER TO postgres;
 --
 
 CREATE TABLE public.server_version (
-                                     major integer NOT NULL,
-                                     minor integer NOT NULL,
-                                     patch integer NOT NULL,
-                                     version_name character varying(64) NOT NULL,
-                                     version_description text NOT NULL
+    major integer NOT NULL,
+    minor integer NOT NULL,
+    patch integer NOT NULL,
+    version_name character varying(64) NOT NULL,
+    version_description text NOT NULL
 );
 
 
@@ -622,9 +606,9 @@ ALTER TABLE public.server_version OWNER TO postgres;
 --
 
 CREATE TABLE public.store_view (
-                                 store_view_id integer NOT NULL,
-                                 website_id integer NOT NULL,
-                                 store_view_name character varying(255)
+    store_view_id integer NOT NULL,
+    website_id integer NOT NULL,
+    store_view_name varchar(255)
 );
 
 
@@ -635,15 +619,15 @@ ALTER TABLE public.store_view OWNER TO postgres;
 --
 
 CREATE SEQUENCE public.store_view_store_view_id_seq
-  AS integer
-  START WITH 1
-  INCREMENT BY 1
-  NO MINVALUE
-  NO MAXVALUE
-  CACHE 1;
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
 
-ALTER TABLE public.store_view_store_view_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.store_view_store_view_id_seq OWNER TO postgres;
 
 --
 -- Name: store_view_store_view_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -657,9 +641,9 @@ ALTER SEQUENCE public.store_view_store_view_id_seq OWNED BY public.store_view.st
 --
 
 CREATE TABLE public.text_page_urls (
-                                     url_key character varying(100) NOT NULL,
-                                     upper_key character varying(100) NOT NULL,
-                                     text_pages_id integer NOT NULL
+    url_key character varying(100) NOT NULL,
+    upper_key character varying(100) NOT NULL,
+    text_pages_id integer NOT NULL
 );
 
 
@@ -670,10 +654,10 @@ ALTER TABLE public.text_page_urls OWNER TO postgres;
 --
 
 CREATE TABLE public.text_pages (
-                                 text_pages_id integer NOT NULL,
-                                 name character varying(128) NOT NULL,
-                                 short_text text NOT NULL,
-                                 text text NOT NULL
+    text_pages_id SERIAL NOT NULL,
+    name character varying(128) NOT NULL,
+    short_text text NOT NULL,
+    text text NOT NULL
 );
 
 
@@ -684,46 +668,25 @@ ALTER TABLE public.text_pages OWNER TO postgres;
 --
 
 CREATE TABLE public.text_pages_seo (
-                                     text_pages_id integer NOT NULL,
-                                     meta_title text,
-                                     meta_description text,
-                                     meta_keywords text,
-                                     page_index public.p_index NOT NULL
+    text_pages_id integer NOT NULL,
+    meta_title text,
+    meta_description text,
+    meta_keywords text,
+    page_index public.p_index NOT NULL
 );
 
 
 ALTER TABLE public.text_pages_seo OWNER TO postgres;
 
 --
--- Name: text_pages_text_pages_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.text_pages_text_pages_id_seq
-  AS integer
-  START WITH 1
-  INCREMENT BY 1
-  NO MINVALUE
-  NO MAXVALUE
-  CACHE 1;
-
-
-ALTER TABLE public.text_pages_text_pages_id_seq OWNER TO postgres;
-
---
--- Name: text_pages_text_pages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.text_pages_text_pages_id_seq OWNED BY public.text_pages.text_pages_id;
-
-
---
 -- Name: url_keys; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.url_keys (
-                               url_key character varying(100) NOT NULL,
-                               upper_key character varying(100) NOT NULL,
-                               page_type public.p_type NOT NULL
+    url_key character varying(100) NOT NULL,
+    upper_key character varying(100) NOT NULL,
+    page_type public.p_type NOT NULL,
+    CONSTRAINT check_no_cycle CHECK (((url_key)::text <> (upper_key)::text))
 );
 
 
@@ -734,9 +697,9 @@ ALTER TABLE public.url_keys OWNER TO postgres;
 --
 
 CREATE TABLE public.users (
-                            user_id integer NOT NULL,
-                            email character varying(320) NOT NULL,
-                            password character varying(100) NOT NULL
+    user_id integer NOT NULL,
+    email character varying(320) NOT NULL,
+    password character varying(100) NOT NULL
 );
 
 
@@ -747,15 +710,15 @@ ALTER TABLE public.users OWNER TO postgres;
 --
 
 CREATE SEQUENCE public.users_user_id_seq
-  AS integer
-  START WITH 1
-  INCREMENT BY 1
-  NO MINVALUE
-  NO MAXVALUE
-  CACHE 1;
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
 
-ALTER TABLE public.users_user_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.users_user_id_seq OWNER TO postgres;
 
 --
 -- Name: users_user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -769,8 +732,8 @@ ALTER SEQUENCE public.users_user_id_seq OWNED BY public.users.user_id;
 --
 
 CREATE TABLE public.websites (
-                               website_id integer NOT NULL,
-                               website_name character varying(255)
+    website_id integer NOT NULL,
+    website_name varchar(255)
 );
 
 
@@ -781,15 +744,15 @@ ALTER TABLE public.websites OWNER TO postgres;
 --
 
 CREATE SEQUENCE public.websites_website_id_seq
-  AS integer
-  START WITH 1
-  INCREMENT BY 1
-  NO MINVALUE
-  NO MAXVALUE
-  CACHE 1;
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
 
-ALTER TABLE public.websites_website_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.websites_website_id_seq OWNER TO postgres;
 
 --
 -- Name: websites_website_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -817,13 +780,6 @@ ALTER TABLE ONLY public.products ALTER COLUMN product_id SET DEFAULT nextval('pu
 --
 
 ALTER TABLE ONLY public.store_view ALTER COLUMN store_view_id SET DEFAULT nextval('public.store_view_store_view_id_seq'::regclass);
-
-
---
--- Name: text_pages text_pages_id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.text_pages ALTER COLUMN text_pages_id SET DEFAULT nextval('public.text_pages_text_pages_id_seq'::regclass);
 
 
 --
@@ -1132,7 +1088,7 @@ COPY public.server_version (major, minor, patch, version_name, version_descripti
 -- Data for Name: store_view; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.store_view (store_view_id, website_id, store_view_name) FROM stdin;
+COPY public.store_view (store_view_id, website_id) FROM stdin;
 \.
 
 
@@ -1180,7 +1136,7 @@ COPY public.users (user_id, email, password) FROM stdin;
 -- Data for Name: websites; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.websites (website_id, website_name) FROM stdin;
+COPY public.websites (website_id) FROM stdin;
 \.
 
 
@@ -1206,13 +1162,6 @@ SELECT pg_catalog.setval('public.store_view_store_view_id_seq', 1, false);
 
 
 --
--- Name: text_pages_text_pages_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.text_pages_text_pages_id_seq', 1, false);
-
-
---
 -- Name: users_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
@@ -1231,7 +1180,15 @@ SELECT pg_catalog.setval('public.websites_website_id_seq', 1, false);
 --
 
 ALTER TABLE ONLY public.url_keys
-  ADD CONSTRAINT "UK_1" UNIQUE (url_key);
+    ADD CONSTRAINT "UK_1" UNIQUE (url_key);
+
+
+--
+-- Name: url_keys UK_2; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.url_keys
+    ADD CONSTRAINT "UK_2" UNIQUE (upper_key);
 
 
 --
@@ -1239,7 +1196,7 @@ ALTER TABLE ONLY public.url_keys
 --
 
 ALTER TABLE ONLY public.categories
-  ADD CONSTRAINT categories_pkey PRIMARY KEY (category_id);
+    ADD CONSTRAINT categories_pkey PRIMARY KEY (category_id);
 
 
 --
@@ -1247,7 +1204,7 @@ ALTER TABLE ONLY public.categories
 --
 
 ALTER TABLE ONLY public.categories_products
-  ADD CONSTRAINT categories_products_pkey PRIMARY KEY (category_id, product_id);
+    ADD CONSTRAINT categories_products_pkey PRIMARY KEY (category_id, product_id);
 
 
 --
@@ -1255,7 +1212,7 @@ ALTER TABLE ONLY public.categories_products
 --
 
 ALTER TABLE ONLY public.categories_seo
-  ADD CONSTRAINT categories_seo_pkey PRIMARY KEY (category_id);
+    ADD CONSTRAINT categories_seo_pkey PRIMARY KEY (category_id);
 
 
 --
@@ -1263,7 +1220,7 @@ ALTER TABLE ONLY public.categories_seo
 --
 
 ALTER TABLE ONLY public.category_urls
-  ADD CONSTRAINT category_urls_pkey PRIMARY KEY (url_key, upper_key);
+    ADD CONSTRAINT category_urls_pkey PRIMARY KEY (url_key, upper_key);
 
 
 --
@@ -1271,7 +1228,7 @@ ALTER TABLE ONLY public.category_urls
 --
 
 ALTER TABLE ONLY public.custom_product_attributes
-  ADD CONSTRAINT custom_product_attributes_pkey PRIMARY KEY (attribute_key);
+    ADD CONSTRAINT custom_product_attributes_pkey PRIMARY KEY (attribute_key);
 
 
 --
@@ -1279,7 +1236,7 @@ ALTER TABLE ONLY public.custom_product_attributes
 --
 
 ALTER TABLE ONLY public.eav_global_bool
-  ADD CONSTRAINT eav_global_bool_pkey PRIMARY KEY (product_id, attribute_key);
+    ADD CONSTRAINT eav_global_bool_pkey PRIMARY KEY (product_id, attribute_key);
 
 
 --
@@ -1287,7 +1244,7 @@ ALTER TABLE ONLY public.eav_global_bool
 --
 
 ALTER TABLE ONLY public.eav_global_float
-  ADD CONSTRAINT eav_global_float_pkey PRIMARY KEY (product_id, attribute_key);
+    ADD CONSTRAINT eav_global_float_pkey PRIMARY KEY (product_id, attribute_key);
 
 
 --
@@ -1295,7 +1252,7 @@ ALTER TABLE ONLY public.eav_global_float
 --
 
 ALTER TABLE ONLY public.eav_global_int
-  ADD CONSTRAINT eav_global_int_pkey PRIMARY KEY (product_id, attribute_key);
+    ADD CONSTRAINT eav_global_int_pkey PRIMARY KEY (product_id, attribute_key);
 
 
 --
@@ -1303,7 +1260,7 @@ ALTER TABLE ONLY public.eav_global_int
 --
 
 ALTER TABLE ONLY public.eav_global_money
-  ADD CONSTRAINT eav_global_money_pkey PRIMARY KEY (product_id, attribute_key);
+    ADD CONSTRAINT eav_global_money_pkey PRIMARY KEY (product_id, attribute_key);
 
 
 --
@@ -1311,7 +1268,7 @@ ALTER TABLE ONLY public.eav_global_money
 --
 
 ALTER TABLE ONLY public.eav_global_multi_select
-  ADD CONSTRAINT eav_global_multi_select_pkey PRIMARY KEY (product_id, attribute_key);
+    ADD CONSTRAINT eav_global_multi_select_pkey PRIMARY KEY (product_id, attribute_key);
 
 
 --
@@ -1319,7 +1276,7 @@ ALTER TABLE ONLY public.eav_global_multi_select
 --
 
 ALTER TABLE ONLY public.eav_global_string
-  ADD CONSTRAINT eav_global_string_pkey PRIMARY KEY (product_id, attribute_key);
+    ADD CONSTRAINT eav_global_string_pkey PRIMARY KEY (product_id, attribute_key);
 
 
 --
@@ -1327,7 +1284,7 @@ ALTER TABLE ONLY public.eav_global_string
 --
 
 ALTER TABLE ONLY public.eav
-  ADD CONSTRAINT eav_pkey PRIMARY KEY (product_id, attribute_key);
+    ADD CONSTRAINT eav_pkey PRIMARY KEY (product_id, attribute_key);
 
 
 --
@@ -1335,7 +1292,7 @@ ALTER TABLE ONLY public.eav
 --
 
 ALTER TABLE ONLY public.eav_store_view_bool
-  ADD CONSTRAINT eav_store_view_bool_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
+    ADD CONSTRAINT eav_store_view_bool_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
 
 
 --
@@ -1343,7 +1300,7 @@ ALTER TABLE ONLY public.eav_store_view_bool
 --
 
 ALTER TABLE ONLY public.eav_store_view_float
-  ADD CONSTRAINT eav_store_view_float_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
+    ADD CONSTRAINT eav_store_view_float_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
 
 
 --
@@ -1351,7 +1308,7 @@ ALTER TABLE ONLY public.eav_store_view_float
 --
 
 ALTER TABLE ONLY public.eav_store_view_int
-  ADD CONSTRAINT eav_store_view_int_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
+    ADD CONSTRAINT eav_store_view_int_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
 
 
 --
@@ -1359,7 +1316,7 @@ ALTER TABLE ONLY public.eav_store_view_int
 --
 
 ALTER TABLE ONLY public.eav_store_view_money
-  ADD CONSTRAINT eav_store_view_money_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
+    ADD CONSTRAINT eav_store_view_money_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
 
 
 --
@@ -1367,7 +1324,7 @@ ALTER TABLE ONLY public.eav_store_view_money
 --
 
 ALTER TABLE ONLY public.eav_store_view_multi_select
-  ADD CONSTRAINT eav_store_view_multi_select_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
+    ADD CONSTRAINT eav_store_view_multi_select_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
 
 
 --
@@ -1375,7 +1332,7 @@ ALTER TABLE ONLY public.eav_store_view_multi_select
 --
 
 ALTER TABLE ONLY public.eav_store_view_string
-  ADD CONSTRAINT eav_store_view_string_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
+    ADD CONSTRAINT eav_store_view_string_pkey PRIMARY KEY (product_id, store_view_id, attribute_key);
 
 
 --
@@ -1383,7 +1340,7 @@ ALTER TABLE ONLY public.eav_store_view_string
 --
 
 ALTER TABLE ONLY public.eav_website_bool
-  ADD CONSTRAINT eav_website_bool_pkey PRIMARY KEY (product_id, website_id, attribute_key);
+    ADD CONSTRAINT eav_website_bool_pkey PRIMARY KEY (product_id, website_id, attribute_key);
 
 
 --
@@ -1391,7 +1348,7 @@ ALTER TABLE ONLY public.eav_website_bool
 --
 
 ALTER TABLE ONLY public.eav_website_float
-  ADD CONSTRAINT eav_website_float_pkey PRIMARY KEY (product_id, website_id, attribute_key);
+    ADD CONSTRAINT eav_website_float_pkey PRIMARY KEY (product_id, website_id, attribute_key);
 
 
 --
@@ -1399,7 +1356,7 @@ ALTER TABLE ONLY public.eav_website_float
 --
 
 ALTER TABLE ONLY public.eav_website_int
-  ADD CONSTRAINT eav_website_int_pkey PRIMARY KEY (product_id, website_id, attribute_key);
+    ADD CONSTRAINT eav_website_int_pkey PRIMARY KEY (product_id, website_id, attribute_key);
 
 
 --
@@ -1407,7 +1364,7 @@ ALTER TABLE ONLY public.eav_website_int
 --
 
 ALTER TABLE ONLY public.eav_website_money
-  ADD CONSTRAINT eav_website_money_pkey PRIMARY KEY (product_id, website_id, attribute_key);
+    ADD CONSTRAINT eav_website_money_pkey PRIMARY KEY (product_id, website_id, attribute_key);
 
 
 --
@@ -1415,7 +1372,7 @@ ALTER TABLE ONLY public.eav_website_money
 --
 
 ALTER TABLE ONLY public.eav_website_multi_select
-  ADD CONSTRAINT eav_website_multi_select_pkey PRIMARY KEY (product_id, website_id, attribute_key);
+    ADD CONSTRAINT eav_website_multi_select_pkey PRIMARY KEY (product_id, website_id, attribute_key);
 
 
 --
@@ -1423,7 +1380,7 @@ ALTER TABLE ONLY public.eav_website_multi_select
 --
 
 ALTER TABLE ONLY public.eav_website_string
-  ADD CONSTRAINT eav_website_string_pkey PRIMARY KEY (product_id, website_id, attribute_key);
+    ADD CONSTRAINT eav_website_string_pkey PRIMARY KEY (product_id, website_id, attribute_key);
 
 
 --
@@ -1431,7 +1388,7 @@ ALTER TABLE ONLY public.eav_website_string
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_bool
-  ADD CONSTRAINT multi_select_attributes_bool_pkey PRIMARY KEY (attribute_key, option);
+    ADD CONSTRAINT multi_select_attributes_bool_pkey PRIMARY KEY (attribute_key, option);
 
 
 --
@@ -1439,7 +1396,7 @@ ALTER TABLE ONLY public.multi_select_attributes_bool
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_float
-  ADD CONSTRAINT multi_select_attributes_float_pkey PRIMARY KEY (attribute_key, option);
+    ADD CONSTRAINT multi_select_attributes_float_pkey PRIMARY KEY (attribute_key, option);
 
 
 --
@@ -1447,7 +1404,7 @@ ALTER TABLE ONLY public.multi_select_attributes_float
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_int
-  ADD CONSTRAINT multi_select_attributes_int_pkey PRIMARY KEY (attribute_key, option);
+    ADD CONSTRAINT multi_select_attributes_int_pkey PRIMARY KEY (attribute_key, option);
 
 
 --
@@ -1455,7 +1412,7 @@ ALTER TABLE ONLY public.multi_select_attributes_int
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_money
-  ADD CONSTRAINT multi_select_attributes_money_pkey PRIMARY KEY (attribute_key, option);
+    ADD CONSTRAINT multi_select_attributes_money_pkey PRIMARY KEY (attribute_key, option);
 
 
 --
@@ -1463,7 +1420,7 @@ ALTER TABLE ONLY public.multi_select_attributes_money
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_string
-  ADD CONSTRAINT multi_select_attributes_string_pkey PRIMARY KEY (attribute_key, option);
+    ADD CONSTRAINT multi_select_attributes_string_pkey PRIMARY KEY (attribute_key, option);
 
 
 --
@@ -1471,7 +1428,7 @@ ALTER TABLE ONLY public.multi_select_attributes_string
 --
 
 ALTER TABLE ONLY public.product_urls
-  ADD CONSTRAINT product_urls_pkey PRIMARY KEY (url_key, upper_key);
+    ADD CONSTRAINT product_urls_pkey PRIMARY KEY (url_key, upper_key);
 
 
 --
@@ -1479,7 +1436,7 @@ ALTER TABLE ONLY public.product_urls
 --
 
 ALTER TABLE ONLY public.products
-  ADD CONSTRAINT products_pkey PRIMARY KEY (product_id);
+    ADD CONSTRAINT products_pkey PRIMARY KEY (product_id);
 
 
 --
@@ -1487,7 +1444,7 @@ ALTER TABLE ONLY public.products
 --
 
 ALTER TABLE ONLY public.products_pricing
-  ADD CONSTRAINT products_pricing_pkey PRIMARY KEY (product_id);
+    ADD CONSTRAINT products_pricing_pkey PRIMARY KEY (product_id);
 
 
 --
@@ -1495,7 +1452,7 @@ ALTER TABLE ONLY public.products_pricing
 --
 
 ALTER TABLE ONLY public.products_seo
-  ADD CONSTRAINT products_seo_pkey PRIMARY KEY (product_id);
+    ADD CONSTRAINT products_seo_pkey PRIMARY KEY (product_id);
 
 
 --
@@ -1503,7 +1460,7 @@ ALTER TABLE ONLY public.products_seo
 --
 
 ALTER TABLE ONLY public.server_data
-  ADD CONSTRAINT server_data_pkey PRIMARY KEY (key);
+    ADD CONSTRAINT server_data_pkey PRIMARY KEY (key);
 
 
 --
@@ -1511,7 +1468,7 @@ ALTER TABLE ONLY public.server_data
 --
 
 ALTER TABLE ONLY public.server_version
-  ADD CONSTRAINT server_version_pkey PRIMARY KEY (major, minor, patch);
+    ADD CONSTRAINT server_version_pkey PRIMARY KEY (major, minor, patch);
 
 
 --
@@ -1519,7 +1476,7 @@ ALTER TABLE ONLY public.server_version
 --
 
 ALTER TABLE ONLY public.store_view
-  ADD CONSTRAINT store_view_pkey PRIMARY KEY (store_view_id);
+    ADD CONSTRAINT store_view_pkey PRIMARY KEY (store_view_id);
 
 
 --
@@ -1527,7 +1484,7 @@ ALTER TABLE ONLY public.store_view
 --
 
 ALTER TABLE ONLY public.text_page_urls
-  ADD CONSTRAINT text_page_urls_pkey PRIMARY KEY (url_key, upper_key);
+    ADD CONSTRAINT text_page_urls_pkey PRIMARY KEY (url_key, upper_key);
 
 
 --
@@ -1535,7 +1492,7 @@ ALTER TABLE ONLY public.text_page_urls
 --
 
 ALTER TABLE ONLY public.text_pages
-  ADD CONSTRAINT text_pages_pkey PRIMARY KEY (text_pages_id);
+    ADD CONSTRAINT text_pages_pkey PRIMARY KEY (text_pages_id);
 
 
 --
@@ -1543,7 +1500,7 @@ ALTER TABLE ONLY public.text_pages
 --
 
 ALTER TABLE ONLY public.text_pages_seo
-  ADD CONSTRAINT text_pages_seo_pkey PRIMARY KEY (text_pages_id);
+    ADD CONSTRAINT text_pages_seo_pkey PRIMARY KEY (text_pages_id);
 
 
 --
@@ -1551,7 +1508,7 @@ ALTER TABLE ONLY public.text_pages_seo
 --
 
 ALTER TABLE ONLY public.url_keys
-  ADD CONSTRAINT url_keys_pkey PRIMARY KEY (url_key, upper_key);
+    ADD CONSTRAINT url_keys_pkey PRIMARY KEY (url_key, upper_key);
 
 
 --
@@ -1559,7 +1516,7 @@ ALTER TABLE ONLY public.url_keys
 --
 
 ALTER TABLE ONLY public.users
-  ADD CONSTRAINT users_pkey PRIMARY KEY (user_id);
+    ADD CONSTRAINT users_pkey PRIMARY KEY (user_id);
 
 
 --
@@ -1567,7 +1524,7 @@ ALTER TABLE ONLY public.users
 --
 
 ALTER TABLE ONLY public.websites
-  ADD CONSTRAINT websites_pkey PRIMARY KEY (website_id);
+    ADD CONSTRAINT websites_pkey PRIMARY KEY (website_id);
 
 
 --
@@ -1613,18 +1570,11 @@ CREATE INDEX "fki_FK_67" ON public.categories USING btree (upper_category);
 
 
 --
--- Name: url_keys after_insert_url_keys; Type: TRIGGER; Schema: public; Owner: postgres
---
-
-CREATE TRIGGER after_insert_url_keys AFTER INSERT ON public.url_keys FOR EACH ROW EXECUTE FUNCTION public.check_root_url();
-
-
---
 -- Name: backend_permissions FK_1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.backend_permissions
-  ADD CONSTRAINT "FK_1" FOREIGN KEY (user_id) REFERENCES public.users(user_id);
+    ADD CONSTRAINT "FK_1" FOREIGN KEY (user_id) REFERENCES public.users(user_id);
 
 
 --
@@ -1632,7 +1582,7 @@ ALTER TABLE ONLY public.backend_permissions
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_money
-  ADD CONSTRAINT "FK_10" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_10" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1640,7 +1590,7 @@ ALTER TABLE ONLY public.multi_select_attributes_money
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_bool
-  ADD CONSTRAINT "FK_11" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_11" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1648,7 +1598,7 @@ ALTER TABLE ONLY public.multi_select_attributes_bool
 --
 
 ALTER TABLE ONLY public.eav_global_string
-  ADD CONSTRAINT "FK_12" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_12" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1656,7 +1606,7 @@ ALTER TABLE ONLY public.eav_global_string
 --
 
 ALTER TABLE ONLY public.eav_global_string
-  ADD CONSTRAINT "FK_13" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_13" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1664,7 +1614,7 @@ ALTER TABLE ONLY public.eav_global_string
 --
 
 ALTER TABLE ONLY public.eav_global_int
-  ADD CONSTRAINT "FK_14" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_14" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1672,7 +1622,7 @@ ALTER TABLE ONLY public.eav_global_int
 --
 
 ALTER TABLE ONLY public.eav_global_int
-  ADD CONSTRAINT "FK_15" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_15" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1680,7 +1630,7 @@ ALTER TABLE ONLY public.eav_global_int
 --
 
 ALTER TABLE ONLY public.eav_global_float
-  ADD CONSTRAINT "FK_16" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_16" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1688,7 +1638,7 @@ ALTER TABLE ONLY public.eav_global_float
 --
 
 ALTER TABLE ONLY public.eav_global_float
-  ADD CONSTRAINT "FK_17" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_17" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1696,7 +1646,7 @@ ALTER TABLE ONLY public.eav_global_float
 --
 
 ALTER TABLE ONLY public.eav_global_money
-  ADD CONSTRAINT "FK_18" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_18" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1704,7 +1654,7 @@ ALTER TABLE ONLY public.eav_global_money
 --
 
 ALTER TABLE ONLY public.eav_global_money
-  ADD CONSTRAINT "FK_19" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_19" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1712,7 +1662,7 @@ ALTER TABLE ONLY public.eav_global_money
 --
 
 ALTER TABLE ONLY public.eav
-  ADD CONSTRAINT "FK_2" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_2" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1720,7 +1670,7 @@ ALTER TABLE ONLY public.eav
 --
 
 ALTER TABLE ONLY public.eav_global_bool
-  ADD CONSTRAINT "FK_20" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_20" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1728,7 +1678,7 @@ ALTER TABLE ONLY public.eav_global_bool
 --
 
 ALTER TABLE ONLY public.eav_global_bool
-  ADD CONSTRAINT "FK_21" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_21" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1736,7 +1686,7 @@ ALTER TABLE ONLY public.eav_global_bool
 --
 
 ALTER TABLE ONLY public.eav_global_multi_select
-  ADD CONSTRAINT "FK_22" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_22" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1744,7 +1694,7 @@ ALTER TABLE ONLY public.eav_global_multi_select
 --
 
 ALTER TABLE ONLY public.store_view
-  ADD CONSTRAINT "FK_22_1" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+    ADD CONSTRAINT "FK_22_1" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
 
 
 --
@@ -1752,7 +1702,7 @@ ALTER TABLE ONLY public.store_view
 --
 
 ALTER TABLE ONLY public.eav_global_multi_select
-  ADD CONSTRAINT "FK_23" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_23" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1760,7 +1710,7 @@ ALTER TABLE ONLY public.eav_global_multi_select
 --
 
 ALTER TABLE ONLY public.eav_website_bool
-  ADD CONSTRAINT "FK_23_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_23_1" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1768,7 +1718,7 @@ ALTER TABLE ONLY public.eav_website_bool
 --
 
 ALTER TABLE ONLY public.eav_website_bool
-  ADD CONSTRAINT "FK_24" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+    ADD CONSTRAINT "FK_24" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
 
 
 --
@@ -1776,7 +1726,7 @@ ALTER TABLE ONLY public.eav_website_bool
 --
 
 ALTER TABLE ONLY public.eav_website_bool
-  ADD CONSTRAINT "FK_25" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_25" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1784,7 +1734,7 @@ ALTER TABLE ONLY public.eav_website_bool
 --
 
 ALTER TABLE ONLY public.eav_website_float
-  ADD CONSTRAINT "FK_26" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_26" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1792,7 +1742,7 @@ ALTER TABLE ONLY public.eav_website_float
 --
 
 ALTER TABLE ONLY public.eav_website_float
-  ADD CONSTRAINT "FK_27" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+    ADD CONSTRAINT "FK_27" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
 
 
 --
@@ -1800,7 +1750,7 @@ ALTER TABLE ONLY public.eav_website_float
 --
 
 ALTER TABLE ONLY public.eav_website_float
-  ADD CONSTRAINT "FK_28" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_28" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1808,7 +1758,7 @@ ALTER TABLE ONLY public.eav_website_float
 --
 
 ALTER TABLE ONLY public.eav_website_int
-  ADD CONSTRAINT "FK_29" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_29" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1816,7 +1766,7 @@ ALTER TABLE ONLY public.eav_website_int
 --
 
 ALTER TABLE ONLY public.eav
-  ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_3" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1824,7 +1774,7 @@ ALTER TABLE ONLY public.eav
 --
 
 ALTER TABLE ONLY public.eav_website_int
-  ADD CONSTRAINT "FK_30" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+    ADD CONSTRAINT "FK_30" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
 
 
 --
@@ -1832,7 +1782,7 @@ ALTER TABLE ONLY public.eav_website_int
 --
 
 ALTER TABLE ONLY public.eav_website_int
-  ADD CONSTRAINT "FK_31" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_31" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1840,7 +1790,7 @@ ALTER TABLE ONLY public.eav_website_int
 --
 
 ALTER TABLE ONLY public.eav_website_money
-  ADD CONSTRAINT "FK_32" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_32" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1848,7 +1798,7 @@ ALTER TABLE ONLY public.eav_website_money
 --
 
 ALTER TABLE ONLY public.eav_website_money
-  ADD CONSTRAINT "FK_33" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+    ADD CONSTRAINT "FK_33" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
 
 
 --
@@ -1856,7 +1806,7 @@ ALTER TABLE ONLY public.eav_website_money
 --
 
 ALTER TABLE ONLY public.eav_website_money
-  ADD CONSTRAINT "FK_34" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_34" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1864,7 +1814,7 @@ ALTER TABLE ONLY public.eav_website_money
 --
 
 ALTER TABLE ONLY public.eav_website_multi_select
-  ADD CONSTRAINT "FK_35" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_35" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1872,7 +1822,7 @@ ALTER TABLE ONLY public.eav_website_multi_select
 --
 
 ALTER TABLE ONLY public.eav_website_multi_select
-  ADD CONSTRAINT "FK_36" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+    ADD CONSTRAINT "FK_36" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
 
 
 --
@@ -1880,7 +1830,7 @@ ALTER TABLE ONLY public.eav_website_multi_select
 --
 
 ALTER TABLE ONLY public.eav_website_multi_select
-  ADD CONSTRAINT "FK_37" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_37" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1888,7 +1838,7 @@ ALTER TABLE ONLY public.eav_website_multi_select
 --
 
 ALTER TABLE ONLY public.eav_website_string
-  ADD CONSTRAINT "FK_38" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_38" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1896,7 +1846,7 @@ ALTER TABLE ONLY public.eav_website_string
 --
 
 ALTER TABLE ONLY public.eav_website_string
-  ADD CONSTRAINT "FK_39" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
+    ADD CONSTRAINT "FK_39" FOREIGN KEY (website_id) REFERENCES public.websites(website_id);
 
 
 --
@@ -1904,7 +1854,7 @@ ALTER TABLE ONLY public.eav_website_string
 --
 
 ALTER TABLE ONLY public.eav_website_string
-  ADD CONSTRAINT "FK_40" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_40" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1912,7 +1862,7 @@ ALTER TABLE ONLY public.eav_website_string
 --
 
 ALTER TABLE ONLY public.eav_store_view_bool
-  ADD CONSTRAINT "FK_41" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_41" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1920,7 +1870,7 @@ ALTER TABLE ONLY public.eav_store_view_bool
 --
 
 ALTER TABLE ONLY public.eav_store_view_bool
-  ADD CONSTRAINT "FK_42" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+    ADD CONSTRAINT "FK_42" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
 
 
 --
@@ -1928,7 +1878,7 @@ ALTER TABLE ONLY public.eav_store_view_bool
 --
 
 ALTER TABLE ONLY public.eav_store_view_bool
-  ADD CONSTRAINT "FK_43" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_43" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1936,7 +1886,7 @@ ALTER TABLE ONLY public.eav_store_view_bool
 --
 
 ALTER TABLE ONLY public.eav_store_view_float
-  ADD CONSTRAINT "FK_44" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_44" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1944,7 +1894,7 @@ ALTER TABLE ONLY public.eav_store_view_float
 --
 
 ALTER TABLE ONLY public.eav_store_view_float
-  ADD CONSTRAINT "FK_45" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+    ADD CONSTRAINT "FK_45" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
 
 
 --
@@ -1952,7 +1902,7 @@ ALTER TABLE ONLY public.eav_store_view_float
 --
 
 ALTER TABLE ONLY public.eav_store_view_float
-  ADD CONSTRAINT "FK_46" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_46" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1960,7 +1910,7 @@ ALTER TABLE ONLY public.eav_store_view_float
 --
 
 ALTER TABLE ONLY public.eav_store_view_int
-  ADD CONSTRAINT "FK_47" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_47" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1968,7 +1918,7 @@ ALTER TABLE ONLY public.eav_store_view_int
 --
 
 ALTER TABLE ONLY public.eav_store_view_int
-  ADD CONSTRAINT "FK_48" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+    ADD CONSTRAINT "FK_48" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
 
 
 --
@@ -1976,7 +1926,7 @@ ALTER TABLE ONLY public.eav_store_view_int
 --
 
 ALTER TABLE ONLY public.eav_store_view_int
-  ADD CONSTRAINT "FK_49" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_49" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -1984,7 +1934,7 @@ ALTER TABLE ONLY public.eav_store_view_int
 --
 
 ALTER TABLE ONLY public.eav_store_view_money
-  ADD CONSTRAINT "FK_50" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_50" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -1992,7 +1942,7 @@ ALTER TABLE ONLY public.eav_store_view_money
 --
 
 ALTER TABLE ONLY public.eav_store_view_money
-  ADD CONSTRAINT "FK_51" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+    ADD CONSTRAINT "FK_51" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
 
 
 --
@@ -2000,7 +1950,7 @@ ALTER TABLE ONLY public.eav_store_view_money
 --
 
 ALTER TABLE ONLY public.eav_store_view_money
-  ADD CONSTRAINT "FK_52" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_52" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -2008,7 +1958,7 @@ ALTER TABLE ONLY public.eav_store_view_money
 --
 
 ALTER TABLE ONLY public.eav_store_view_multi_select
-  ADD CONSTRAINT "FK_53" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_53" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -2016,7 +1966,7 @@ ALTER TABLE ONLY public.eav_store_view_multi_select
 --
 
 ALTER TABLE ONLY public.eav_store_view_multi_select
-  ADD CONSTRAINT "FK_54" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+    ADD CONSTRAINT "FK_54" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
 
 
 --
@@ -2024,7 +1974,7 @@ ALTER TABLE ONLY public.eav_store_view_multi_select
 --
 
 ALTER TABLE ONLY public.eav_store_view_multi_select
-  ADD CONSTRAINT "FK_55" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_55" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -2032,7 +1982,7 @@ ALTER TABLE ONLY public.eav_store_view_multi_select
 --
 
 ALTER TABLE ONLY public.eav_store_view_string
-  ADD CONSTRAINT "FK_56" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_56" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -2040,7 +1990,7 @@ ALTER TABLE ONLY public.eav_store_view_string
 --
 
 ALTER TABLE ONLY public.eav_store_view_string
-  ADD CONSTRAINT "FK_57" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
+    ADD CONSTRAINT "FK_57" FOREIGN KEY (store_view_id) REFERENCES public.store_view(store_view_id);
 
 
 --
@@ -2048,7 +1998,7 @@ ALTER TABLE ONLY public.eav_store_view_string
 --
 
 ALTER TABLE ONLY public.eav_store_view_string
-  ADD CONSTRAINT "FK_58" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_58" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -2056,7 +2006,7 @@ ALTER TABLE ONLY public.eav_store_view_string
 --
 
 ALTER TABLE ONLY public.categories_products
-  ADD CONSTRAINT "FK_59" FOREIGN KEY (category_id) REFERENCES public.categories(category_id);
+    ADD CONSTRAINT "FK_59" FOREIGN KEY (category_id) REFERENCES public.categories(category_id);
 
 
 --
@@ -2064,7 +2014,7 @@ ALTER TABLE ONLY public.categories_products
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_string
-  ADD CONSTRAINT "FK_6" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_6" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -2072,7 +2022,7 @@ ALTER TABLE ONLY public.multi_select_attributes_string
 --
 
 ALTER TABLE ONLY public.categories_products
-  ADD CONSTRAINT "FK_60" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_60" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -2080,7 +2030,7 @@ ALTER TABLE ONLY public.categories_products
 --
 
 ALTER TABLE ONLY public.categories_seo
-  ADD CONSTRAINT "FK_61" FOREIGN KEY (category_id) REFERENCES public.categories(category_id);
+    ADD CONSTRAINT "FK_61" FOREIGN KEY (category_id) REFERENCES public.categories(category_id);
 
 
 --
@@ -2088,7 +2038,7 @@ ALTER TABLE ONLY public.categories_seo
 --
 
 ALTER TABLE ONLY public.url_keys
-  ADD CONSTRAINT "FK_62" FOREIGN KEY (upper_key) REFERENCES public.url_keys(url_key);
+    ADD CONSTRAINT "FK_62" FOREIGN KEY (upper_key) REFERENCES public.url_keys(url_key);
 
 
 --
@@ -2096,7 +2046,7 @@ ALTER TABLE ONLY public.url_keys
 --
 
 ALTER TABLE ONLY public.product_urls
-  ADD CONSTRAINT "FK_63" FOREIGN KEY (url_key, upper_key) REFERENCES public.url_keys(url_key, upper_key);
+    ADD CONSTRAINT "FK_63" FOREIGN KEY (url_key, upper_key) REFERENCES public.url_keys(url_key, upper_key);
 
 
 --
@@ -2104,7 +2054,7 @@ ALTER TABLE ONLY public.product_urls
 --
 
 ALTER TABLE ONLY public.product_urls
-  ADD CONSTRAINT "FK_64" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_64" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -2112,7 +2062,7 @@ ALTER TABLE ONLY public.product_urls
 --
 
 ALTER TABLE ONLY public.category_urls
-  ADD CONSTRAINT "FK_65" FOREIGN KEY (url_key, upper_key) REFERENCES public.url_keys(url_key, upper_key);
+    ADD CONSTRAINT "FK_65" FOREIGN KEY (url_key, upper_key) REFERENCES public.url_keys(url_key, upper_key);
 
 
 --
@@ -2120,7 +2070,7 @@ ALTER TABLE ONLY public.category_urls
 --
 
 ALTER TABLE ONLY public.category_urls
-  ADD CONSTRAINT "FK_66" FOREIGN KEY (category_id) REFERENCES public.categories(category_id);
+    ADD CONSTRAINT "FK_66" FOREIGN KEY (category_id) REFERENCES public.categories(category_id);
 
 
 --
@@ -2128,7 +2078,7 @@ ALTER TABLE ONLY public.category_urls
 --
 
 ALTER TABLE ONLY public.categories
-  ADD CONSTRAINT "FK_67" FOREIGN KEY (upper_category) REFERENCES public.categories(category_id);
+    ADD CONSTRAINT "FK_67" FOREIGN KEY (upper_category) REFERENCES public.categories(category_id);
 
 
 --
@@ -2136,7 +2086,7 @@ ALTER TABLE ONLY public.categories
 --
 
 ALTER TABLE ONLY public.products_seo
-  ADD CONSTRAINT "FK_68" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_68" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -2144,7 +2094,7 @@ ALTER TABLE ONLY public.products_seo
 --
 
 ALTER TABLE ONLY public.text_pages_seo
-  ADD CONSTRAINT "FK_69" FOREIGN KEY (text_pages_id) REFERENCES public.text_pages(text_pages_id);
+    ADD CONSTRAINT "FK_69" FOREIGN KEY (text_pages_id) REFERENCES public.text_pages(text_pages_id);
 
 
 --
@@ -2152,7 +2102,7 @@ ALTER TABLE ONLY public.text_pages_seo
 --
 
 ALTER TABLE ONLY public.products_pricing
-  ADD CONSTRAINT "FK_7" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
+    ADD CONSTRAINT "FK_7" FOREIGN KEY (product_id) REFERENCES public.products(product_id);
 
 
 --
@@ -2160,7 +2110,7 @@ ALTER TABLE ONLY public.products_pricing
 --
 
 ALTER TABLE ONLY public.text_page_urls
-  ADD CONSTRAINT "FK_70" FOREIGN KEY (url_key, upper_key) REFERENCES public.url_keys(url_key, upper_key);
+    ADD CONSTRAINT "FK_70" FOREIGN KEY (url_key, upper_key) REFERENCES public.url_keys(url_key, upper_key);
 
 
 --
@@ -2168,7 +2118,7 @@ ALTER TABLE ONLY public.text_page_urls
 --
 
 ALTER TABLE ONLY public.text_page_urls
-  ADD CONSTRAINT "FK_71" FOREIGN KEY (text_pages_id) REFERENCES public.text_pages(text_pages_id);
+    ADD CONSTRAINT "FK_71" FOREIGN KEY (text_pages_id) REFERENCES public.text_pages(text_pages_id);
 
 
 --
@@ -2176,7 +2126,7 @@ ALTER TABLE ONLY public.text_page_urls
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_int
-  ADD CONSTRAINT "FK_8" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_8" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
@@ -2184,7 +2134,7 @@ ALTER TABLE ONLY public.multi_select_attributes_int
 --
 
 ALTER TABLE ONLY public.multi_select_attributes_float
-  ADD CONSTRAINT "FK_9" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+    ADD CONSTRAINT "FK_9" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
 
 --
