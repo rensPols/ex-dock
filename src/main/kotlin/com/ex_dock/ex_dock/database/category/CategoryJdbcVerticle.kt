@@ -364,7 +364,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
   }
 
   /**
-   * Helper function to make JSON fields from a given database row in the categories table
+   * Helper function to make JSON fields from a given database row in the category table
    *
    * @param row The row from the database to be converted into JSON
    */
@@ -413,7 +413,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
   }
 
   /**
-   * Helper function to create a tuple from a given JSON object in the categories table
+   * Helper function to create a tuple from a given JSON object in the category table
    *
    * @param body The JSON object to be converted into a tuple
    * @return A tuple from the given JSON object
@@ -423,7 +423,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
         body.getInteger("upper_category")
     } catch (e: NullPointerException) { null }
 
-    var categoryTuple: Tuple
+    val categoryTuple: Tuple
 
     if (putRequest) {
       categoryTuple = Tuple.of(
@@ -462,7 +462,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
       body.getString("meta_keywords")
     } catch (e: NullPointerException) { null }
 
-    var categorySeoTuple: Tuple
+    val categorySeoTuple: Tuple
 
     if (putRequest) {
       categorySeoTuple = Tuple.of(
