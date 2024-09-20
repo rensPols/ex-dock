@@ -113,7 +113,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
       val query = "INSERT INTO categories (upper_category, name, short_description, description) VALUES (?,?,?,?)"
       val category = message.body()
 
-      val queryTuple: Tuple = makeCategoryTuple(category)
+      val queryTuple: Tuple = makeCategoryTuple(category, false)
 
       val rowsFuture = client.preparedQuery(query).execute(queryTuple)
 
@@ -135,7 +135,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
       val query =
         "UPDATE categories SET upper_category =?, name =?, short_description =?, description =? WHERE category_id =?"
       val category = message.body()
-      val queryTuple = makeCategoryTuple(category)
+      val queryTuple = makeCategoryTuple(category, true)
 
       val rowsFuture = client.preparedQuery(query).execute(queryTuple)
 
@@ -238,7 +238,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
         "INSERT INTO categories_seo (category_id, meta_title, meta_description, meta_keywords, page_index) " +
           "VALUES (?,?,?,?,?)"
       val categorySeo = message.body()
-      val queryTuple = makeSeoCategoryTuple(categorySeo)
+      val queryTuple = makeSeoCategoryTuple(categorySeo, false)
 
       val rowsFuture = client.preparedQuery(query).execute(queryTuple)
 
@@ -262,7 +262,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
           "WHERE category_id =?"
       val categorySeo = message.body()
 
-      val queryTuple = makeSeoCategoryTuple(categorySeo)
+      val queryTuple = makeSeoCategoryTuple(categorySeo, true)
 
       val rowsFuture = client.preparedQuery(query).execute(queryTuple)
 
@@ -415,42 +415,71 @@ class CategoryJdbcVerticle: AbstractVerticle() {
    * Helper function to create a tuple from a given JSON object in the categories table
    *
    * @param body The JSON object to be converted into a tuple
+   * @return A tuple from the given JSON object
    */
-  private fun makeCategoryTuple(body: JsonObject): Tuple {
+  private fun makeCategoryTuple(body: JsonObject, putRequest: Boolean): Tuple {
     val upperCategory = try {
         body.getInteger("upper_category")
-    } catch (e: NumberFormatException) { null }
+    } catch (e: NullPointerException) { null }
 
-    return Tuple.of(
-      upperCategory,
-      body.getString("name"),
-      body.getString("short_description"),
-      body.getString("description")
-    )
+    var categoryTuple: Tuple
+
+    if (putRequest) {
+      categoryTuple = Tuple.of(
+        upperCategory,
+        body.getString("name"),
+        body.getString("short_description"),
+        body.getString("description"),
+        body.getInteger("id"),
+      )
+    } else {
+      categoryTuple = Tuple.of(
+        upperCategory,
+        body.getString("name"),
+        body.getString("short_description"),
+        body.getString("description")
+      )
+    }
+
+    return categoryTuple
   }
 
   /**
    * Helper function to create a tuple from a given JSON object in the categories_seo table
    *
    * @param body The JSON object to be converted into a tuple
+   * @return A tuple from the given JSON object
    */
-  private fun makeSeoCategoryTuple(body: JsonObject): Tuple {
+  private fun makeSeoCategoryTuple(body: JsonObject, putRequest: Boolean): Tuple {
     val metaTitle = try {
       body.getString("meta_title")
-    } catch (e: Exception) { null }
+    } catch (e: NullPointerException) { null }
     val metaDescription = try {
       body.getString("meta_description")
-    } catch (e: Exception) { null }
+    } catch (e: NullPointerException) { null }
     val metaKeywords = try {
       body.getString("meta_keywords")
-    } catch (e: Exception) { null }
+    } catch (e: NullPointerException) { null }
 
-    return Tuple.of(
-      body.getInteger("category_id"),
-      metaTitle,
-      metaDescription,
-      metaKeywords,
-      body.getString("page_index")
-    )
+    var categorySeoTuple: Tuple
+
+    if (putRequest) {
+      categorySeoTuple = Tuple.of(
+        metaTitle,
+        metaDescription,
+        metaKeywords,
+        body.getString("page_index"),
+        body.getInteger("id"),
+      )
+    } else {
+      categorySeoTuple = Tuple.of(
+        metaTitle,
+        metaDescription,
+        metaKeywords,
+        body.getString("page_index")
+      )
+    }
+
+    return categorySeoTuple
   }
 }
