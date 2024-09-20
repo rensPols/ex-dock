@@ -28,9 +28,7 @@ fun Router.initCategory(vertx: Vertx) {
 
   // Get category by ID
   categoryRouter["/id/:id"].handler { ctx ->
-    val categoryId = Json.obj {
-      "categoryId" to ctx.pathParam("id")
-    }
+    val categoryId: Int = ctx.pathParam("id").toInt()
     eventBus.request<JsonObject>("process.categories.getById", categoryId)
       .onSuccess{ reply ->
         ctx.end(reply.body().toString())
@@ -63,9 +61,7 @@ fun Router.initCategory(vertx: Vertx) {
 
   // Delete a category
   categoryRouter.delete("/id/:id").handler { ctx ->
-    val categoryId = Json.obj {
-      "categoryId" to ctx.pathParam("id")
-    }
+    val categoryId: Int = ctx.pathParam("id").toInt()
     eventBus.request<String>("process.categories.delete", categoryId)
      .onSuccess{ reply ->
         ctx.end(reply.body().toString())
@@ -86,9 +82,7 @@ fun Router.initCategory(vertx: Vertx) {
 
   // Get SEO settings for a specific category
   categoryRouter["/seo/id/:id"].handler { ctx ->
-    val categoryId = Json.obj {
-      "categoryId" to ctx.pathParam("id")
-    }
+    val categoryId: Int = ctx.pathParam("id").toInt()
     eventBus.request<JsonObject>("process.categories.getSeoById", categoryId)
      .onSuccess{ reply ->
         ctx.end(reply.body().toString())
@@ -121,9 +115,7 @@ fun Router.initCategory(vertx: Vertx) {
 
   // Delete SEO settings for a specific category
   categoryRouter.delete("/seo/id/:id").handler { ctx ->
-    val categoryId = Json.obj {
-      "categoryId" to ctx.pathParam("id")
-    }
+    val categoryId: Int = ctx.pathParam("id").toInt()
     eventBus.request<String>("process.categories.deleteSeoCategory", categoryId)
      .onSuccess{ reply ->
         ctx.end(reply.body().toString())
@@ -144,9 +136,7 @@ fun Router.initCategory(vertx: Vertx) {
 
   // Get full settings for a specific category
   categoryRouter["/full/id/:id"].handler { ctx ->
-    val categoryId = Json.obj {
-      "categoryId" to ctx.pathParam("id")
-    }
+    val categoryId: Int = ctx.pathParam("id").toInt()
     eventBus.request<JsonObject>("process.categories.getFullInfoById", categoryId)
      .onSuccess{ reply ->
         ctx.end(reply.body().toString())
