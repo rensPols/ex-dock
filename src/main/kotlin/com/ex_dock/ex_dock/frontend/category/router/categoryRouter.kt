@@ -4,8 +4,6 @@ import io.vertx.ext.web.Router
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.handler.BodyHandler
-import io.vertx.kotlin.core.json.Json
-import io.vertx.kotlin.core.json.obj
 
 fun Router.initCategory(vertx: Vertx) {
   val categoryRouter = Router.router(vertx)
@@ -14,7 +12,8 @@ fun Router.initCategory(vertx: Vertx) {
   // Make it so the RequestBodies can be read
   categoryRouter.post("/").handler(BodyHandler.create())
   categoryRouter.post("/seo").handler(BodyHandler.create())
-  categoryRouter.post("/full").handler(BodyHandler.create())
+  categoryRouter.put("/").handler(BodyHandler.create())
+  categoryRouter.put("/seo").handler(BodyHandler.create())
 
   // Get all categories
   categoryRouter["/"].handler { ctx ->
