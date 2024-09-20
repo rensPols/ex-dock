@@ -6,6 +6,7 @@ import com.ex_dock.ex_dock.database.checkout.CheckoutJdbcVerticle
 import com.ex_dock.ex_dock.database.home.HomeJdbcVerticle
 import com.ex_dock.ex_dock.database.product.ProductJdbcVerticle
 import com.ex_dock.ex_dock.database.scope.ScopeJdbcVerticle
+import com.ex_dock.ex_dock.database.server.ServerJDBCVerticle
 import com.ex_dock.ex_dock.database.text_pages.Text_pagesJdbcVerticle
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import io.vertx.core.AbstractVerticle
@@ -45,6 +46,8 @@ class JDBCStarter: AbstractVerticle() {
       .deployWorkerHelper(vertx, Text_pagesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
     verticles.add(verticleDeployHelper
       .deployWorkerHelper(vertx, ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, ServerJDBCVerticle::class.qualifiedName.toString(), 5, 5))
   }
 
 }
