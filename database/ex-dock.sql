@@ -654,7 +654,7 @@ ALTER TABLE public.text_page_urls OWNER TO postgres;
 --
 
 CREATE TABLE public.text_pages (
-    text_pages_id integer NOT NULL,
+    text_pages_id SERIAL NOT NULL,
     name character varying(128) NOT NULL,
     short_text text NOT NULL,
     text text NOT NULL
