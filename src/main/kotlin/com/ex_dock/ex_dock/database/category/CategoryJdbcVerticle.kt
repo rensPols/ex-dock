@@ -237,7 +237,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
     createSeoCategoryConsumer.handler { message ->
       val query =
         "INSERT INTO categories_seo (category_id, meta_title, meta_description, meta_keywords, page_index) " +
-          "VALUES (?,?,?,?,?)"
+          "VALUES (?,?,?,?,?::p_index)"
       val categorySeo = message.body()
       val queryTuple = makeSeoCategoryTuple(categorySeo, false)
 
@@ -259,7 +259,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
     val editSeoCategoryConsumer = eventBus.localConsumer<JsonObject>("process.categories.editSeoCategory")
     editSeoCategoryConsumer.handler { message ->
       val query =
-        "UPDATE categories_seo SET meta_title =?, meta_description =?, meta_keywords =?, page_index =? " +
+        "UPDATE categories_seo SET meta_title =?, meta_description =?, meta_keywords =?, page_index =?::p_index " +
           "WHERE category_id =?"
       val categorySeo = message.body()
 
@@ -474,6 +474,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
       )
     } else {
       categorySeoTuple = Tuple.of(
+        body.getInteger("category_id"),
         metaTitle,
         metaDescription,
         metaKeywords,
