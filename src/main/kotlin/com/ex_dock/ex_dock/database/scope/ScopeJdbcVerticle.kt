@@ -4,6 +4,7 @@ import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
+import io.vertx.jdbcclient.JDBCPool
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.Pool
@@ -126,7 +127,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.succeeded()) {
-          message.reply("Website created successfully")
+          message.reply(res.result().property(JDBCPool.GENERATED_KEYS).getInteger(0))
         } else {
           message.reply("Failed to create website")
         }
@@ -274,7 +275,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.succeeded()) {
-          message.reply("Store view created successfully")
+          message.reply(res.result().property(JDBCPool.GENERATED_KEYS).getInteger(0))
         } else {
           message.reply("Failed to create store view")
         }
@@ -289,7 +290,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
     val editStoreViewConsumer = eventBus.consumer<JsonObject>("process.scope.editStoreView")
     editStoreViewConsumer.handler { message ->
       val body = message.body()
-      val query = "UPDATE store_view SET store_view_name =? WHERE store_view_id =?"
+      val query = "UPDATE store_view SET website_id =?, store_view_name =? WHERE store_view_id =?"
       val storeViewTuple = makeStoreViewTuple(body, true)
       val rowsFuture = client.preparedQuery(query).execute(storeViewTuple)
 
@@ -444,7 +445,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
       "store_view_id" to row.getInteger("store_view_id"),
       "store_view_name" to row.getString("store_view_name"),
       "website_id" to row.getInteger("website_id"),
-      "store_view_name" to row.getString("store_view_name")
+      "website_name" to row.getString("website_name")
     )
   }
 
@@ -460,8 +461,8 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
 
     val websiteTuple: Tuple = if (putRequest) {
       Tuple.of(
-        body.getInteger("website_id"),
-        body.getString("website_name")
+        body.getString("website_name"),
+        body.getInteger("website_id")
       )
     } else {
       Tuple.of(
@@ -483,15 +484,14 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
   private fun makeStoreViewTuple(body: JsonObject, putRequest: Boolean): Tuple {
     val storeViewTuple: Tuple = if (putRequest) {
       Tuple.of(
-        body.getInteger("store_view_id"),
         body.getInteger("website_id"),
-        body.getString("store_view_name")
+        body.getString("store_view_name"),
+        body.getInteger("store_view_id")
       )
     } else {
       Tuple.of(
         body.getInteger("website_id"),
         body.getString("store_view_name"),
-        body.getString("store_view_id")
       )
     }
 
