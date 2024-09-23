@@ -4,6 +4,7 @@ import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
+import io.vertx.jdbcclient.JDBCPool
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.Pool
@@ -123,7 +124,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onSuccess { res ->
         if (res.rowCount() > 0) {
-          message.reply("Text page created successfully")
+          message.reply(res.property(JDBCPool.GENERATED_KEYS).getInteger(0))
         } else {
           message.reply("Failed to create text page")
         }
@@ -257,7 +258,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
     createSeoTextPageConsumer.handler { message ->
       val body = message.body()
       val query =
-        "INSERT INTO text_pages_seo (meta_title, meta_description, meta_keywords, page_index, text_pages_id) " +
+        "INSERT INTO text_pages_seo (text_pages_id, meta_title, meta_description, meta_keywords, page_index) " +
           "VALUES (?,?,?,?,?::p_index)"
       val seoTextPageTuple = makeSeoTextPageTuple(body, false)
       val rowsFuture = client.preparedQuery(query).execute(seoTextPageTuple)
@@ -269,7 +270,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onSuccess { res ->
         if (res.rowCount() > 0) {
-          message.reply("SEO text page created successfully")
+          message.reply(res.property(JDBCPool.GENERATED_KEYS).getInteger(0))
         } else {
           message.reply("Failed to create seo text page")
         }
@@ -411,7 +412,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
    */
   private fun makeTextPagesJsonFields(row: Row): List<Pair<String, Any?>> {
     return listOf(
-      "text_page_id" to row.getInteger("text_page_id"),
+      "text_pages_id" to row.getInteger("text_pages_id"),
       "name" to row.getString("name"),
       "short_text" to row.getString("short_text"),
       "text" to row.getString("text")
@@ -426,7 +427,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
    */
   private fun makeSeoTextPagesJsonFields(row: Row): List<Pair<String, Any?>> {
     return listOf(
-      "text_pages_id" to row.getString("text_pages_id"),
+      "text_pages_id" to row.getInteger("text_pages_id"),
       "meta_title" to row.getString("meta_title"),
       "meta_description" to row.getString("meta_description"),
       "meta_keywords" to row.getString("meta_keywords"),
@@ -442,7 +443,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
    */
   private fun makeFullTextPagesJsonFields(row: Row): List<Pair<String, Any?>> {
     return listOf(
-      "text_page_id" to row.getInteger("text_page_id"),
+      "text_pages_id" to row.getInteger("text_pages_id"),
       "name" to row.getString("name"),
       "short_text" to row.getString("short_text"),
       "text" to row.getString("text"),
@@ -467,7 +468,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
         body.getString("name"),
         body.getString("short_text"),
         body.getString("text"),
-        body.getInteger("text_page_id")
+        body.getInteger("text_pages_id")
       )
     } else {
       Tuple.of(
@@ -503,7 +504,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
         metaTitle,
         metaDescription,
         metaKeywords,
-        body.getInteger("page_index"),
+        body.getString("page_index"),
         body.getInteger("text_pages_id")
       )
     } else {
@@ -512,7 +513,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
         metaTitle,
         metaDescription,
         metaKeywords,
-        body.getInteger("page_index")
+        body.getString("page_index")
       )
     }
 
