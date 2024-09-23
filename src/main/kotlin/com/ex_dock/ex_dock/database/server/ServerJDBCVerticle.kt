@@ -135,7 +135,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
     getAllServerVersionsConsumer.handler { message ->
       val query = "SELECT * FROM server_version"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      var allServerJson: JsonObject
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -143,16 +143,16 @@ class ServerJDBCVerticle: AbstractVerticle() {
       }.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
+          allServerJson = json {
             obj {
-              "server_versions" to rows.map { row ->
+              "server_versions" to rows.forEach { row ->
                 obj(
                   makeServerVersionJsonFields(row)
                 )
               }
             }
           }
-          message.reply(json)
+          message.reply(allServerJson)
         } else {
           message.reply("No server versions found!")
         }
@@ -277,9 +277,9 @@ class ServerJDBCVerticle: AbstractVerticle() {
    */
   private fun makeServerVersionJsonFields(row: Row): List<Pair<String, Any?>> {
     return listOf(
-      "major" to row.getString("major"),
-      "minor" to row.getString("minor"),
-      "patch" to row.getString("patch"),
+      "major" to row.getInteger("major"),
+      "minor" to row.getInteger("minor"),
+      "patch" to row.getInteger("patch"),
       "version_name" to row.getString("version_name"),
       "version_description" to row.getString("version_description")
     )
@@ -291,13 +291,13 @@ class ServerJDBCVerticle: AbstractVerticle() {
   private fun makeServerDataTuple(body: JsonObject, putRequest: Boolean): Tuple {
     val serverDataTuple: Tuple = if (putRequest) {
       Tuple.of(
-        body.getString("key"),
-        body.getString("value")
+        body.getString("value"),
+        body.getString("key")
       )
     } else {
       Tuple.of(
-        body.getString("value"),
-        body.getString("key")
+        body.getString("key"),
+        body.getString("value")
       )
     }
 
@@ -318,20 +318,20 @@ class ServerJDBCVerticle: AbstractVerticle() {
     val serverVersionTuple: Tuple
     if (putRequest) {
       serverVersionTuple = Tuple.of(
-        body.getString("major"),
-        body.getString("minor"),
-        body.getString("patch"),
+        body.getInteger("major"),
+        body.getInteger("minor"),
+        body.getInteger("patch"),
         versionName,
         versionDescription,
-        body.getString("major"),
-        body.getString("minor"),
-        body.getString("patch")
+        body.getInteger("major"),
+        body.getInteger("minor"),
+        body.getInteger("patch")
       )
     } else {
       serverVersionTuple = Tuple.of(
-        body.getString("major"),
-        body.getString("minor"),
-        body.getString("patch"),
+        body.getInteger("major"),
+        body.getInteger("minor"),
+        body.getInteger("patch"),
         versionName,
         versionDescription
       )
