@@ -57,6 +57,15 @@ CREATE TYPE public.p_type AS ENUM (
 
 ALTER TYPE public.p_type OWNER TO postgres;
 
+CREATE TYPE public.b_permissions AS ENUM (
+  'none',
+  'read',
+  'read-write',
+  'write'
+  );
+
+ALTER TYPE public.b_permissions OWNER TO postgres;
+
 --
 -- Name: check_root_url(); Type: FUNCTION; Schema: public; Owner: postgres
 --
@@ -83,15 +92,15 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.backend_permissions (
                                           user_id integer NOT NULL,
-                                          user_permissions integer NOT NULL,
-                                          server_settings integer NOT NULL,
-                                          template integer NOT NULL,
-                                          category_content integer NOT NULL,
-                                          category_products integer NOT NULL,
-                                          product_content integer NOT NULL,
-                                          product_price integer NOT NULL,
-                                          product_warehouse integer NOT NULL,
-                                          text_pages integer NOT NULL,
+                                          user_permissions public.b_permissions NOT NULL,
+                                          server_settings public.b_permissions NOT NULL,
+                                          template public.b_permissions NOT NULL,
+                                          category_content public.b_permissions NOT NULL,
+                                          category_products public.b_permissions NOT NULL,
+                                          product_content public.b_permissions NOT NULL,
+                                          product_price public.b_permissions NOT NULL,
+                                          product_warehouse public.b_permissions NOT NULL,
+                                          text_pages public.b_permissions NOT NULL,
                                           "API_KEY" character varying(128)
 );
 
