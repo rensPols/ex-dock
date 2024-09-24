@@ -144,13 +144,13 @@ class ServerJDBCVerticle: AbstractVerticle() {
         val rows = res.result()
         if (rows.size() > 0) {
           allServerJson = json {
-            obj {
+            obj (
               "server_versions" to rows.forEach { row ->
                 obj(
                   makeServerVersionJsonFields(row)
                 )
               }
-            }
+            )
           }
           message.reply(allServerJson)
         } else {
