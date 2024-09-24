@@ -101,8 +101,8 @@
     </dependency>
     <dependency>
       <groupId>io.mockk</groupId>
-      <artifactId>mockk</artifactId>
-      <version>1.13.12</version>
+      <artifactId>mockk-jvm</artifactId>
+      <version>1.13.2</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

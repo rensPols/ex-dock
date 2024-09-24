@@ -14,7 +14,7 @@ class TestJdbcSetup {
   @BeforeEach
   fun setUp() {
     // Mocking the class loader to provide fake .properties files
-    mockkStatic(this::class.java.classLoader)
+    mockkStatic(this::class.java.classLoader.toString())
 
     val secretProps = Properties().apply {
       setProperty("db.username", "user1")
