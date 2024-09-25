@@ -144,13 +144,13 @@ class ServerJDBCVerticle: AbstractVerticle() {
         val rows = res.result()
         if (rows.size() > 0) {
           allServerJson = json {
-            obj {
-              "server_versions" to rows.forEach { row ->
+            obj (
+              "serverVersions" to rows.map { row ->
                 obj(
                   makeServerVersionJsonFields(row)
                 )
               }
-            }
+            )
           }
           message.reply(allServerJson)
         } else {
@@ -169,7 +169,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
       val key = message.body()
       val query = "SELECT * FROM server_version WHERE major = ? AND minor = ? AND patch = ?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(
-        key.getString("major"), key.getString("minor"), key.getString("patch")
+        key.getInteger("major"), key.getInteger("minor"), key.getInteger("patch")
       ))
       var json: JsonObject
 
@@ -180,13 +180,13 @@ class ServerJDBCVerticle: AbstractVerticle() {
         val rows = res.result()
         if (rows.size() > 0) {
           json = json {
-            obj {
+            obj (
               "server_version" to rows.map { row ->
                 obj(
                   makeServerVersionJsonFields(row)
                 )
               }
-            }
+            )
           }
           message.reply(json)
         } else {
@@ -276,7 +276,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
    * Make JSON fields from a row out of the database for the server version
    */
   private fun makeServerVersionJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
+    return listOf<Pair<String, Any>>(
       "major" to row.getInteger("major"),
       "minor" to row.getInteger("minor"),
       "patch" to row.getInteger("patch"),

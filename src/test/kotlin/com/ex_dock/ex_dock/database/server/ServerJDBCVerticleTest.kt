@@ -117,6 +117,45 @@ class ServerJDBCVerticleTest {
     }
   }
 
+  @Test
+  fun getServerVersionById(vertx: Vertx, testContext: VertxTestContext) {
+    eventBus.request<JsonObject>("process.server.getServerVersionByKey", serverVersionJson).onFailure {
+      testContext.failNow(it)
+    }.onComplete { getServerVersionMsg ->
+      assert(getServerVersionMsg.succeeded())
+      assertEquals(getServerVersionMsg.result().body(), json { obj( "server_version" to listOf(serverVersionJson)) })
+      testContext.completeNow()
+    }
+  }
+
+  @Test
+  fun updateServerVersion(vertx: Vertx, testContext: VertxTestContext) {
+    val updatedServerVersionJson = json {
+      obj(
+        "major" to 1,
+        "minor" to 0,
+        "patch" to 0,
+        "version_name" to "2.0.0",
+        "version_description" to "Updated version of the server"
+      )
+    }
+
+    eventBus.request<String>("process.server.updateServerVersion", updatedServerVersionJson).onFailure {
+      testContext.failNow(it)
+    }.onComplete { updateServerVersionMsg ->
+      assert(updateServerVersionMsg.succeeded())
+      assertEquals(updateServerVersionMsg.result().body(), "Server version updated successfully!")
+
+      eventBus.request<JsonObject>("process.server.getServerVersionByKey", updatedServerVersionJson).onFailure {
+        testContext.failNow(it)
+      }.onComplete {
+        assert(it.succeeded())
+        assertEquals(it.result().body(), json { obj("server_version" to listOf(updatedServerVersionJson)) })
+        testContext.completeNow()
+      }
+    }
+  }
+
   @AfterEach
   fun tearDown(vertx: Vertx, testContext: VertxTestContext) {
     eventBus.request<String>("process.server.deleteServerData", serverDataJson.getString("key")).onFailure {
