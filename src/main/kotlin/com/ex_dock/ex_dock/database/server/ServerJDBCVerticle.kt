@@ -145,7 +145,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
         if (rows.size() > 0) {
           allServerJson = json {
             obj (
-              "server_versions" to rows.forEach { row ->
+              "serverVersions" to rows.map { row ->
                 obj(
                   makeServerVersionJsonFields(row)
                 )
