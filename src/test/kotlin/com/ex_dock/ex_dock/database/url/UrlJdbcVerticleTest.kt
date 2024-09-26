@@ -1,6 +1,5 @@
 package com.ex_dock.ex_dock.database.url
 
-import com.ex_dock.ex_dock.database.JDBCStarter
 import com.ex_dock.ex_dock.database.category.CategoryJdbcVerticle
 import com.ex_dock.ex_dock.database.product.ProductJdbcVerticle
 import com.ex_dock.ex_dock.database.text_pages.TextPagesJdbcVerticle
