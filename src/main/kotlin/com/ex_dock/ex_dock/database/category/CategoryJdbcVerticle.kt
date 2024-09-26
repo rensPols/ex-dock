@@ -4,6 +4,7 @@ import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
+import io.vertx.jdbcclient.JDBCPool
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.Pool
@@ -36,6 +37,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
     // Initialize all eventbus connections for getting Full Category Information
     getAllFullCategoryInfo()
     getFullCategoryInfoByCategoryId()
+    getAllProductsByCategoryId()
   }
 
     /**
@@ -120,8 +122,8 @@ class CategoryJdbcVerticle: AbstractVerticle() {
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply("Failed to execute query: $res")
-      }.onSuccess { _ ->
-        message.reply("Category created successfully!")
+      }.onSuccess { res ->
+        message.reply(res.value().property(JDBCPool.GENERATED_KEYS).getInteger(0))
       }
     }
   }
@@ -186,7 +188,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
         if (res.size() > 0) {
           json = json {
             obj(
-              "categories" to res.map { row ->
+              "seoCategories" to res.map { row ->
                 obj(
                   makeSeoCategoryJsonFields(row)
                 )
@@ -364,13 +366,51 @@ class CategoryJdbcVerticle: AbstractVerticle() {
   }
 
   /**
+   * Retrieves all products associated with the given category ID from the database.
+   */
+  private fun getAllProductsByCategoryId() {
+    val getAllProductsByCategoryIdConsumer = eventBus.localConsumer<Int>("process.categories.getAllProductsByCategoryId")
+    getAllProductsByCategoryIdConsumer.handler { message ->
+      val query =
+        "SELECT p.product_id, p.name AS product_name, p.short_name AS product_short_name, " +
+          "p.description AS product_description, p.short_description AS product_short_description, " +
+          "c.category_id, c.upper_category, c.name, c.short_description, c.description " +
+          "FROM products p JOIN categories_products cp ON cp.product_id = p.product_id " +
+          "JOIN categories c ON cp.category_id = c.category_id WHERE c.category_id = ?"
+      val id = message.body()
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(id))
+      var json: JsonObject
+
+      rowsFuture.onFailure { res ->
+        println("Failed to execute query: $res")
+        message.reply("Failed to execute query: $res")
+      }.onSuccess { res: RowSet<Row> ->
+        if (res.size() > 0) {
+          json = json {
+            obj(
+              "products" to res.map { row ->
+                obj(
+                  makeCategoriesProductsJsonFields(row)
+                )
+              }
+            )
+          }
+          message.reply(json)
+        } else {
+          message.reply(json { obj("products" to "{}") })
+        }
+      }
+    }
+  }
+
+  /**
    * Helper function to make JSON fields from a given database row in the category table
    *
    * @param row The row from the database to be converted into JSON
    */
   private fun makeCategoryJsonFields(row: Row): List<Pair<String, Any?>> {
     return listOf(
-      "id" to row.getInteger("category_id"),
+      "category_id" to row.getInteger("category_id"),
       "upper_category" to row.getInteger("upper_category"),
       "name" to row.getString("name"),
       "short_description" to row.getString("short_description"),
@@ -385,7 +425,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
    */
   private fun makeSeoCategoryJsonFields(row: Row): List<Pair<String, Any?>> {
     return listOf(
-      "id" to row.getInteger("category_id"),
+      "category_id" to row.getInteger("category_id"),
       "meta_title" to row.getString("meta_title"),
       "meta_description" to row.getString("meta_description"),
       "meta_keywords" to row.getString("meta_keywords"),
@@ -400,7 +440,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
    */
   private fun makeFullCategoryInfoJsonFields(row: Row): List<Pair<String, Any?>> {
     return listOf(
-      "id" to row.getInteger("category_id"),
+      "category_id" to row.getInteger("category_id"),
       "upper_category" to row.getInteger("upper_category"),
       "name" to row.getString("name"),
       "short_description" to row.getString("short_description"),
@@ -409,6 +449,27 @@ class CategoryJdbcVerticle: AbstractVerticle() {
       "meta_description" to row.getString("meta_description"),
       "meta_keywords" to row.getString("meta_keywords"),
       "page_index" to row.getString("page_index")
+    )
+  }
+
+    /**
+   * Creates a list of JSON fields from a given database row in the categories_products table.
+   *
+   * @param row The row from the database to be converted into JSON
+   * @return A list of key-value pairs representing the JSON fields for the given row
+   */
+  private fun makeCategoriesProductsJsonFields(row: Row): List<Pair<String, Any?>> {
+    return listOf(
+      "category_id" to row.getInteger("category_id"),
+      "upper_category" to row.getString("upper_category"),
+      "category_name" to row.getString("category_name"),
+      "short_description" to row.getString("short_description"),
+      "description" to row.getString("description"),
+      "product_id" to row.getInteger("product_id"),
+      "product_name" to row.getString("product_name"),
+      "product_short_name" to row.getString("product_short_name"),
+      "product_short_description" to row.getString("product_short_description"),
+      "product_description" to row.getString("product_description")
     )
   }
 

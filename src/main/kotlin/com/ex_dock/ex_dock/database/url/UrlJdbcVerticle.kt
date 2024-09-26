@@ -4,6 +4,7 @@ import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
+import io.vertx.jdbcclient.JDBCPool
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.Pool
@@ -97,8 +98,8 @@ class UrlJdbcVerticle: AbstractVerticle() {
       val body = message.body()
       val query = "SELECT * FROM url_keys WHERE url_key =? AND upper_key =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(
-        body.getString("urlKey"),
-        body.getString("upperKey")
+        body.getString("url_key"),
+        body.getString("upper_key")
       ))
       var json: JsonObject
 
@@ -135,7 +136,6 @@ class UrlJdbcVerticle: AbstractVerticle() {
       val query = "INSERT INTO url_keys (url_key, upper_key, page_type) VALUES (?,?,?::p_type)"
       val urlKeyTuple = makeUrlKeyTuple(body, false)
       val rowsFuture = client.preparedQuery(query).execute(urlKeyTuple)
-      var json: JsonObject
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -144,12 +144,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.result().rowCount() > 0) {
-          json = json {
-            obj(
-              "message" to "Url key created successfully"
-            )
-          }
-          message.reply(json)
+          message.reply("Url key successfully created")
         } else {
           println("Failed to create url key!")
           message.reply("Failed to create url key")
@@ -165,7 +160,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
     val updateUrlKeyConsumer = eventBus.consumer<JsonObject>("process.url.updateUrlKey")
     updateUrlKeyConsumer.handler { message ->
       val body = message.body()
-      val query = "UPDATE url_keys SET page_type =? WHERE url_key =? AND upper_key =?"
+      val query = "UPDATE url_keys SET page_type =?::p_type WHERE url_key =? AND upper_key =?"
       val urlKeyTuple = makeUrlKeyTuple(body, true)
       val rowsFuture = client.preparedQuery(query).execute(urlKeyTuple)
       var json: JsonObject
@@ -177,12 +172,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.result().rowCount() > 0) {
-          json = json {
-            obj(
-              "message" to "Url key updated successfully"
-            )
-          }
-          message.reply(json)
+          message.reply("Url key updated successfully")
         } else {
           println("No url key found to update!")
           message.reply("Failed to update url key")
@@ -200,8 +190,8 @@ class UrlJdbcVerticle: AbstractVerticle() {
       val body = message.body()
       val query = "DELETE FROM url_keys WHERE url_key =? AND upper_key =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(
-        body.getString("urlKey"),
-        body.getString("upperKey")
+        body.getString("url_key"),
+        body.getString("upper_key")
       ))
       var json: JsonObject
 
@@ -212,12 +202,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.result().rowCount() > 0) {
-          json = json {
-            obj(
-              "message" to "Url key deleted successfully"
-            )
-          }
-          message.reply(json)
+          message.reply("Url key deleted successfully")
         } else {
           println("No url key found to delete!")
           message.reply("Failed to delete url key")
@@ -232,7 +217,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
   private fun getAllTextPageUrls() {
     val getAllTextPageUrlsConsumer = eventBus.consumer<String>("process.url.getAllTextPageUrls")
     getAllTextPageUrlsConsumer.handler { message ->
-      val query = "SELECT * FROM text_pages"
+      val query = "SELECT * FROM text_page_urls"
       val rowsFuture = client.preparedQuery(query).execute()
       var json: JsonObject
 
@@ -269,13 +254,8 @@ class UrlJdbcVerticle: AbstractVerticle() {
     val getTextPageUrlByKeyConsumer = eventBus.consumer<JsonObject>("process.url.getTextPageUrlByKey")
     getTextPageUrlByKeyConsumer.handler { message ->
       val body = message.body()
-      val query = "SELECT * FROM text_page_urls WHERE url_key =? AND upper_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(
-        Tuple.of(
-          body.getString("urlKey"),
-          body.getString("upperKey")
-        )
-      )
+      val query = "SELECT * FROM text_page_urls WHERE url_key =? AND upper_key =? AND text_pages_id =?"
+      val rowsFuture = client.preparedQuery(query).execute(makeTextPageUrlTuple(body, false))
       var json: JsonObject
 
       rowsFuture.onFailure { res ->
@@ -335,7 +315,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
     updateTextPageUrlConsumer.handler { message ->
       val body = message.body()
       val query = "UPDATE text_page_urls SET url_key =?, upper_key =?, " +
-        "text_pages_id =? WHERE url_key =? AND upper_key =?"
+        "text_pages_id =? WHERE url_key =? AND upper_key =? AND text_pages_id =?"
       val textPageUrlTuple = makeTextPageUrlTuple(body, true)
       val rowsFuture = client.preparedQuery(query).execute(textPageUrlTuple)
 
@@ -361,13 +341,8 @@ class UrlJdbcVerticle: AbstractVerticle() {
     val deleteTextPageUrlConsumer = eventBus.consumer<JsonObject>("process.url.deleteTextPageUrl")
     deleteTextPageUrlConsumer.handler { message ->
       val body = message.body()
-      val query = "DELETE FROM text_page_urls WHERE url_key =? AND upper_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(
-        Tuple.of(
-          body.getString("urlKey"),
-          body.getString("upperKey")
-        )
-      )
+      val query = "DELETE FROM text_page_urls WHERE url_key =? AND upper_key =? AND text_pages_id =?"
+      val rowsFuture = client.preparedQuery(query).execute(makeTextPageUrlTuple(body, false))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -427,13 +402,8 @@ class UrlJdbcVerticle: AbstractVerticle() {
     val getCategoryUrlByKeyConsumer = eventBus.consumer<JsonObject>("process.url.getCategoryUrlByKey")
     getCategoryUrlByKeyConsumer.handler { message ->
       val body = message.body()
-      val query = "SELECT * FROM category_urls WHERE url_key =? AND upper_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(
-        Tuple.of(
-          body.getString("urlKey"),
-          body.getString("upperKey")
-        )
-      )
+      val query = "SELECT * FROM category_urls WHERE url_key =? AND upper_key =? AND category_id =?"
+      val rowsFuture = client.preparedQuery(query).execute(makeCategoryUrlTuple(body, false))
       var json: JsonObject
 
       rowsFuture.onFailure { res ->
@@ -493,7 +463,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
     updateCategoryUrlConsumer.handler { message ->
       val body = message.body()
       val query = "UPDATE category_urls SET url_key =?, upper_key =?, category_id =? " +
-        "WHERE url_key =? AND upper_key =?"
+        "WHERE url_key =? AND upper_key =? AND category_id =?"
       val categoryUrlTuple = makeCategoryUrlTuple(body, true)
       val rowsFuture = client.preparedQuery(query).execute(categoryUrlTuple)
 
@@ -519,13 +489,8 @@ class UrlJdbcVerticle: AbstractVerticle() {
     val deleteCategoryUrlConsumer = eventBus.consumer<JsonObject>("process.url.deleteCategoryUrl")
     deleteCategoryUrlConsumer.handler { message ->
       val body = message.body()
-      val query = "DELETE FROM category_urls WHERE url_key =? AND upper_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(
-        Tuple.of(
-          body.getString("urlKey"),
-          body.getString("upperKey")
-        )
-      )
+      val query = "DELETE FROM category_urls WHERE url_key =? AND upper_key =? AND category_id =?"
+      val rowsFuture = client.preparedQuery(query).execute(makeCategoryUrlTuple(body, false))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -585,13 +550,8 @@ class UrlJdbcVerticle: AbstractVerticle() {
     val getProductUrlByKeyConsumer = eventBus.consumer<JsonObject>("process.url.getProductUrlByKey")
     getProductUrlByKeyConsumer.handler { message ->
       val body = message.body()
-      val query = "SELECT * FROM product_urls WHERE url_key =? AND upper_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(
-        Tuple.of(
-          body.getString("urlKey"),
-          body.getString("upperKey")
-        )
-      )
+      val query = "SELECT * FROM product_urls WHERE url_key =? AND upper_key =? AND product_id =?"
+      val rowsFuture = client.preparedQuery(query).execute(makeProductUrlTuple(body, false))
       var json: JsonObject
 
       rowsFuture.onFailure { res ->
@@ -651,7 +611,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
     updateProductUrlConsumer.handler { message ->
       val body = message.body()
       val query = "UPDATE product_urls SET url_key =?, upper_key =?, product_id =? " +
-        "WHERE url_key =? AND upper_key =?"
+        "WHERE url_key =? AND upper_key =? AND product_id =?"
       val productUrlTuple = makeProductUrlTuple(body, true)
       val rowsFuture = client.preparedQuery(query).execute(productUrlTuple)
 
@@ -677,13 +637,8 @@ class UrlJdbcVerticle: AbstractVerticle() {
     val deleteProductUrlConsumer = eventBus.consumer<JsonObject>("process.url.deleteProductUrl")
     deleteProductUrlConsumer.handler { message ->
       val body = message.body()
-      val query = "DELETE FROM product_urls WHERE url_key =? AND upper_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(
-        Tuple.of(
-          body.getString("urlKey"),
-          body.getString("upperKey")
-        )
-      )
+      val query = "DELETE FROM product_urls WHERE url_key =? AND upper_key =? AND product_id =?"
+      val rowsFuture = client.preparedQuery(query).execute(makeProductUrlTuple(body, false))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -708,7 +663,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
     getAllFullUrlsConsumer.handler { message ->
       val body = message.body()
       val joinList = checkJoinMessage(body)
-      val query = makeFullUrlKeyQuery(joinList)
+      val query = makeFullUrlKeyQuery(joinList, false)
 
       val rowsFuture = client.preparedQuery(query).execute()
       var json: JsonObject
@@ -747,12 +702,12 @@ class UrlJdbcVerticle: AbstractVerticle() {
     getFullUrlByKeyConsumer.handler { message ->
       val body = message.body()
       val joinList = checkJoinMessage(body)
-      val query = makeFullUrlKeyQuery(joinList)
+      val query = makeFullUrlKeyQuery(joinList, true)
 
       val rowsFuture = client.preparedQuery(query).execute(
         Tuple.of(
-          body.getString("urlKey"),
-          body.getString("upperKey")
+          body.getString("url_key"),
+          body.getString("upper_key")
         )
       )
       var json: JsonObject
@@ -804,7 +759,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
     return listOf(
       "url_key" to row.getString("url_key"),
       "upper_key" to row.getString("upper_key"),
-      "text_pages_id" to row.getString("text_pages_id")
+      "text_pages_id" to row.getInteger("text_pages_id")
     )
   }
 
@@ -818,7 +773,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
     return listOf(
       "url_key" to row.getString("url_key"),
       "upper_key" to row.getString("upper_key"),
-      "category_id" to row.getString("category_id")
+      "category_id" to row.getInteger("category_id")
     )
   }
 
@@ -832,7 +787,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
     return listOf(
       "url_key" to row.getString("url_key"),
       "upper_key" to row.getString("upper_key"),
-      "product_id" to row.getString("product_id")
+      "product_id" to row.getInteger("product_id")
     )
   }
 
@@ -851,14 +806,14 @@ class UrlJdbcVerticle: AbstractVerticle() {
     )
 
     if (joinList[0]) {
-      fieldList.add("text_pages_id" to row.getString("text_pages_id"))
+      fieldList.add("text_pages_id" to row.getInteger("text_pages_id"))
       fieldList.add("text_page_name" to row.getString("text_page_name"))
       fieldList.add("text_page_short_text" to row.getString("text_page_short_text"))
       fieldList.add("text_page_text" to row.getString("text_page_text"))
     }
 
     if (joinList[1]) {
-      fieldList.add("category_id" to row.getString("category_id"))
+      fieldList.add("category_id" to row.getInteger("category_id"))
       fieldList.add("upper_category" to row.getString("upper_category"))
       fieldList.add("category_name" to row.getString("category_name"))
       fieldList.add("category_short_description" to row.getString("category_short_description"))
@@ -866,7 +821,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
     }
 
     if (joinList[2]) {
-      fieldList.add("product_id" to row.getString("product_id"))
+      fieldList.add("product_id" to row.getInteger("product_id"))
       fieldList.add("product_name" to row.getString("product_name"))
       fieldList.add("product_short_name" to row.getString("product_short_name"))
       fieldList.add("product_description" to row.getString("product_description"))
@@ -886,15 +841,15 @@ class UrlJdbcVerticle: AbstractVerticle() {
   private fun makeUrlKeyTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
     val urlKeyTuple: Tuple = if (isPutRequest) {
       Tuple.of(
+        body.getString("page_type"),
         body.getString("url_key"),
         body.getString("upper_key"),
-        body.getString("page_type")
       )
     } else {
       Tuple.of(
-        body.getString("page_type"),
         body.getString("url_key"),
-        body.getString("upper_key")
+        body.getString("upper_key"),
+        body.getString("page_type"),
       )
     }
 
@@ -913,13 +868,16 @@ class UrlJdbcVerticle: AbstractVerticle() {
       Tuple.of(
         body.getString("url_key"),
         body.getString("upper_key"),
-        body.getString("text_pages_id")
+        body.getInteger("text_pages_id"),
+        body.getString("url_key"),
+        body.getString("upper_key"),
+        body.getInteger("text_pages_id"),
       )
     } else {
       Tuple.of(
-        body.getString("text_pages_id"),
         body.getString("url_key"),
-        body.getString("upper_key")
+        body.getString("upper_key"),
+        body.getInteger("text_pages_id"),
       )
     }
 
@@ -938,13 +896,16 @@ class UrlJdbcVerticle: AbstractVerticle() {
       Tuple.of(
         body.getString("url_key"),
         body.getString("upper_key"),
-        body.getString("category_id")
+        body.getInteger("category_id"),
+        body.getString("url_key"),
+        body.getString("upper_key"),
+        body.getInteger("category_id"),
       )
     } else {
       Tuple.of(
-        body.getString("category_id"),
         body.getString("url_key"),
-        body.getString("upper_key")
+        body.getString("upper_key"),
+        body.getInteger("category_id"),
       )
     }
 
@@ -963,13 +924,16 @@ class UrlJdbcVerticle: AbstractVerticle() {
       Tuple.of(
         body.getString("url_key"),
         body.getString("upper_key"),
-        body.getString("product_id")
+        body.getInteger("product_id"),
+        body.getString("url_key"),
+        body.getString("upper_key"),
+        body.getInteger("product_id"),
       )
     } else {
       Tuple.of(
-        body.getString("product_id"),
         body.getString("url_key"),
-        body.getString("upper_key")
+        body.getString("upper_key"),
+        body.getInteger("product_id"),
       )
     }
 
@@ -1004,25 +968,27 @@ class UrlJdbcVerticle: AbstractVerticle() {
    * @param joinList The list of booleans of the tables to join
    * @return A query string to run on the query
    */
-  private fun makeFullUrlKeyQuery(joinList: List<Boolean>): String {
+  private fun makeFullUrlKeyQuery(joinList: List<Boolean>, isByKey: Boolean): String {
     var query = renameFullUrlKeyColumns(joinList)
 
     if (joinList[0]) {
-      query += "INNER JOIN text_page_urls tpu ON uk.url_key = tpu.url_key AND uk.upper_key = " +
+      query += " INNER JOIN text_page_urls tpu ON uk.url_key = tpu.url_key AND uk.upper_key = " +
         "tpu.upper_key " +
         "INNER JOIN public.text_pages tp on tp.text_pages_id = tpu.text_pages_id"
     }
     if (joinList[1]) {
-      query += "INNER JOIN category_urls cu ON uk.url_key = cu.url_key AND uk.upper_key = " +
+      query += " INNER JOIN category_urls cu ON uk.url_key = cu.url_key AND uk.upper_key = " +
         "cu.upper_key INNER JOIN public.categories c on c.category_id = cu.category_id"
     }
     if (joinList[2]) {
-      query += "INNER JOIN public.product_urls pu ON yk.url_key = " +
+      query += " INNER JOIN public.product_urls pu ON uk.url_key = " +
         "pu.url_key AND uk.upper_key = pu.upper_key " +
         "INNER JOIN public.products p ON p.product_id = pu.product_id"
     }
 
-    client.preparedQuery(query).execute()
+    if (isByKey) {
+      query += " WHERE uk.url_key =? AND uk.upper_key =?"
+    }
 
     return query
   }

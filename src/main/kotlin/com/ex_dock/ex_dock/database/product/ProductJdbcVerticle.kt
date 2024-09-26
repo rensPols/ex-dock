@@ -4,6 +4,7 @@ import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
+import io.vertx.jdbcclient.JDBCPool
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.Pool
@@ -22,6 +23,8 @@ class ProductJdbcVerticle: AbstractVerticle() {
     getAllProducts()
     getProductById()
     createProduct()
+    updateProduct()
+    deleteProduct()
   }
 
   private fun getAllProducts() {
@@ -40,11 +43,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
             obj(
               "products" to rows.map { row ->
                 obj(
-                  "id" to row.getInteger("product_id"),
-                  "name" to row.getString("name"),
-                  "short_name" to row.getString("short_name"),
-                  "description" to row.getString("description"),
-                  "short_description" to row.getString("short_description")
+                  makeProductJsonFields(row)
                 )
               }
             )
@@ -74,11 +73,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
           val row = rows.first()
           json = json {
             obj(
-              "id" to row.getInteger("product_id"),
-              "name" to row.getString("name"),
-              "short_name" to row.getString("short_name"),
-              "description" to row.getString("description"),
-              "short_description" to row.getString("short_description")
+              makeProductJsonFields(row)
             )
           }
           message.reply(json)
@@ -94,17 +89,85 @@ class ProductJdbcVerticle: AbstractVerticle() {
     createProductConsumer.handler { message ->
       val product = message.body()
       val rowsFuture = client.preparedQuery("INSERT INTO products (name, short_name, description, short_description) VALUES (?,?,?,?)")
-       .execute(Tuple.of(
-         product.getString("name").orEmpty(),
-           product.getString("short_name").orEmpty(),
-           product.getString("description").orEmpty(),
-           product.getString("short_description").orEmpty()))
+       .execute(makeProductTuple(product, false))
+
       rowsFuture.onFailure{ res ->
         println("Failed to execute query: $res")
         message.reply("Failed!")
       }.onSuccess{ res ->
-        message.reply("Success!")
+        message.reply(res.value().property(JDBCPool.GENERATED_KEYS).getInteger(0))
       }
     }
+  }
+
+  private fun updateProduct() {
+    val updateProductConsumer = eventBus.localConsumer<JsonObject>("process.products.updateProduct")
+    updateProductConsumer.handler { message ->
+      val product = message.body()
+      val rowsFuture = client.preparedQuery("UPDATE products SET name =?, short_name =?, description =?, short_description =? WHERE product_id =?")
+       .execute(makeProductTuple(product, true))
+
+      rowsFuture.onFailure{ res ->
+        println("Failed to execute query: $res")
+        message.reply("Failed!")
+      }.onSuccess{ res ->
+        if (res.rowCount() > 0) {
+          message.reply("Product updated successfully")
+        } else {
+          message.reply("Failed to update product")
+        }
+      }
+    }
+  }
+
+  private fun deleteProduct() {
+    val deleteProductConsumer = eventBus.localConsumer<Int>("process.products.deleteProduct")
+    deleteProductConsumer.handler { message ->
+      val productId = message.body()
+      val rowsFuture = client.preparedQuery("DELETE FROM products WHERE product_id =?")
+       .execute(Tuple.of(productId))
+
+      rowsFuture.onFailure{ res ->
+        println("Failed to execute query: $res")
+        message.reply("Failed!")
+      }.onSuccess{ res ->
+        if (res.rowCount() > 0) {
+          message.reply("Product deleted successfully")
+        } else {
+          message.reply("Failed to delete product")
+        }
+      }
+    }
+  }
+
+  private fun makeProductJsonFields(row: Row): List<Pair<String, Any?>> {
+    return listOf(
+      "id" to row.getInteger("product_id"),
+      "name" to row.getString("name"),
+      "short_name" to row.getString("short_name"),
+      "description" to row.getString("description"),
+      "short_description" to row.getString("short_description")
+    )
+  }
+
+  private fun makeProductTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
+    val productTuple: Tuple = if (isPutRequest) {
+      Tuple.of(
+        body.getString("name"),
+        body.getString("short_name"),
+        body.getString("description"),
+        body.getString("short_description"),
+        body.getInteger("product_id")
+      )
+    } else {
+      Tuple.of(
+        body.getString("name"),
+        body.getString("short_name"),
+        body.getString("description"),
+        body.getString("short_description")
+      )
+    }
+
+    return productTuple
   }
 }
