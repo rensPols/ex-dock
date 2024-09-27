@@ -4,7 +4,7 @@ import com.ex_dock.ex_dock.database.account.AccountJdbcVerticle
 import com.ex_dock.ex_dock.database.category.CategoryJdbcVerticle
 import com.ex_dock.ex_dock.database.checkout.CheckoutJdbcVerticle
 import com.ex_dock.ex_dock.database.home.HomeJdbcVerticle
-import com.ex_dock.ex_dock.database.product.ProductJdbcVerticle
+import com.ex_dock.ex_dock.database.product.*
 import com.ex_dock.ex_dock.database.scope.ScopeJdbcVerticle
 import com.ex_dock.ex_dock.database.server.ServerJDBCVerticle
 import com.ex_dock.ex_dock.database.text_pages.TextPagesJdbcVerticle
@@ -51,6 +51,18 @@ class JDBCStarter: AbstractVerticle() {
       .deployWorkerHelper(vertx, ServerJDBCVerticle::class.qualifiedName.toString(), 5, 5))
     verticles.add(verticleDeployHelper
       .deployWorkerHelper(vertx, UrlJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, ProductCompleteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, ProductGlobalEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, ProductMultiSelectJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, ProductStoreViewEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, ProductWebsiteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(verticleDeployHelper
+      .deployWorkerHelper(vertx, ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
   }
 
 }

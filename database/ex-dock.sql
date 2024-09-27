@@ -66,6 +66,16 @@ CREATE TYPE public.b_permissions AS ENUM (
 
 ALTER TYPE public.b_permissions OWNER TO postgres;
 
+CREATE TYPE public.cpa_type AS ENUM (
+  'bool',
+  'float',
+  'int',
+  'money',
+  'string'
+  );
+
+ALTER TYPE public.cpa_type OWNER TO postgres;
+
 --
 -- Name: check_root_url(); Type: FUNCTION; Schema: public; Owner: postgres
 --
@@ -192,7 +202,7 @@ CREATE TABLE public.custom_product_attributes (
                                                 attribute_key character varying(64) NOT NULL,
                                                 scope integer NOT NULL,
                                                 name character varying(64) NOT NULL,
-                                                type integer NOT NULL,
+                                                type public.cpa_type NOT NULL,
                                                 multiselect bit(1) NOT NULL,
                                                 required bit(1) NOT NULL
 );
