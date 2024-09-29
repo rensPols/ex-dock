@@ -229,7 +229,7 @@ ALTER TABLE public.eav OWNER TO postgres;
 CREATE TABLE public.eav_global_bool (
                                       product_id integer NOT NULL,
                                       attribute_key character varying(64) NOT NULL,
-                                      bool bit(1) NOT NULL
+                                      value bit(1) NOT NULL
 );
 
 
@@ -919,7 +919,7 @@ COPY public.eav (product_id, attribute_key) FROM stdin;
 -- Data for Name: eav_global_bool; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.eav_global_bool (product_id, attribute_key, bool) FROM stdin;
+COPY public.eav_global_bool (product_id, attribute_key, value) FROM stdin;
 \.
 
 
