@@ -405,7 +405,8 @@ ALTER TABLE public.eav_website_bool OWNER TO postgres;
 CREATE TABLE public.eav_website_float (
                                         product_id integer NOT NULL,
                                         website_id integer NOT NULL,
-                                        attribute_key character varying(64) NOT NULL
+                                        attribute_key character varying(64) NOT NULL,
+                                        value float NOT NULL
 );
 
 
@@ -418,7 +419,8 @@ ALTER TABLE public.eav_website_float OWNER TO postgres;
 CREATE TABLE public.eav_website_int (
                                       product_id integer NOT NULL,
                                       website_id integer NOT NULL,
-                                      attribute_key character varying(64) NOT NULL
+                                      attribute_key character varying(64) NOT NULL,
+                                      value integer NOT NULL
 );
 
 
@@ -445,7 +447,8 @@ ALTER TABLE public.eav_website_money OWNER TO postgres;
 CREATE TABLE public.eav_website_multi_select (
                                                product_id integer NOT NULL,
                                                website_id integer NOT NULL,
-                                               attribute_key character varying(64) NOT NULL
+                                               attribute_key character varying(64) NOT NULL,
+                                               value integer NOT NULL
 );
 
 
