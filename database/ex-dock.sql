@@ -607,7 +607,8 @@ ALTER TABLE public.server_version OWNER TO postgres;
 
 CREATE TABLE public.store_view (
     store_view_id integer NOT NULL,
-    website_id integer NOT NULL
+    website_id integer NOT NULL,
+    store_view_name varchar(255)
 );
 
 
@@ -731,7 +732,8 @@ ALTER SEQUENCE public.users_user_id_seq OWNED BY public.users.user_id;
 --
 
 CREATE TABLE public.websites (
-    website_id integer NOT NULL
+    website_id integer NOT NULL,
+    website_name varchar(255)
 );
 
 
