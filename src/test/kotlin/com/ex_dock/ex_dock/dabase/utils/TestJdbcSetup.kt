@@ -5,7 +5,9 @@ import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
 
 
+import io.mockk.every
 import io.mockk.*
+import java.io.InputStream
 import java.util.Properties
 
 class TestJdbcSetup {
@@ -25,6 +27,7 @@ class TestJdbcSetup {
       setProperty("db.username", "defaultUser")
       setProperty("db.password", "defaultPassword")
     }
+    val properties: Properties = Properties();
 
     every { this::class.java.classLoader.getResourceAsStream("test_secret.properties") } returns secretProps.toInputStream()
     every { this::class.java.classLoader.getResourceAsStream("test_default.properties") } returns defaultProps.toInputStream()
@@ -37,21 +40,21 @@ class TestJdbcSetup {
     jdbcSetup.setup()
 
     // Here we will test if the properties were set from the defaults or secret props
-    assert(jdbcSetup.getProperty("db.username") == "defaultUser")
+    assert(jdbcSetup.propertiesFile.getProperty("db.username") == "defaultUser")
     assert(jdbcSetup.getProperty("db.password") == "defaultPassword")
   }
 
   @Test
   fun `test input map overrides default properties`() {
-    val inputMap = mapOf(
+    val inputMap: Map<Any, Any> = mapOf(
       "db.username" to "overrideUser",
       "db.password" to "overridePassword"
     )
 
-    jdbcSetup.setup(inputMap)
+    jdbcSetup.setup(inputMap=inputMap)
 
     // Verifying that the input map overrides the properties
-    assert(jdbcSetup.getProperty("db.username") == "overrideUser")
+    assert(jdbcSetup.props.getProperty("db.username") == "overrideUser")
     assert(jdbcSetup.getProperty("db.password") == "overridePassword")
   }
 
