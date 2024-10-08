@@ -4,12 +4,13 @@ import java.util.Properties
 
 class JdbcSetup(
   propertiesFile: String = "secret.properties",
-  defaultPropertiesFile: String = "default.properties"
+  defaultPropertiesFile: String = "default.properties",
+  classLoader: ClassLoader = JdbcSetup::class.java.classLoader,
   ) {
-  private val props: Properties = javaClass.classLoader.getResourceAsStream(propertiesFile).use {
+  private val props: Properties = classLoader.getResourceAsStream(propertiesFile).use {
     Properties().apply { load(it) }
   }
-  private val defaultProps: Properties = javaClass.classLoader.getResourceAsStream(defaultPropertiesFile).use {
+  private val defaultProps: Properties = classLoader.getResourceAsStream(defaultPropertiesFile).use {
     Properties().apply { load(it) }
   }
   private var isCompleted: Boolean = false
@@ -30,10 +31,11 @@ class JdbcSetup(
     if (isCompleted && !reset) throw IllegalStateException("Setup has already been completed")
 
     // TODO: test
-    for (key in props.keys) {
+    for (key in defaultProps.keys) {
       props[key] = defaultProps[key]
     }
     isCompleted = true
+
   }
 
   /**
@@ -55,7 +57,7 @@ class JdbcSetup(
     if (isCompleted && !reset) throw IllegalStateException("Setup has already been completed")
 
     // TODO: test
-    for (key in props.keys) {
+    for (key in defaultProps.keys) {
       if (inputMap.containsKey(key)) {
         props[key] = inputMap[key]
         continue
