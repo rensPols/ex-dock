@@ -99,6 +99,12 @@
       <artifactId>postgresql</artifactId>
       <version>42.7.4</version>
     </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web-templ-handlebars</artifactId>
+      <version>4.5.10</version>
+    </dependency>
+
 
     <!-- https://mvnrepository.com/artifact/org.mockito.kotlin/mockito-kotlin -->
     <dependency>
