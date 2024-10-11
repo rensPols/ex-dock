@@ -48,14 +48,18 @@ class SingleUseTemplateDataCodec: MessageCodec<SingleUseTemplateData, SingleUseT
   }
 
   override fun transform(p0: SingleUseTemplateData?): SingleUseTemplateData? {
+    // If the output type is different from the input type,
+    // it should be converted in this function for local eventBus transfers
     return p0
   }
 
   override fun name(): String? {
+    // This is the name of the codec
     return "singleUseTemplateDataCodec"
   }
 
   override fun systemCodecID(): Byte {
+    // Should always return -1 for user codecs
     return -1
   }
 }
