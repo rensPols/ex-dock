@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         test_class: [
-          "com.ex_dock.ex_dock.frontend.template_engine.single_use.SingleUseTemplateDataCodecTest"
+          "com.ex_dock.ex_dock.codecs.template_engine.SingleUseTemplateDataCodecTest"
         ]
     steps:
       - name: Checkout code
