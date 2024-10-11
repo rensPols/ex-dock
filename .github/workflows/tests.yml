@@ -8,10 +8,10 @@ jobs:
     strategy:
       matrix:
         test_class: [
-          // Codecs
-          "com.ex_dock.ex_dock.codecs.template_engine.SingleUseTemplateDataCodecTest"
+          # Codecs
+          "com.ex_dock.ex_dock.codecs.template_engine.SingleUseTemplateDataCodecTest",
 
-          // Templating Engine
+          # Templating Engine
           "com.ex_dock.ex_dock.frontend.template_engine.TemplateEngineVerticleTest"
         ]
     steps:
