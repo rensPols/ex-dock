@@ -20,15 +20,18 @@ jobs:
           java-version: 21
           distribution: oracle
 
-      - name: Install Dependencies
-        run: mvn clean install -DskipTests=true
 
-      - name: Set up JUnit
-        run: |
-          curl -sLO https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.8.2/junit-platform-console-standalone-1.8.2.jar
-
-      - name: Run JUnit 5 Tests
-        run: |
-          java -jar junit-platform-console-standalone-1.8.2.jar \
-          --select-class=${{ matrix.test_class }} \
-          --class-path=target/classes --class-path=target/test-classes
+      - name: Install Dependencies and Run Tests
+        run: mvn clean install -DskipTests=false
+#      - name: Install Dependencies
+#        run: mvn clean install -DskipTests=true
+#
+#      - name: Set up JUnit
+#        run: |
+#          curl -sLO https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.8.2/junit-platform-console-standalone-1.8.2.jar
+#
+#      - name: Run JUnit 5 Tests
+#        run: |
+#          java -jar junit-platform-console-standalone-1.8.2.jar \
+#          --select-class=${{ matrix.test_class }} \
+#          --class-path=target/classes --class-path=target/test-classes
