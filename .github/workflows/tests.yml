@@ -22,6 +22,8 @@ jobs:
 
       - name: Install Dependencies
         run: mvn clean install -DskipTests=true
+      - name: Install dependencies
+        run: mvn clean install -DskipTests=true --no-transfer-progress
 
       - name: Run Tests
         run: mvn test -Dtest=${{ matrix.test_class }}
