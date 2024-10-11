@@ -1,0 +1,34 @@
+name: Run the tests
+
+on: [push, pull_request]
+
+jobs:
+  test-codecs:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test_class: [
+          "com.ex_dock.ex_dock.frontend.template_engine.single_use.SingleUseTemplateDataCodecTest"
+        ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: actions/setup-java@v4.4.0
+        with:
+          java-version: 21
+          distribution: oracle
+
+      - name: Install Dependencies
+        run: mvn clean install -DskipTests=true
+
+      - name: Set up JUnit
+        run: |
+          curl -sLO https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.8.2/junit-platform-console-standalone-1.8.2.jar
+
+      - name: Run JUnit 5 Tests
+        run: |
+          java -jar junit-platform-console-standalone-1.8.2.jar \
+          --select-class=${{ matrix.test_class }} \
+          --class-path=target/classes --class-path=target/test-classes
