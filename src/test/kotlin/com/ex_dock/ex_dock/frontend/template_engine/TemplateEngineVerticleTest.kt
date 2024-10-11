@@ -1,6 +1,5 @@
-package com.ex_dock.ex_dock.frontend.templating_engine
+package com.ex_dock.ex_dock.frontend.template_engine
 
-import com.ex_dock.ex_dock.frontend.template_engine.TemplateEngineVerticle
 import com.ex_dock.ex_dock.frontend.template_engine.template_data.single_use.SingleUseTemplateData
 import io.vertx.core.eventbus.EventBus
 import io.vertx.junit5.VertxExtension
