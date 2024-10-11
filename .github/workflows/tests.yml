@@ -27,7 +27,8 @@ jobs:
         run: mvn test -DskipTests=true --no-transfer-progress
 
       - name: Run Tests
-        run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
+        # Remove everything before the tests output: | grep -A 100 "T E S T S"
+        run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress | grep -A 100 "T E S T S"
 
 #      - name: Install Dependencies
 #        run: mvn clean install -DskipTests=true
