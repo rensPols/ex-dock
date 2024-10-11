@@ -20,9 +20,12 @@ jobs:
           java-version: 21
           distribution: oracle
 
+      - name: Install Dependencies
+        run: mvn clean install -DskipTests=true
 
-      - name: Install Dependencies and Run Tests
-        run: mvn clean install -DskipTests=false
+      - name: Run Tests
+        run: mvn test
+
 #      - name: Install Dependencies
 #        run: mvn clean install -DskipTests=true
 #
