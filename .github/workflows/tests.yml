@@ -31,18 +31,4 @@ jobs:
         run: mvn test -DskipTests=true --no-transfer-progress
 
       - name: Run Tests
-        # Remove everything before the tests output: | grep -A 100 "T E S T S"
-        run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress # -e | grep -A 100 "T E S T S"
-
-#      - name: Install Dependencies
-#        run: mvn clean install -DskipTests=true
-#
-#      - name: Set up JUnit
-#        run: |
-#          curl -sLO https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.8.2/junit-platform-console-standalone-1.8.2.jar
-#
-#      - name: Run JUnit 5 Tests
-#        run: |
-#          java -jar junit-platform-console-standalone-1.8.2.jar \
-#          --select-class=${{ matrix.test_class }} \
-#          --class-path=target/classes --class-path=target/test-classes
+        run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
