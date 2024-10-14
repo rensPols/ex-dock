@@ -3,6 +3,7 @@ package com.ex_dock.ex_dock.database.server
 import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
@@ -17,6 +18,9 @@ class ServerJDBCVerticle: AbstractVerticle() {
   private lateinit var client: Pool
   private lateinit var eventBus: EventBus
   private val failedMessage: String = "failed"
+  private val serverDataDataDeliveryOptions = DeliveryOptions().setCodecName("ServerDataDataCodec")
+  private val serverVersionDataDeliveryOptions = DeliveryOptions().setCodecName("ServerVersionDataCodec")
+  private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
     client = Connection().getConnection(vertx)
@@ -68,7 +72,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
    * Create a new server data entry in the database
    */
   private fun createServerData() {
-    val createServerDataConsumer = eventBus.localConsumer<JsonObject>("process.server.createServerData")
+    val createServerDataConsumer = eventBus.localConsumer<ServerDataData>("process.server.createServerData")
     createServerDataConsumer.handler { message ->
       val serverData = message.body()
       val query = "INSERT INTO server_data (key, value) VALUES (?,?)"
@@ -80,7 +84,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
       }
 
       rowsFuture.onComplete { _ ->
-        message.reply("Server data created successfully!")
+        message.reply(serverData, serverDataDataDeliveryOptions)
       }
     }
   }
@@ -89,7 +93,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
    * Update an existing server data entry in the database
    */
   private fun updateServerData() {
-    val updateServerDataConsumer = eventBus.localConsumer<JsonObject>("process.server.updateServerData")
+    val updateServerDataConsumer = eventBus.localConsumer<ServerDataData>("process.server.updateServerData")
     updateServerDataConsumer.handler { message ->
       val serverData = message.body()
       val query = "UPDATE server_data SET value =? WHERE key =?"
@@ -101,7 +105,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
       }
 
       rowsFuture.onComplete { _ ->
-        message.reply("Server data updated successfully!")
+        message.reply(serverData, serverDataDataDeliveryOptions)
       }
     }
   }
@@ -135,7 +139,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
     getAllServerVersionsConsumer.handler { message ->
       val query = "SELECT * FROM server_version"
       val rowsFuture = client.preparedQuery(query).execute()
-      var allServerJson: JsonObject
+      val allServerVersionList: MutableList<ServerVersionData> = emptyList<ServerVersionData>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -143,19 +147,12 @@ class ServerJDBCVerticle: AbstractVerticle() {
       }.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          allServerJson = json {
-            obj (
-              "serverVersions" to rows.map { row ->
-                obj(
-                  makeServerVersionJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            allServerVersionList.add(makeServerVersion(row))
           }
-          message.reply(allServerJson)
-        } else {
-          message.reply("No server versions found!")
         }
+
+        message.reply(allServerVersionList, listDeliveryOptions)
       }
     }
   }
@@ -164,14 +161,13 @@ class ServerJDBCVerticle: AbstractVerticle() {
    * Get a server version from the database by major, minor, and patch
    */
   private fun getServerVersionByKey() {
-    val getServerVersionByKeyConsumer = eventBus.localConsumer<JsonObject>("process.server.getServerVersionByKey")
+    val getServerVersionByKeyConsumer = eventBus.localConsumer<ServerVersionData>("process.server.getServerVersionByKey")
     getServerVersionByKeyConsumer.handler { message ->
       val key = message.body()
       val query = "SELECT * FROM server_version WHERE major = ? AND minor = ? AND patch = ?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(
-        key.getInteger("major"), key.getInteger("minor"), key.getInteger("patch")
+        key.major, key.minor, key.patch
       ))
-      var json: JsonObject
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -179,16 +175,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
       }.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj (
-              "server_version" to rows.map { row ->
-                obj(
-                  makeServerVersionJsonFields(row)
-                )
-              }
-            )
-          }
-          message.reply(json)
+          message.reply(makeServerVersion(rows.first()), serverDataDataDeliveryOptions)
         } else {
           message.reply("No server version found!")
         }
@@ -200,7 +187,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
    * Create a new server version entry in the database
    */
   private fun createServerVersion() {
-    val createServerVersionConsumer = eventBus.localConsumer<JsonObject>("process.server.createServerVersion")
+    val createServerVersionConsumer = eventBus.localConsumer<ServerVersionData>("process.server.createServerVersion")
     createServerVersionConsumer.handler { message ->
       val serverVersion = message.body()
       val query = "INSERT INTO server_version (major, minor, patch, version_name, version_description) VALUES (?,?,?,?,?)"
@@ -212,7 +199,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
       }
 
       rowsFuture.onComplete { _ ->
-        message.reply("Server version created successfully!")
+        message.reply(serverVersion, serverVersionDataDeliveryOptions)
       }
     }
   }
@@ -221,7 +208,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
    * Update an existing server version entry in the database
    */
   private fun updateServerVersion() {
-    val updateServerVersionConsumer = eventBus.localConsumer<JsonObject>("process.server.updateServerVersion")
+    val updateServerVersionConsumer = eventBus.localConsumer<ServerVersionData>("process.server.updateServerVersion")
     updateServerVersionConsumer.handler { message ->
       val serverVersion = message.body()
       val query = "UPDATE server_version SET major =?, minor =?, patch =?, version_name =?, version_description =? WHERE major = ? AND minor = ? AND patch = ?"
@@ -233,7 +220,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
       }
 
       rowsFuture.onComplete { _ ->
-        message.reply("Server version updated successfully!")
+        message.reply(serverVersion, serverDataDataDeliveryOptions)
       }
     }
   }
@@ -242,14 +229,14 @@ class ServerJDBCVerticle: AbstractVerticle() {
    * Delete a server version entry from the database
    */
   private fun deleteServerVersion() {
-    val deleteServerVersionConsumer = eventBus.localConsumer<JsonObject>("process.server.deleteServerVersion")
+    val deleteServerVersionConsumer = eventBus.localConsumer<ServerVersionData>("process.server.deleteServerVersion")
     deleteServerVersionConsumer.handler { message ->
       val serverVersion = message.body()
       val query = "DELETE FROM server_version WHERE major = ? AND minor = ? AND patch = ?"
       val rowsFuture = client.preparedQuery(query).execute(
-        Tuple.of(serverVersion.getInteger("major"),
-          serverVersion.getInteger("minor"),
-          serverVersion.getInteger("patch")))
+        Tuple.of(serverVersion.major,
+          serverVersion.minor,
+          serverVersion.patch))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -265,39 +252,39 @@ class ServerJDBCVerticle: AbstractVerticle() {
   /**
    * Make JSON fields from a row out of the database for the server data
    */
-  private fun makeServerDataJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "key" to row.getString("key"),
-      "value" to row.getString("value")
+  private fun makeServerData(row: Row): ServerDataData {
+    return ServerDataData(
+      key = row.getString("key"),
+      value = row.getString("value")
     )
   }
 
   /**
    * Make JSON fields from a row out of the database for the server version
    */
-  private fun makeServerVersionJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "major" to row.getInteger("major"),
-      "minor" to row.getInteger("minor"),
-      "patch" to row.getInteger("patch"),
-      "version_name" to row.getString("version_name"),
-      "version_description" to row.getString("version_description")
+  private fun makeServerVersion(row: Row): ServerVersionData {
+    return ServerVersionData(
+      major = row.getInteger("major"),
+      minor = row.getInteger("minor"),
+      patch = row.getInteger("patch"),
+      versionName = row.getString("version_name"),
+      versionDescription = row.getString("version_description")
     )
   }
 
   /**
    * Make a tuple for the server data for database insertion or update
    */
-  private fun makeServerDataTuple(body: JsonObject, putRequest: Boolean): Tuple {
+  private fun makeServerDataTuple(body: ServerDataData, putRequest: Boolean): Tuple {
     val serverDataTuple: Tuple = if (putRequest) {
       Tuple.of(
-        body.getString("value"),
-        body.getString("key")
+        body.value,
+        body.key
       )
     } else {
       Tuple.of(
-        body.getString("key"),
-        body.getString("value")
+        body.key,
+        body.value
       )
     }
 
@@ -307,33 +294,27 @@ class ServerJDBCVerticle: AbstractVerticle() {
   /**
    * Make a tuple for the server version for database insertion or update
    */
-  private fun makeServerVersionTuple(body: JsonObject, putRequest: Boolean): Tuple {
-    val versionName = try {
-        body.getString("version_name")
-    } catch (e: NullPointerException) { null }
-    val versionDescription = try {
-        body.getString("version_description")
-    } catch (e: NullPointerException) { null }
+  private fun makeServerVersionTuple(body: ServerVersionData, putRequest: Boolean): Tuple {
 
     val serverVersionTuple: Tuple
     if (putRequest) {
       serverVersionTuple = Tuple.of(
-        body.getInteger("major"),
-        body.getInteger("minor"),
-        body.getInteger("patch"),
-        versionName,
-        versionDescription,
-        body.getInteger("major"),
-        body.getInteger("minor"),
-        body.getInteger("patch")
+        body.major,
+        body.minor,
+        body.patch,
+        body.versionName,
+        body.versionDescription,
+        body.major,
+        body.minor,
+        body.patch
       )
     } else {
       serverVersionTuple = Tuple.of(
-        body.getInteger("major"),
-        body.getInteger("minor"),
-        body.getInteger("patch"),
-        versionName,
-        versionDescription
+        body.major,
+        body.minor,
+        body.patch,
+        body.versionName,
+        body.versionDescription
       )
     }
 
@@ -344,7 +325,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
    * Answer the server data message with the retrieved data
    */
   private fun answerServerDataMessage(rowsFuture: Future<RowSet<Row>>, message: Message<String>) {
-    var json: JsonObject
+    var serverDataDataList: MutableList<ServerDataData> = emptyList<ServerDataData>().toMutableList()
 
     rowsFuture.onFailure { res ->
       println("Failed to execute query: $res")
@@ -352,19 +333,12 @@ class ServerJDBCVerticle: AbstractVerticle() {
     }
     rowsFuture.onSuccess { res ->
       if (res.size() > 0) {
-        json = json {
-          obj(
-            "serverData" to res.map { row ->
-              obj(
-                makeServerDataJsonFields(row)
-              )
-            }
-          )
+        res.value().forEach { row ->
+          serverDataDataList.add(makeServerData(row))
         }
-        message.reply(json)
-      } else {
-        message.reply(json { obj("serverData" to "{}") })
       }
+
+      message.reply(serverDataDataList, listDeliveryOptions)
     }
   }
 }

@@ -1,7 +1,9 @@
 package com.ex_dock.ex_dock.database.server
 
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -17,41 +19,49 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 @ExtendWith(VertxExtension::class)
 class ServerJDBCVerticleTest {
+  private val numTests = 10000
   private lateinit var eventBus: EventBus
   private val verticleDeployHelper = VerticleDeployHelper()
+  private val serverDataDataDeliveryOptions = DeliveryOptions().setCodecName("ServerDataDataCodec")
+  private val serverVersionDataDeliveryOptions = DeliveryOptions().setCodecName("ServerVersionDataCodec")
+  private val serverDataList: MutableList<ServerDataData> = emptyList<ServerDataData>().toMutableList()
+  private var serverVersionList: MutableList<ServerVersionData> = emptyList<ServerVersionData>().toMutableList()
 
-  private var serverDataJson = json {
-    obj(
-      "key" to "server_data_key",
-      "value" to "server_data_value"
-    )
-  }
+  private var serverData = ServerDataData(
+    "server_data_key",
+    "server_data_value"
+  )
 
-  private var serverVersionJson = json {
-   obj(
-      "major" to 1,
-      "minor" to 0,
-      "patch" to 0,
-      "version_name" to "1.0.0",
-      "version_description" to "Initial release of the server"
-    )
-  }
+  private var serverVersion = ServerVersionData(
+    1,
+    1,
+    1,
+    "test_name",
+    "test_description"
+  )
+
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
+      .registerCodec(GenericCodec(ServerDataData::class.java))
+      .registerCodec(GenericCodec(MutableList::class.java))
+      .registerCodec(GenericCodec(ServerVersionData::class.java))
+    serverDataList.add(serverData)
+    serverVersionList.add(serverVersion)
+
     verticleDeployHelper.deployWorkerHelper(vertx,
       ServerJDBCVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
-        eventBus.request<String>("process.server.createServerData", serverDataJson).onFailure {
+        eventBus.request<ServerDataData>("process.server.createServerData", serverData, serverDataDataDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete {createServerDataMsg ->
           assert(createServerDataMsg.succeeded())
-          assertEquals(createServerDataMsg.result().body(), "Server data created successfully!")
+          assertEquals(createServerDataMsg.result().body(), serverData)
 
-          eventBus.request<String>("process.server.createServerVersion", serverVersionJson).onFailure {
+          eventBus.request<ServerVersionData>("process.server.createServerVersion", serverVersion, serverVersionDataDeliveryOptions).onFailure {
             testContext.failNow(it)
           }.onComplete { createServerVersionMsg ->
             assert(createServerVersionMsg.succeeded())
-            assertEquals(createServerVersionMsg.result().body(), "Server version created successfully!")
+            assertEquals(createServerVersionMsg.result().body(), serverVersion)
 
             testContext.completeNow()
           }
@@ -61,109 +71,126 @@ class ServerJDBCVerticleTest {
 
   @Test
   fun getAllServerData(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.server.getAllServerData", "").onFailure {
-      testContext.failNow(it)
-    }.onComplete {
-      assert(it.succeeded())
-      assertEquals(it.result().body(), json { obj( "serverData" to listOf(serverDataJson)) })
-      testContext.completeNow()
+    for (i in 0..numTests) {
+      eventBus.request<MutableList<ServerDataData>>("process.server.getAllServerData", "").onFailure {
+        testContext.failNow(it)
+      }.onComplete {
+        assert(it.succeeded())
+        assertEquals(it.result().body(), serverDataList)
+      }
     }
+
+    testContext.completeNow()
   }
 
   @Test
   fun getServerDataByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.server.getServerByKey", serverDataJson.getString("key")).onFailure {
-      testContext.failNow(it)
-    }.onComplete {
-      assert(it.succeeded())
-      assertEquals(it.result().body(), json { obj( "serverData" to listOf(serverDataJson)) })
-      testContext.completeNow()
+    for (i in 0..numTests) {
+      eventBus.request<ServerDataData>("process.server.getServerByKey", serverData.key).onFailure {
+        testContext.failNow(it)
+      }.onComplete {
+        assert(it.succeeded())
+        assertEquals(it.result().body(), serverData)
+      }
     }
+
+    testContext.completeNow()
   }
 
   @Test
   fun updateServerData(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedServerDataJson = json {
-      obj(
-        "key" to serverDataJson.getString("key"),
-        "value" to "updated_server_data_value"
+    for (i in 0..numTests) {
+      val updatedServerData = ServerDataData(
+        serverData.key,
+        "updated_server_data_value"
       )
-    }
 
-    eventBus.request<String>("process.server.updateServerData", updatedServerDataJson).onFailure {
-      testContext.failNow(it)
-    }.onComplete { updateServerMsg ->
-      assert(updateServerMsg.succeeded())
-      assertEquals(updateServerMsg.result().body(), "Server data updated successfully!")
-
-      eventBus.request<JsonObject>("process.server.getServerByKey", updatedServerDataJson.getString("key")).onFailure {
+      eventBus.request<ServerDataData>("process.server.updateServerData", updatedServerData, serverDataDataDeliveryOptions).onFailure {
         testContext.failNow(it)
-      }.onComplete {
-        assert(it.succeeded())
-        assertEquals(it.result().body(), json { obj( "serverData" to listOf(updatedServerDataJson)) })
-        testContext.completeNow()
+      }.onComplete { updateServerMsg ->
+        assert(updateServerMsg.succeeded())
+        assertEquals(updateServerMsg.result().body(), updatedServerData)
+
+        eventBus.request<ServerDataData>("process.server.getServerByKey", updatedServerData.key)
+          .onFailure {
+            testContext.failNow(it)
+          }.onComplete {
+          assert(it.succeeded())
+          assertEquals(it.result().body(), updatedServerData)
+        }
       }
     }
+
+    testContext.completeNow()
   }
 
   @Test
   fun getAllServerVersions(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.server.getAllServerVersions", "").onFailure {
-      testContext.failNow(it)
-    }.onComplete {getAllServerVersionsMsg ->
-      assert(getAllServerVersionsMsg.succeeded())
-      assertEquals(getAllServerVersionsMsg.result().body(), json { obj( "serverVersions" to listOf(serverVersionJson)) })
-      testContext.completeNow()
+    for (i in 0..numTests) {
+      eventBus.request<MutableList<ServerVersionData>>("process.server.getAllServerVersions", "").onFailure {
+        testContext.failNow(it)
+      }.onComplete { getAllServerVersionsMsg ->
+        assert(getAllServerVersionsMsg.succeeded())
+        assertEquals(
+          getAllServerVersionsMsg.result().body(),
+          serverVersionList)
+      }
     }
+
+    testContext.completeNow()
   }
 
   @Test
   fun getServerVersionById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.server.getServerVersionByKey", serverVersionJson).onFailure {
-      testContext.failNow(it)
-    }.onComplete { getServerVersionMsg ->
-      assert(getServerVersionMsg.succeeded())
-      assertEquals(getServerVersionMsg.result().body(), json { obj( "server_version" to listOf(serverVersionJson)) })
-      testContext.completeNow()
+    for (i in 0..numTests) {
+      eventBus.request<ServerVersionData>("process.server.getServerVersionByKey", serverVersion, serverVersionDataDeliveryOptions).onFailure {
+        testContext.failNow(it)
+      }.onComplete { getServerVersionMsg ->
+        assert(getServerVersionMsg.succeeded())
+        assertEquals(getServerVersionMsg.result().body(), serverVersion)
+      }
     }
+
+    testContext.completeNow()
   }
 
   @Test
   fun updateServerVersion(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedServerVersionJson = json {
-      obj(
-        "major" to 1,
-        "minor" to 0,
-        "patch" to 0,
-        "version_name" to "2.0.0",
-        "version_description" to "Updated version of the server"
+    for (i in 0..numTests) {
+      val updatedServerVersion = ServerVersionData(
+        serverVersion.major,
+        serverVersion.minor,
+        serverVersion.patch,
+        "updated_test_name",
+        "updated_test_description"
       )
-    }
 
-    eventBus.request<String>("process.server.updateServerVersion", updatedServerVersionJson).onFailure {
-      testContext.failNow(it)
-    }.onComplete { updateServerVersionMsg ->
-      assert(updateServerVersionMsg.succeeded())
-      assertEquals(updateServerVersionMsg.result().body(), "Server version updated successfully!")
-
-      eventBus.request<JsonObject>("process.server.getServerVersionByKey", updatedServerVersionJson).onFailure {
+      eventBus.request<ServerDataData>("process.server.updateServerVersion", updatedServerVersion, serverVersionDataDeliveryOptions).onFailure {
         testContext.failNow(it)
-      }.onComplete {
-        assert(it.succeeded())
-        assertEquals(it.result().body(), json { obj("server_version" to listOf(updatedServerVersionJson)) })
-        testContext.completeNow()
+      }.onComplete { updateServerVersionMsg ->
+        assert(updateServerVersionMsg.succeeded())
+        assertEquals(updateServerVersionMsg.result().body(), updatedServerVersion)
+
+        eventBus.request<ServerDataData>("process.server.getServerVersionByKey", updatedServerVersion).onFailure {
+          testContext.failNow(it)
+        }.onComplete {
+          assert(it.succeeded())
+          assertEquals(it.result().body(), updatedServerVersion)
+        }
       }
     }
+
+    testContext.completeNow()
   }
 
   @AfterEach
   fun tearDown(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<String>("process.server.deleteServerData", serverDataJson.getString("key")).onFailure {
+    eventBus.request<String>("process.server.deleteServerData", serverData.key).onFailure {
       testContext.failNow(it)
     }.onComplete {
       assert(it.succeeded())
       assertEquals(it.result().body(), "Server data deleted successfully!")
-      eventBus.request<String>("process.server.deleteServerVersion", serverVersionJson).onFailure {
+      eventBus.request<String>("process.server.deleteServerVersion", serverVersion, serverVersionDataDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { deleteServerVersionMsg ->
         assert(deleteServerVersionMsg.succeeded())
