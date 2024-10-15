@@ -1,7 +1,9 @@
 package com.ex_dock.ex_dock.database.category
 
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -21,76 +23,69 @@ class CategoryJdbcVerticleTest {
 
   private val verticleDeployHelper = VerticleDeployHelper()
 
-  private var categoryId = -1
+  private var categoryId: Int? = null
 
-  private var categoryJson = json {
-    obj(
-      "category_id" to categoryId,
-      "upper_category" to null,
-      "name" to "test name",
-      "short_description" to "test description",
-      "description" to "test description"
-    )
-  }
+  private var category = Categories(
+    categoryId = categoryId,
+    upperCategory = null,
+    name = "test name",
+    shortDescription = "test description",
+    description = "test description"
+  )
 
-  private lateinit var fullCategoryJson: JsonObject
+  private lateinit var fullCategory: FullCategoryInfo
+  private lateinit var categorySeo: CategoriesSeo
+  private val categoryList: MutableList<Categories> = emptyList<Categories>().toMutableList()
+  private val categorySeoList: MutableList<CategoriesSeo> = emptyList<CategoriesSeo>().toMutableList()
+  private val fullCategoryList: MutableList<FullCategoryInfo> = emptyList<FullCategoryInfo>().toMutableList()
+  private val categoriesDeliveryOptions = DeliveryOptions().setCodecName("CategoriesCodec")
+  private val seoCategoriesDeliveryOptions = DeliveryOptions().setCodecName("CategoriesSeoCodec")
 
-  private lateinit var categorySeo: JsonObject
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
+      .registerCodec(GenericCodec(MutableList::class.java))
+      .registerCodec(GenericCodec(Categories::class.java))
+      .registerCodec(GenericCodec(CategoriesSeo::class.java))
+      .registerCodec(GenericCodec(CategoriesProducts::class.java))
+      .registerCodec(GenericCodec(FullCategoryInfo::class.java))
     verticleDeployHelper.deployWorkerHelper(
       vertx,
       CategoryJdbcVerticle::class.qualifiedName.toString(), 5, 5
     ).onFailure {
       testContext.failNow(it)
     }.onComplete {
-      eventBus.request<Int>("process.categories.create", categoryJson).onFailure {
+      eventBus.request<Categories>("process.categories.create", category, categoriesDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createCategoryMsg ->
         assert(createCategoryMsg.succeeded())
-        categoryId = createCategoryMsg.result().body()
-        assertEquals(createCategoryMsg.result().body()::class.simpleName, "Int")
+        categoryId = createCategoryMsg.result().body().categoryId
+        category.categoryId = categoryId
 
-        categoryJson = json {
-          obj(
-            "category_id" to categoryId,
-            "upper_category" to null,
-            "name" to "test name",
-            "short_description" to "test description",
-            "description" to "test description"
-          )
-        }
+        assertEquals(createCategoryMsg.result().body(), category)
 
-        categorySeo = json {
-          obj(
-            "category_id" to categoryId,
-            "meta_title" to "test meta_title",
-            "meta_description" to "test meta_description",
-            "meta_keywords" to "test meta_keywords",
-            "page_index" to "index, follow"
-          )
-        }
+        categorySeo = CategoriesSeo(
+          categoryId = categoryId!!,
+          metaTitle = "test meta_title",
+          metaDescription = "test meta_description",
+          metaKeywords = "test meta_keywords",
+          pageIndex = getEnum("index, follow")
+        )
 
-        fullCategoryJson = json {
-          obj(
-            "category_id" to categoryId,
-            "upper_category" to null,
-            "name" to "test name",
-            "short_description" to "test description",
-            "description" to "test description",
-            "meta_title" to "test meta_title",
-            "meta_description" to "test meta_description",
-            "meta_keywords" to "test meta_keywords",
-            "page_index" to "index, follow"
-          )
-        }
+        fullCategory = FullCategoryInfo(
+          categories = category,
+          categoriesSeo = categorySeo
+        )
 
-        eventBus.request<String>("process.categories.createSeoCategory", categorySeo).onFailure {
+        categoryList.add(category)
+        categorySeoList.add(categorySeo)
+        fullCategoryList.add(fullCategory)
+
+        eventBus.request<CategoriesSeo>("process.categories.createSeoCategory", categorySeo, seoCategoriesDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createSeoCategoryMsg ->
           assert(createSeoCategoryMsg.succeeded())
-          assertEquals("SEO category created successfully!", createSeoCategoryMsg.result().body())
+          assertEquals(categorySeo, createSeoCategoryMsg.result().body())
 
           testContext.completeNow()
         }
@@ -100,13 +95,11 @@ class CategoryJdbcVerticleTest {
 
   @Test
   fun testGetAllCategories(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<String>("process.categories.getAll", "").onFailure {
+    eventBus.request<MutableList<Categories>>("process.categories.getAll", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllCategoriesMsg ->
       assert(getAllCategoriesMsg.succeeded())
-      assertEquals(json {
-        obj("categories" to listOf(categoryJson))
-      }, getAllCategoriesMsg.result().body())
+      assertEquals(categoryList, getAllCategoriesMsg.result().body())
 
       testContext.completeNow()
     }
@@ -114,11 +107,11 @@ class CategoryJdbcVerticleTest {
 
   @Test
   fun testGetCategoryById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.categories.getById", categoryId).onFailure {
+    eventBus.request<Categories>("process.categories.getById", categoryId).onFailure {
       testContext.failNow(it)
     }.onComplete { getCategoryByIdMsg ->
       assert(getCategoryByIdMsg.succeeded())
-      assertEquals(categoryJson, getCategoryByIdMsg.result().body())
+      assertEquals(category, getCategoryByIdMsg.result().body())
 
       testContext.completeNow()
     }
@@ -126,27 +119,25 @@ class CategoryJdbcVerticleTest {
 
   @Test
   fun testUpdateCategory(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedCategoryJson = json {
-      obj(
-        "category_id" to categoryId,
-        "upper_category" to null,
-        "name" to "updated test name",
-        "short_description" to "updated test description",
-        "description" to "updated test description"
-      )
-    }
+    val updatedCategory = Categories(
+      categoryId = categoryId,
+      upperCategory = null,
+      name = "updated test name",
+      shortDescription = "updated test description",
+      description = "updated test description"
+    )
 
-    eventBus.request<String>("process.categories.edit", updatedCategoryJson).onFailure {
+    eventBus.request<Categories>("process.categories.edit", updatedCategory, categoriesDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateCategoryMsg ->
       assert(updateCategoryMsg.succeeded())
-      assertEquals("Category updated successfully!", updateCategoryMsg.result().body())
+      assertEquals(updatedCategory, updateCategoryMsg.result().body())
 
-      eventBus.request<JsonObject>("process.categories.getById", categoryId).onFailure {
+      eventBus.request<Categories>("process.categories.getById", categoryId).onFailure {
         testContext.failNow(it)
       }.onComplete { getCategoryMsg ->
         assert(getCategoryMsg.succeeded())
-        assertEquals(updatedCategoryJson, getCategoryMsg.result().body())
+        assertEquals(updatedCategory, getCategoryMsg.result().body())
 
         testContext.completeNow()
       }
@@ -155,13 +146,11 @@ class CategoryJdbcVerticleTest {
 
   @Test
   fun getAllSeoCategories(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<String>("process.categories.getAllSeo", "").onFailure {
+    eventBus.request<MutableList<CategoriesSeo>>("process.categories.getAllSeo", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllSeoCategoriesMsg ->
       assert(getAllSeoCategoriesMsg.succeeded())
-      assertEquals(json {
-        obj("seoCategories" to listOf(categorySeo))
-      }, getAllSeoCategoriesMsg.result().body())
+      assertEquals(categorySeoList, getAllSeoCategoriesMsg.result().body())
 
       testContext.completeNow()
     }
@@ -169,7 +158,7 @@ class CategoryJdbcVerticleTest {
 
   @Test
   fun testGetSeoCategoryById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.categories.getSeoById", categoryId).onFailure {
+    eventBus.request<CategoriesSeo>("process.categories.getSeoById", categoryId).onFailure {
       testContext.failNow(it)
     }.onComplete { getSeoCategoryByIdMsg ->
       assert(getSeoCategoryByIdMsg.succeeded())
@@ -181,21 +170,19 @@ class CategoryJdbcVerticleTest {
 
   @Test
   fun testUpdateSeoCategory(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedCategorySeo = json {
-      obj(
-        "category_id" to categoryId,
-        "meta_title" to "updated test meta_title",
-        "meta_description" to "updated test meta_description",
-        "meta_keywords" to "updated test meta_keywords",
-        "page_index" to "index, nofollow"
-      )
-    }
+    val updatedCategorySeo = CategoriesSeo(
+      categoryId = categoryId!!,
+      metaTitle = "updated test meta_title",
+      metaDescription = "updated test meta_description",
+      metaKeywords = "updated test meta_keywords",
+      pageIndex = getEnum("index, nofollow")
+    )
 
-    eventBus.request<String>("process.categories.editSeoCategory", updatedCategorySeo).onFailure {
+    eventBus.request<CategoriesSeo>("process.categories.editSeoCategory", updatedCategorySeo, seoCategoriesDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateSeoCategoryMsg ->
       assert(updateSeoCategoryMsg.succeeded())
-      assertEquals("SEO category updated successfully!", updateSeoCategoryMsg.result().body())
+      assertEquals(updatedCategorySeo, updateSeoCategoryMsg.result().body())
 
       eventBus.request<JsonObject>("process.categories.getSeoById", categoryId).onFailure {
         testContext.failNow(it)
@@ -210,13 +197,11 @@ class CategoryJdbcVerticleTest {
 
   @Test
   fun testGetFullCategoryInfo(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.categories.getAllFullInfo", categoryId).onFailure {
+    eventBus.request<MutableList<FullCategoryInfo>>("process.categories.getAllFullInfo", categoryId).onFailure {
       testContext.failNow(it)
     }.onComplete { getFullCategoryInfoMsg ->
       assert(getFullCategoryInfoMsg.succeeded())
-      assertEquals(json {
-        obj( "categories" to listOf(fullCategoryJson))
-      }, getFullCategoryInfoMsg.result().body())
+      assertEquals(fullCategoryList, getFullCategoryInfoMsg.result().body())
 
       testContext.completeNow()
     }
@@ -224,11 +209,11 @@ class CategoryJdbcVerticleTest {
 
   @Test
   fun testGetFullCategoryInfoById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.categories.getFullInfoById", categoryId).onFailure {
+    eventBus.request<FullCategoryInfo>("process.categories.getFullInfoById", categoryId).onFailure {
       testContext.failNow(it)
     }.onComplete { getFullCategoryByIdMsg ->
       assert(getFullCategoryByIdMsg.succeeded())
-      assertEquals(fullCategoryJson, getFullCategoryByIdMsg.result().body())
+      assertEquals(fullCategory, getFullCategoryByIdMsg.result().body())
 
       testContext.completeNow()
     }
@@ -250,5 +235,16 @@ class CategoryJdbcVerticleTest {
         testContext.completeNow()
       }
     }
+  }
+
+  private fun getEnum(name: String): PageIndex {
+    when (name) {
+      "index, follow" -> return PageIndex.IndexFollow
+      "index, nofollow" -> return PageIndex.IndexNoFollow
+      "noindex, follow" -> return PageIndex.NoIndexFollow
+      "noindex, nofollow" -> return PageIndex.NoIndexNoFollow
+    }
+
+    return PageIndex.NoIndexNoFollow
   }
 }

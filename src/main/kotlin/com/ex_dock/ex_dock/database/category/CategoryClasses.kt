@@ -1,7 +1,9 @@
 package com.ex_dock.ex_dock.database.category
 
+import com.ex_dock.ex_dock.database.product.Products
+
 data class Categories(
-  var categoryId: Int,
+  var categoryId: Int?,
   var upperCategory: Int?,
   var name: String,
   var shortDescription: String,
@@ -9,8 +11,8 @@ data class Categories(
 )
 
 data class CategoriesProducts(
-  val categoryId: Int,
-  val productId: Int
+  val categoryId: Categories,
+  val productId: Products
 )
 
 data class CategoriesSeo(
@@ -21,7 +23,12 @@ data class CategoriesSeo(
   var pageIndex: PageIndex
 )
 
-enum class PageIndex(name: String) {
+data class FullCategoryInfo(
+  val categories: Categories,
+  val categoriesSeo: CategoriesSeo
+)
+
+enum class PageIndex(pIndex: String) {
   IndexFollow("index, follow"),
   IndexNoFollow("index, nofollow"),
   NoIndexFollow("noindex, follow"),
