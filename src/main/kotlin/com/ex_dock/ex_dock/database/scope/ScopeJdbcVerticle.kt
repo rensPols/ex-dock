@@ -2,11 +2,9 @@ package com.ex_dock.ex_dock.database.scope
 
 import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
-import io.vertx.core.json.JsonObject
 import io.vertx.jdbcclient.JDBCPool
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.Tuple
@@ -14,6 +12,10 @@ import io.vertx.sqlclient.Tuple
 class ScopeJdbcVerticle:  AbstractVerticle() {
   private lateinit var client: Pool
   private lateinit var eventBus: EventBus
+  private val websiteDeliveryOptions: DeliveryOptions = DeliveryOptions().setCodecName("WebsitesCodec")
+  private val storeViewDeliveryOptions: DeliveryOptions = DeliveryOptions().setCodecName("StoreViewCodec")
+  private val fullScopeDeliveryOptions: DeliveryOptions = DeliveryOptions().setCodecName("FullScopeCodec")
+  private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
     client = Connection().getConnection(vertx)
@@ -46,7 +48,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
     getAllWebsitesConsumer.handler { message ->
       val query = "SELECT * FROM websites"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val websites: MutableList<Websites> = emptyList<Websites>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -57,19 +59,12 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
         if (res.succeeded()) {
           val rows = res.result()
           if (rows.size() > 0) {
-            json = json {
-              obj(
-                "websites" to rows.map { row ->
-                  obj(
-                    makeWebsiteJsonFields(row)
-                  )
-                }
-              )
+            rows.forEach { row ->
+              websites.add(makeWebsite(row))
             }
-            message.reply(json)
           }
-        } else {
-          message.reply(json{ obj("websites" to "{}")})
+
+          message.reply(websites, listDeliveryOptions)
         }
       }
     }
@@ -84,7 +79,6 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
       val websiteId = message.body()
       val query = "SELECT * FROM websites WHERE website_id =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(websiteId))
-      var json: JsonObject
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -95,14 +89,9 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
         if (res.succeeded()) {
           val rows = res.result()
           if (rows.size() > 0) {
-            json = json {
-              obj(
-                makeWebsiteJsonFields(rows.first())
-              )
-            }
-            message.reply(json)
+            message.reply(makeWebsite(rows.first()), websiteDeliveryOptions)
           } else {
-            message.reply(json { obj("website" to "{}") })
+            message.reply("No website found!")
           }
         }
       }
@@ -113,7 +102,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
    * Create a new website in the database
    */
   private fun createWebsite() {
-    val createWebsiteConsumer = eventBus.consumer<JsonObject>("process.scope.createWebsite")
+    val createWebsiteConsumer = eventBus.consumer<Websites>("process.scope.createWebsite")
     createWebsiteConsumer.handler { message ->
       val body = message.body()
       val query = "INSERT INTO websites (website_name) VALUES (?)"
@@ -127,7 +116,8 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.succeeded()) {
-          message.reply(res.result().property(JDBCPool.GENERATED_KEYS).getInteger(0))
+          body.websiteId = res.result().property(JDBCPool.GENERATED_KEYS).getInteger(0)
+          message.reply(body, websiteDeliveryOptions)
         } else {
           message.reply("Failed to create website")
         }
@@ -139,7 +129,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
    * Edit an existing website in the database
    */
   private fun editWebsite() {
-    val editWebsiteConsumer = eventBus.consumer<JsonObject>("process.scope.editWebsite")
+    val editWebsiteConsumer = eventBus.consumer<Websites>("process.scope.editWebsite")
     editWebsiteConsumer.handler { message ->
       val body = message.body()
       val query = "UPDATE websites SET website_name =? WHERE website_id =?"
@@ -153,7 +143,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.succeeded()) {
-          message.reply("Website updated successfully")
+          message.reply(body, websiteDeliveryOptions)
         } else {
           message.reply("Failed to update website")
         }
@@ -194,7 +184,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
     getAllStoreViewsConsumer.handler { message ->
       val query = "SELECT * FROM store_view"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val storeViews: MutableList<StoreView> = emptyList<StoreView>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -205,19 +195,12 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
         if (res.succeeded()) {
           val rows = res.result()
           if (rows.size() > 0) {
-            json = json {
-              obj(
-                "store_views" to rows.map { row ->
-                  obj(
-                    makeStoreViewJsonFields(row)
-                  )
-                }
-              )
+            rows.forEach { row ->
+              storeViews.add(makeStoreView(row))
             }
-            message.reply(json)
           }
-        } else {
-          message.reply(json { obj("store_views" to "{}") })
+
+          message.reply(storeViews, listDeliveryOptions)
         }
       }
     }
@@ -232,7 +215,6 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
       val storeViewId = message.body()
       val query = "SELECT * FROM store_view WHERE store_view_id =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(storeViewId))
-      var json: JsonObject
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -243,14 +225,9 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
         if (res.succeeded()) {
           val rows = res.result()
           if (rows.size() > 0) {
-            json = json {
-              obj(
-                makeStoreViewJsonFields(rows.first())
-              )
-            }
-            message.reply(json)
+            message.reply(makeStoreView(rows.first()), storeViewDeliveryOptions)
           } else {
-            message.reply(json { obj("store_view" to "{}") })
+            message.reply("No store view found!")
           }
         }
       }
@@ -261,7 +238,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
    * Create a new store view in the database
    */
   private fun createStoreView() {
-    val createStoreViewConsumer = eventBus.consumer<JsonObject>("process.scope.createStoreView")
+    val createStoreViewConsumer = eventBus.consumer<StoreView>("process.scope.createStoreView")
     createStoreViewConsumer.handler { message ->
       val body = message.body()
       val query = "INSERT INTO store_view (website_id, store_view_name) VALUES (?,?)"
@@ -275,7 +252,8 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.succeeded()) {
-          message.reply(res.result().property(JDBCPool.GENERATED_KEYS).getInteger(0))
+          body.storeViewId = res.result().property(JDBCPool.GENERATED_KEYS).getInteger(0)
+          message.reply(body, storeViewDeliveryOptions)
         } else {
           message.reply("Failed to create store view")
         }
@@ -287,7 +265,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
    * Edit an existing store view in the database
    */
   private fun editStoreView() {
-    val editStoreViewConsumer = eventBus.consumer<JsonObject>("process.scope.editStoreView")
+    val editStoreViewConsumer = eventBus.consumer<StoreView>("process.scope.editStoreView")
     editStoreViewConsumer.handler { message ->
       val body = message.body()
       val query = "UPDATE store_view SET website_id =?, store_view_name =? WHERE store_view_id =?"
@@ -301,7 +279,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.succeeded()) {
-          message.reply("Store view updated successfully")
+          message.reply(body, storeViewDeliveryOptions)
         } else {
           message.reply("Failed to update store view")
         }
@@ -342,7 +320,7 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
     getAllScopesConsumer.handler { message ->
       val query = "SELECT * FROM store_view INNER JOIN websites ON store_view.website_id = websites.website_id"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val fullScopes: MutableList<FullScope> = emptyList<FullScope>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -353,19 +331,12 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
         if (res.succeeded()) {
           val rows = res.result()
           if (rows.size() > 0) {
-            json = json {
-              obj(
-                "scopes" to rows.map { row ->
-                  obj(
-                    makeFullScopeJsonFields(row)
-                  )
-                }
-              )
+            rows.forEach { row ->
+              fullScopes.add(makeFullScope(row))
             }
-            message.reply(json)
-          } else {
-            message.reply(json { obj("scopes" to "{}") })
           }
+
+          message.reply(fullScopes, listDeliveryOptions)
         }
       }
     }
@@ -382,7 +353,6 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
         " INNER JOIN websites ON store_view.website_id = websites.website_id" +
         " WHERE store_view_id =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(scopeId))
-      var json: JsonObject
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -393,14 +363,9 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
         if (res.succeeded()) {
           val rows = res.result()
           if (rows.size() > 0) {
-            json = json {
-              obj(
-                makeFullScopeJsonFields(rows.first())
-              )
-            }
-            message.reply(json)
+            message.reply(makeFullScope(rows.first()), fullScopeDeliveryOptions)
           } else {
-            message.reply(json { obj("scope" to "{}") })
+            message.reply("No full scope found!")
           }
         }
       }
@@ -413,10 +378,10 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
    * @param row The row from the database
    * @return A list with the JSON fields in the format of a Pair object
    */
-  private fun makeWebsiteJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "website_id" to row.getInteger("website_id"),
-      "website_name" to row.getString("website_name")
+  private fun makeWebsite(row: Row): Websites {
+    return Websites(
+      websiteId = row.getInteger("website_id"),
+      websiteName = row.getString("website_name")
     )
   }
 
@@ -426,11 +391,11 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
    * @param row The row from the database
    * @return A list with the JSON fields in the format of a Pair object
    **/
-  private fun makeStoreViewJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "store_view_id" to row.getInteger("store_view_id"),
-      "website_id" to row.getInteger("website_id"),
-      "store_view_name" to row.getString("store_view_name")
+  private fun makeStoreView(row: Row): StoreView {
+    return StoreView(
+      storeViewId = row.getInteger("store_view_id"),
+      storeViewName = row.getString("store_view_name"),
+      websiteId = row.getInteger("website_id")
     )
   }
 
@@ -440,12 +405,10 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
    * @param row The row from the database
    * @return A list with the JSON fields in the format of a Pair object
    **/
-  private fun makeFullScopeJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "store_view_id" to row.getInteger("store_view_id"),
-      "store_view_name" to row.getString("store_view_name"),
-      "website_id" to row.getInteger("website_id"),
-      "website_name" to row.getString("website_name")
+  private fun makeFullScope(row: Row): FullScope {
+    return FullScope(
+      makeWebsite(row),
+      makeStoreView(row)
     )
   }
 
@@ -457,16 +420,16 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
    *
    * @return A Tuple with the query parameters
    **/
-  private fun makeWebsiteTuple(body: JsonObject, putRequest: Boolean): Tuple {
+  private fun makeWebsiteTuple(body: Websites, putRequest: Boolean): Tuple {
 
     val websiteTuple: Tuple = if (putRequest) {
       Tuple.of(
-        body.getString("website_name"),
-        body.getInteger("website_id")
+        body.websiteName,
+        body.websiteId
       )
     } else {
       Tuple.of(
-        body.getString("website_name")
+        body.websiteName
       )
     }
 
@@ -481,17 +444,17 @@ class ScopeJdbcVerticle:  AbstractVerticle() {
    *
    * @return A Tuple with the query parameters
    **/
-  private fun makeStoreViewTuple(body: JsonObject, putRequest: Boolean): Tuple {
+  private fun makeStoreViewTuple(body: StoreView, putRequest: Boolean): Tuple {
     val storeViewTuple: Tuple = if (putRequest) {
       Tuple.of(
-        body.getInteger("website_id"),
-        body.getString("store_view_name"),
-        body.getInteger("store_view_id")
+        body.websiteId,
+        body.storeViewName,
+        body.storeViewId
       )
     } else {
       Tuple.of(
-        body.getInteger("website_id"),
-        body.getString("store_view_name"),
+        body.websiteId,
+        body.storeViewName,
       )
     }
 

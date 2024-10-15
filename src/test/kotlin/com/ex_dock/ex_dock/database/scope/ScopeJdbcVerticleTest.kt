@@ -1,7 +1,9 @@
 package com.ex_dock.ex_dock.database.scope
 
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -19,81 +21,59 @@ import org.junit.jupiter.api.extension.ExtendWith
 class ScopeJdbcVerticleTest {
   private lateinit var eventBus: EventBus
   private var storeViewId = -1
-  private var websiteId = -1
+  private var websiteId: Int? = -1
   private val verticleDeployHelper = VerticleDeployHelper()
+  private val websiteDeliveryOptions: DeliveryOptions = DeliveryOptions().setCodecName("WebsitesCodec")
+  private val storeViewDeliveryOptions: DeliveryOptions = DeliveryOptions().setCodecName("StoreViewCodec")
+  private val websiteList: MutableList<Websites> = emptyList<Websites>().toMutableList()
+  private var storeViewList: MutableList<StoreView> = emptyList<StoreView>().toMutableList()
+  private val fullScopeList: MutableList<FullScope> = emptyList<FullScope>().toMutableList()
 
-  private var websiteJson = json {
-    obj(
-      "website_id" to websiteId,
-      "website_name" to "test name"
-    )
-  }
+  private var website = Websites(
+    websiteId = websiteId,
+    websiteName = "Test Name"
+  )
 
-  private var storeViewJson = json {
-    obj(
-      "store_view_id" to storeViewId,
-      "website_id" to websiteId,
-      "store_view_name" to "test store view name"
-    )
-  }
+  private var storeView = StoreView(
+    storeViewId = storeViewId,
+    storeViewName = "Test Store View Name",
+    websiteId = websiteId!!
+  )
 
-  private var fullScopeJson = json {
-    obj(
-      "store_view_id" to storeViewId,
-      "store_view_name" to "test store view name",
-      "website_id" to websiteId,
-      "website_name" to "test name"
-    )
-  }
+  private var fullScope = FullScope(
+    website = website,
+    storeView = storeView
+  )
 
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
+      .registerCodec(GenericCodec(MutableList::class.java))
+      .registerCodec(GenericCodec(Websites::class.java))
+      .registerCodec(GenericCodec(StoreView::class.java))
+      .registerCodec(GenericCodec(FullScope::class.java))
     verticleDeployHelper.deployWorkerHelper(vertx,
       ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
-        eventBus.request<Int>("process.scope.createWebsite", websiteJson).onFailure {
+        eventBus.request<Websites>("process.scope.createWebsite", website, websiteDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createWebsiteMsg ->
           assert(createWebsiteMsg.succeeded())
-          websiteId = createWebsiteMsg.result().body()
+          website = createWebsiteMsg.result().body()
+          websiteId = website.websiteId
+          storeView.websiteId = websiteId!!
 
-          websiteJson = json {
-            obj(
-              "website_id" to websiteId,
-              "website_name" to "test name"
-            )
-          }
-
-          storeViewJson = json {
-            obj(
-              "store_view_id" to storeViewId,
-              "website_id" to websiteId,
-              "store_view_name" to "test store view name"
-            )
-          }
-
-          eventBus.request<Int>("process.scope.createStoreView", storeViewJson).onFailure {
+          eventBus.request<StoreView>("process.scope.createStoreView", storeView, storeViewDeliveryOptions).onFailure {
             testContext.failNow(it)
           }.onComplete { createStoreViewMsg ->
             assert(createStoreViewMsg.succeeded())
-            storeViewId = createStoreViewMsg.result().body()
+            storeView = createStoreViewMsg.result().body()
+            storeViewId = storeView.storeViewId
+            fullScope.website = website
+            fullScope.storeView = storeView
 
-            storeViewJson = json {
-              obj(
-                "store_view_id" to storeViewId,
-                "website_id" to websiteId,
-                "store_view_name" to "test store view name"
-              )
-            }
-
-            fullScopeJson = json {
-              obj(
-                "store_view_id" to storeViewId,
-                "store_view_name" to "test store view name",
-                "website_id" to websiteId,
-                "website_name" to "test name"
-              )
-            }
+            websiteList.add(website)
+            storeViewList.add(storeView)
+            fullScopeList.add(fullScope)
 
             testContext.completeNow()
           }
@@ -102,12 +82,11 @@ class ScopeJdbcVerticleTest {
   }
   @Test
   fun testGetAllWebsites(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.scope.getAllWebsites", "").onFailure {
+    eventBus.request<MutableList<Websites>>("process.scope.getAllWebsites", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllWebsitesMsg ->
       assert(getAllWebsitesMsg.succeeded())
-      assertEquals(json { obj("websites" to listOf(websiteJson))
-      }, getAllWebsitesMsg.result().body())
+      assertEquals(websiteList, getAllWebsitesMsg.result().body())
 
       testContext.completeNow()
     }
@@ -115,11 +94,11 @@ class ScopeJdbcVerticleTest {
 
   @Test
   fun testGetWebsiteById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.scope.getWebsiteById", websiteId).onFailure {
+    eventBus.request<Websites>("process.scope.getWebsiteById", websiteId).onFailure {
       testContext.failNow(it)
     }.onComplete { getWebsiteByIdMsg ->
       assert(getWebsiteByIdMsg.succeeded())
-      assertEquals(websiteJson, getWebsiteByIdMsg.result().body())
+      assertEquals(website, getWebsiteByIdMsg.result().body())
 
       testContext.completeNow()
     }
@@ -127,24 +106,22 @@ class ScopeJdbcVerticleTest {
 
   @Test
   fun testUpdateWebsite(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedWebsiteJson = json {
-      obj(
-        "website_id" to websiteId,
-        "website_name" to "updated test name"
-      )
-    }
+    val updatedWebsite = Websites(
+      websiteId = websiteId,
+      websiteName = "Updated Test Name"
+    )
 
-    eventBus.request<JsonObject>("process.scope.editWebsite", updatedWebsiteJson).onFailure {
+    eventBus.request<Websites>("process.scope.editWebsite", updatedWebsite, websiteDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateWebsiteMsg ->
       assert(updateWebsiteMsg.succeeded())
-      assertEquals("Website updated successfully", updateWebsiteMsg.result().body())
+      assertEquals(updatedWebsite, updateWebsiteMsg.result().body())
 
-      eventBus.request<JsonObject>("process.scope.getWebsiteById", websiteId).onFailure {
+      eventBus.request<Websites>("process.scope.getWebsiteById", websiteId).onFailure {
         testContext.failNow(it)
       }.onComplete { getWebsiteByIdMsg ->
         assert(getWebsiteByIdMsg.succeeded())
-        assertEquals(updatedWebsiteJson, getWebsiteByIdMsg.result().body())
+        assertEquals(updatedWebsite, getWebsiteByIdMsg.result().body())
 
         testContext.completeNow()
       }
@@ -153,12 +130,11 @@ class ScopeJdbcVerticleTest {
 
   @Test
   fun testGetAllStoreViews(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.scope.getAllStoreViews", websiteId).onFailure {
+    eventBus.request<MutableList<StoreView>>("process.scope.getAllStoreViews", websiteId).onFailure {
       testContext.failNow(it)
     }.onComplete { getAllStoreViewsMsg ->
       assert(getAllStoreViewsMsg.succeeded())
-      assertEquals(json { obj("store_views" to listOf(storeViewJson))
-      }, getAllStoreViewsMsg.result().body())
+      assertEquals(storeViewList, getAllStoreViewsMsg.result().body())
 
       testContext.completeNow()
     }
@@ -166,11 +142,11 @@ class ScopeJdbcVerticleTest {
 
   @Test
   fun testGetStoreViewById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.scope.getStoreViewById", storeViewId).onFailure {
+    eventBus.request<StoreView>("process.scope.getStoreViewById", storeViewId).onFailure {
       testContext.failNow(it)
     }.onComplete { getStoreViewByIdMsg ->
       assert(getStoreViewByIdMsg.succeeded())
-      assertEquals(storeViewJson, getStoreViewByIdMsg.result().body())
+      assertEquals(storeView, getStoreViewByIdMsg.result().body())
 
       testContext.completeNow()
     }
@@ -178,25 +154,23 @@ class ScopeJdbcVerticleTest {
 
   @Test
   fun testUpdateStoreView(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedStoreViewJson = json {
-      obj(
-        "store_view_id" to storeViewId,
-        "website_id" to websiteId,
-        "store_view_name" to "updated test store view name"
-      )
-    }
+    val updatedStoreView = StoreView(
+      storeViewId = storeViewId,
+      storeViewName = "Updated Test Store View Name",
+      websiteId = websiteId!!
+    )
 
-    eventBus.request<JsonObject>("process.scope.editStoreView", updatedStoreViewJson).onFailure {
+    eventBus.request<StoreView>("process.scope.editStoreView", updatedStoreView, storeViewDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateStoreViewMsg ->
       assert(updateStoreViewMsg.succeeded())
-      assertEquals("Store view updated successfully", updateStoreViewMsg.result().body())
+      assertEquals(updatedStoreView, updateStoreViewMsg.result().body())
 
-      eventBus.request<JsonObject>("process.scope.getStoreViewById", storeViewId).onFailure {
+      eventBus.request<StoreView>("process.scope.getStoreViewById", storeViewId).onFailure {
         testContext.failNow(it)
       }.onComplete { getStoreViewByIdMsg ->
         assert(getStoreViewByIdMsg.succeeded())
-        assertEquals(updatedStoreViewJson, getStoreViewByIdMsg.result().body())
+        assertEquals(updatedStoreView, getStoreViewByIdMsg.result().body())
 
         testContext.completeNow()
       }
@@ -205,12 +179,11 @@ class ScopeJdbcVerticleTest {
 
   @Test
   fun testGetAllFullScopes(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.scope.getAllScopes", "").onFailure {
+    eventBus.request<MutableList<FullScope>>("process.scope.getAllScopes", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllFullScopesMsg ->
       assert(getAllFullScopesMsg.succeeded())
-      assertEquals(json { obj("scopes" to listOf(fullScopeJson))
-      }, getAllFullScopesMsg.result().body())
+      assertEquals(fullScopeList, getAllFullScopesMsg.result().body())
 
       testContext.completeNow()
     }
@@ -218,11 +191,11 @@ class ScopeJdbcVerticleTest {
 
   @Test
   fun testGetFullScopeById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.scope.getScopeById", storeViewId).onFailure {
+    eventBus.request<FullScope>("process.scope.getScopeById", storeViewId).onFailure {
       testContext.failNow(it)
     }.onComplete { getFullScopeByIdMsg ->
       assert(getFullScopeByIdMsg.succeeded())
-      assertEquals(fullScopeJson, getFullScopeByIdMsg.result().body())
+      assertEquals(fullScope, getFullScopeByIdMsg.result().body())
 
       testContext.completeNow()
     }
