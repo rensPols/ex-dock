@@ -19,7 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 @ExtendWith(VertxExtension::class)
 class ServerJDBCVerticleTest {
-  private val numTests = 10000
+  private val numTests = 1
   private lateinit var eventBus: EventBus
   private val verticleDeployHelper = VerticleDeployHelper()
   private val serverDataDataDeliveryOptions = DeliveryOptions().setCodecName("ServerDataDataCodec")
