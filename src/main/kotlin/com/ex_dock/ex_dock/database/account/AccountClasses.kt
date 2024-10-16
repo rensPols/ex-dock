@@ -26,5 +26,11 @@ enum class Permission(name: String) {
   NONE("none"),
   READ("read"),
   WRITE("write"),
-  READ_WRITE("read-write"),
+  READ_WRITE("read-write");
+
+  companion object {
+    fun fromString(value: String): Permission {
+      return values().find { it.name == value } ?: NONE
+    }
+  }
 }
