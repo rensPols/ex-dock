@@ -3,17 +3,17 @@ package com.ex_dock.ex_dock.database.account
 data class User(var userId: Int, var email: String, var password: String)
 
 data class BackendPermissions(
-  val userId: Int,
-  var userPermissions: Permissions,
-  var serverSettings: Permissions,
-  var template: Permissions,
-  var categoryContent: Permissions,
-  var categoryProducts: Permissions,
-  var productContent: Permissions,
-  var productPrice: Permissions,
-  var productWarehouse: Permissions,
-  var textPages: Permissions,
-  var apiKey: String?
+    val userId: Int,
+    var userPermission: Permission,
+    var serverSettings: Permission,
+    var template: Permission,
+    var categoryContent: Permission,
+    var categoryProducts: Permission,
+    var productContent: Permission,
+    var productPrice: Permission,
+    var productWarehouse: Permission,
+    var textPages: Permission,
+    var apiKey: String?
 )
 
 data class FullUser(var user: User, var backendPermissions: BackendPermissions) {
@@ -22,7 +22,7 @@ data class FullUser(var user: User, var backendPermissions: BackendPermissions) 
   }
 }
 
-enum class Permissions(name: String) {
+enum class Permission(name: String) {
   NONE("none"),
   READ("read"),
   WRITE("write"),
