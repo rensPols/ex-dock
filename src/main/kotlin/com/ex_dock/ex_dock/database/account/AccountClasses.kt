@@ -16,6 +16,12 @@ data class BackendPermissions(
   var apiKey: String?
 )
 
+data class FullUser(var user: User, var backendPermissions: BackendPermissions) {
+  init {
+    require(user.userId == backendPermissions.userId)
+  }
+}
+
 enum class Permissions(name: String) {
   NONE("none"),
   READ("read"),
