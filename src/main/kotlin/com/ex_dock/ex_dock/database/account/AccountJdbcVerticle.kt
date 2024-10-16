@@ -2,6 +2,7 @@ package com.ex_dock.ex_dock.database.account
 
 import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.jdbcclient.JDBCPool
@@ -18,7 +19,25 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
   private lateinit var eventBus: EventBus
 
-  private val failedMessage = "failed"
+
+  companion object {
+    const val FAILED_MESSAGE = "failed"
+    const val NO_USER_MESSAGE = "User does not exist"
+    const val USER_DELETED_SUCCESS = "User deleted successfully"
+
+    const val BACKEND_PERMISSION_CREATION_FAILED = "Failed to create backend permissions"
+    const val BACKEND_PERMISSION_UPDATED = "Backend Permissions were successfully updated!"
+    const val BACKEND_PERMISSION_UPDATE_FAILED = "Failed to update backend permissions"
+    const val BACKEND_PERMISSION_DELETED = "Backend Permissions were successfully deleted!"
+    const val BACKEND_PERMISSION_DELETE_FAILED = "Failed to delete backend permissions"
+  }
+
+  private val userDeliveryOptions = DeliveryOptions().setCodecName("UserCodec")
+  private val userListDeliveryOptions = DeliveryOptions().setCodecName("UserListCodec")
+  private val backendPermissionsDeliveryOptions = DeliveryOptions().setCodecName("BackendPermissionsCodec")
+  private val backendPermissionsListDeliveryOptions = DeliveryOptions().setCodecName("BackendPermissionsListCodec")
+  private val fullUserDeliveryOptions = DeliveryOptions().setCodecName("FullUserCodec")
+  private val fullUserListDeliveryOptions = DeliveryOptions().setCodecName("FullUserListCodec")
 
   override fun start() {
     client = Connection().getConnection(vertx)
@@ -52,24 +71,25 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "users" to rows.map { row ->
-                obj(
-                  makeUserJsonFields(row)
-                )
-              }
-            )
-          }
-          message.reply(json)
+//          json = json {
+//            obj(
+//              "users" to rows.map { row ->
+//                obj(
+//                  makeUserJsonFields(row)
+//                )
+//              }
+//            )
+//          }
+//          message.reply(json)
+          message.reply(rows.map { row -> makeUserObject(row) }, userListDeliveryOptions)
         } else {
-          message.reply(json { obj("users" to "{}") })
+          message.reply(emptyList<User>(), userListDeliveryOptions)
         }
       }
     }
@@ -85,20 +105,22 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeUserJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+//          json = json {
+//            obj(
+//              makeUserJsonFields(rows.first())
+//            )
+//          }
+//          message.reply(json)
+          message.reply(makeUserObject(rows.first()), userDeliveryOptions)
         } else {
-          message.reply(json { obj("user" to "{}") })
+//          message.reply(json { obj("user" to "{}") })
+          message.fail(404, json {obj("user" to "{}") }.toString())
         }
       }
     }
@@ -114,7 +136,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(400, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
@@ -134,14 +156,14 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
           message.reply("User updated successfully")
         } else {
-          message.reply("Failed to update user")
+          message.fail(404, NO_USER_MESSAGE)
         }
       }
     }
@@ -156,14 +178,14 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
-          message.reply("User deleted successfully")
+          message.reply(USER_DELETED_SUCCESS)
         } else {
-          message.reply("Failed to delete user")
+          message.fail(404, NO_USER_MESSAGE)
         }
       }
     }
@@ -178,24 +200,25 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "backend_permissions" to rows.map { row ->
-                obj(
-                  makeBackendPermissionsJsonFields(row)
-                )
-              }
-            )
-          }
-          message.reply(json)
+//          json = json {
+//            obj(
+//              "backend_permissions" to rows.map { row ->
+//                obj(
+//                  makeBackendPermissionsJsonFields(row)
+//                )
+//              }
+//            )
+//          }
+//          message.reply(json)
+          message.reply(rows.map { row -> makeBackendPermissionsObject(row) }, backendPermissionsListDeliveryOptions)
         } else {
-          message.reply(json { obj("backend_permissions" to "{}") })
+          message.reply(emptyList<BackendPermissions>(), backendPermissionsListDeliveryOptions)
         }
       }
     }
@@ -212,20 +235,21 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeBackendPermissionsJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+//          json = json {
+//            obj(
+//              makeBackendPermissionsJsonFields(rows.first())
+//            )
+//          }
+//          message.reply(json)
+          message.reply(makeBackendPermissionsObject(rows.first()), backendPermissionsDeliveryOptions)
         } else {
-          message.reply(json { obj("backend_permissions" to "{}") })
+          message.fail(404, json { obj("backend_permissions" to "{}") }.toString())
         }
       }
     }
@@ -245,14 +269,15 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
-          message.reply("Backend Permissions were successfully created!")
+          val lastInsertID: Row = res.property(JDBCPool.GENERATED_KEYS)
+          message.reply(lastInsertID.getInteger(0))
         } else {
-          message.reply("Failed to create backend permissions")
+          message.fail(400, BACKEND_PERMISSION_CREATION_FAILED)
         }
       }
     }
@@ -274,14 +299,14 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
-          message.reply("Backend permissions updated successfully")
+          message.reply(BACKEND_PERMISSION_UPDATED)
         } else {
-          message.reply("Failed to update backend permissions")
+          message.fail(400, BACKEND_PERMISSION_UPDATE_FAILED)
         }
       }
     }
@@ -297,14 +322,14 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
-          message.reply("Backend permissions deleted successfully")
+          message.reply(BACKEND_PERMISSION_DELETED)
         } else {
-          message.reply("Failed to delete backend permissions")
+          message.fail(400, BACKEND_PERMISSION_DELETE_FAILED)
         }
       }
     }
@@ -322,24 +347,25 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "full_user_info" to rows.map { row ->
-                obj(
-                  makeFullUserInformationJsonFields(row)
-                )
-              }
-            )
-          }
-          message.reply(json)
+//          json = json {
+//            obj(
+//              "full_user_info" to rows.map { row ->
+//                obj(
+//                  makeFullUserInformationJsonFields(row)
+//                )
+//              }
+//            )
+//          }
+//          message.reply(json)
+          message.reply(rows.map { row -> makeFullUserObject(row) }, fullUserListDeliveryOptions)
         } else {
-          message.reply(json { obj("full_user_info" to "{}") })
+          message.reply(emptyList<FullUser>(), fullUserListDeliveryOptions)
         }
       }
     }
@@ -359,20 +385,21 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.reply(failedMessage)
+        message.fail(500, FAILED_MESSAGE)
       }
 
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-                  makeFullUserInformationJsonFields(rows.first())
-              )
-            }
-          message.reply(json)
+//          json = json {
+//            obj(
+//                  makeFullUserInformationJsonFields(rows.first())
+//              )
+//            }
+//          message.reply(json)
+          message.reply(makeFullUserObject(rows.first()), fullUserDeliveryOptions)
           } else {
-          message.reply(json { obj("full_user_info" to "{}") })
+          message.fail(404, json { obj("full_user_info" to "{}") }.toString())
         }
       }
     }
@@ -383,6 +410,14 @@ class AccountJdbcVerticle: AbstractVerticle() {
       "user_id" to row.getInteger("user_id"),
       "email" to row.getString("email"),
       "password" to row.getString("password"),
+    )
+  }
+
+  private fun makeUserObject(row: Row): User {
+    return User(
+      userId = row.getInteger("user_id"),
+      email = row.getString("email"),
+      password = row.getString("password")
     )
   }
 
@@ -402,6 +437,22 @@ class AccountJdbcVerticle: AbstractVerticle() {
     )
   }
 
+  private fun makeBackendPermissionsObject(row: Row) : BackendPermissions {
+    return BackendPermissions(
+      userId = row.getInteger("user_id"),
+      userPermission = Permission.fromString(row.getString("user_permissions")),
+      serverSettings = Permission.fromString(row.getString("server_settings")),
+      template = Permission.fromString(row.getString("template")),
+      categoryContent = Permission.fromString(row.getString("category_content")),
+      categoryProducts = Permission.fromString(row.getString("category_products")),
+      productContent = Permission.fromString(row.getString("product_content")),
+      productPrice = Permission.fromString(row.getString("product_price")),
+      productWarehouse = Permission.fromString(row.getString("product_warehouse")),
+      textPages = Permission.fromString(row.getString("text_pages")),
+      apiKey = row.getString("API_KEY")
+    )
+  }
+
   private fun makeFullUserInformationJsonFields(row: Row): List<Pair<String, Any?>> {
     return listOf(
       "user_id" to row.getInteger("user_id"),
@@ -417,6 +468,13 @@ class AccountJdbcVerticle: AbstractVerticle() {
       "product_warehouse" to row.getString("product_warehouse"),
       "text_pages" to row.getString("text_pages"),
       "api_key" to row.getString("API_KEY")
+    )
+  }
+
+  private fun makeFullUserObject(row: Row): FullUser {
+    return FullUser(
+      user = makeUserObject(row),
+      backendPermissions = makeBackendPermissionsObject(row)
     )
   }
 
