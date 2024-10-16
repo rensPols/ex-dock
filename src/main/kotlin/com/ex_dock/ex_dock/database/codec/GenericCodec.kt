@@ -1,11 +1,16 @@
 package com.ex_dock.ex_dock.database.codec
 
-import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.MessageCodec
-import java.io.*
+import kotlin.reflect.KClass
+import io.vertx.core.buffer.Buffer
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.ObjectInputStream
+import java.io.ObjectOutput
+import java.io.ObjectOutputStream
 
-class GenericCodec<T>(cls: Class<T>): MessageCodec<T, T>{
-  private val clazz: Class<T> = cls
+class GenericCodec<T: Any>(private val codecClass: KClass<T>): MessageCodec<T, T> {
   override fun encodeToWire(buffer: Buffer, s: T) {
     val bos = ByteArrayOutputStream()
     var out: ObjectOutput? = null
@@ -60,7 +65,7 @@ class GenericCodec<T>(cls: Class<T>): MessageCodec<T, T>{
   }
 
   override fun name(): String {
-    return clazz.simpleName+"Codec"
+    return codecClass.simpleName+"Codec"
   }
 
   override fun systemCodecID(): Byte {
