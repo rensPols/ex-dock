@@ -1,7 +1,10 @@
 package com.ex_dock.ex_dock.database.product
 
+import com.ex_dock.ex_dock.database.category.PageIndex
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -23,118 +26,78 @@ class ProductJdbcVerticleTest {
 
   private var productId = -1
 
-  private var productJson = json {
-    obj(
-      "product_id" to productId,
-      "name" to "test name",
-      "short_name" to "test short name",
-      "description" to "test description",
-      "short_description" to "test short description"
-    )
-  }
+  private var product = Products(
+    productId = productId,
+    name = "test name",
+    shortName = "test short name",
+    description = "test description",
+    shortDescription = "test short description"
+  )
 
-  private var productSeoJson = json {
-    obj(
-      "product_id" to productId,
-      "meta_title" to "test meta_title",
-      "meta_description" to "test meta_description",
-      "meta_keywords" to "test meta_keywords",
-      "page_index" to "index, follow"
-    )
-  }
+  private var productSeo = ProductsSeo(
+    productId = productId,
+    metaTitle = "test meta_title",
+    metaDescription = "test meta_description",
+    metaKeywords = "test meta_keywords",
+    pageIndex = convertStringToPageIndex("index, follow")
+  )
 
-  private var productPricingJson = json {
-    obj(
-      "product_id" to productId,
-      "price" to 10.0,
-      "sale_price" to 10.0,
-      "cost_price" to 4.0
-    )
-  }
+  private var productPricing = ProductsPricing(
+    productId = productId,
+    price = 10.0,
+    salePrice = 10.0,
+    costPrice = 4.0
+  )
 
-  private var fullProductJson = json {
-    obj(
-      "product_id" to productId,
-      "name" to "test name",
-      "short_name" to "test short name",
-      "description" to "test description",
-      "short_description" to "test short description",
-      "meta_title" to "test meta_title",
-      "meta_description" to "test meta_description",
-      "meta_keywords" to "test meta_keywords",
-      "page_index" to "index, follow",
-      "price" to 10.0,
-      "sale_price" to 10.0,
-      "cost_price" to 4.0
-    )
-  }
+  private var fullProduct = FullProduct(
+    product = product,
+    productsSeo = productSeo,
+    productsPricing = productPricing
+  )
+
+  private val productDeliveryOptions = DeliveryOptions().setCodecName("ProductsCodec")
+  private val productSeoDeliveryOptions = DeliveryOptions().setCodecName("ProductsSeoCodec")
+  private val productPricingDeliveryOptions = DeliveryOptions().setCodecName("ProductsPricingCodec")
+  private val productList: MutableList<Products> = emptyList<Products>().toMutableList()
+  private val productsSeoList : MutableList<ProductsSeo> = emptyList<ProductsSeo>().toMutableList()
+  private val productsPricingList: MutableList<ProductsPricing> = emptyList<ProductsPricing>().toMutableList()
+  private val fullProductList: MutableList<FullProduct> = emptyList<FullProduct>().toMutableList()
 
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
+      .registerCodec(GenericCodec(Products::class.java))
+      .registerCodec(GenericCodec(ProductsSeo::class.java))
+      .registerCodec(GenericCodec(ProductsPricing::class.java))
+      .registerCodec(GenericCodec(FullProduct::class.java))
+      .registerCodec(GenericCodec(MutableList::class.java))
     verticleDeployHelper.deployWorkerHelper(vertx,
       ProductJdbcVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
-      eventBus.request<Int>("process.products.createProduct", productJson).onFailure {
+      eventBus.request<Products>("process.products.createProduct", product, productDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createProductMsg ->
-        productId = createProductMsg.result().body()
-        assertEquals("Int", createProductMsg.result().body()::class.simpleName)
+        product = createProductMsg.result().body()
+        productId = product.productId
+        assertEquals(product, createProductMsg.result().body())
 
-        productJson = json {
-          obj(
-            "product_id" to productId,
-            "name" to "test name",
-            "short_name" to "test short name",
-            "description" to "test description",
-            "short_description" to "test short description"
-          )
-        }
+        product.productId = productId
+        productSeo.productId = productId
+        productPricing.productId = productId
+        fullProduct.product = product
+        productList.add(product)
+        productsSeoList.add(productSeo)
+        productsPricingList.add(productPricing)
+        fullProductList.add(fullProduct)
 
-        productSeoJson = json {
-          obj(
-            "product_id" to productId,
-            "meta_title" to "test meta_title",
-            "meta_description" to "test meta_description",
-            "meta_keywords" to "test meta_keywords",
-            "page_index" to "index, follow"
-          )
-        }
-
-        productPricingJson = json {
-          obj(
-            "product_id" to productId,
-            "price" to 10.0,
-            "sale_price" to 10.0,
-            "cost_price" to 4.0
-          )
-        }
-
-        fullProductJson = json {
-          obj(
-            "product_id" to productId,
-            "name" to "test name",
-            "short_name" to "test short name",
-            "description" to "test description",
-            "short_description" to "test short description",
-            "meta_title" to "test meta_title",
-            "meta_description" to "test meta_description",
-            "meta_keywords" to "test meta_keywords",
-            "page_index" to "index, follow",
-            "price" to 10.0,
-            "sale_price" to 10.0,
-            "cost_price" to 4.0
-          )
-        }
-
-        eventBus.request<Int>("process.products.createProductSeo", productSeoJson).onFailure {
+        eventBus.request<ProductsSeo>("process.products.createProductSeo", productSeo, productSeoDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createProductSeoMsg ->
-          assertEquals("Product SEO created successfully", createProductSeoMsg.result().body())
+          assertEquals(productSeo, createProductSeoMsg.result().body())
 
-          eventBus.request<Int>("process.products.createProductPricing", productPricingJson).onFailure {
+          eventBus.request<ProductsPricing>("process.products.createProductPricing", productPricing, productPricingDeliveryOptions).onFailure {
             testContext.failNow(it)
           }.onComplete { createProductPricingMsg ->
-            assertEquals("Product pricing created successfully", createProductPricingMsg.result().body())
+            assertEquals(productPricing, createProductPricingMsg.result().body())
 
             testContext.completeNow()
           }
@@ -145,11 +108,11 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testGetAllProducts(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.products.getAllProducts", "").onFailure {
+    eventBus.request<MutableList<Products>>("process.products.getAllProducts", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllProductsMsg ->
       assert(getAllProductsMsg.succeeded())
-      assertEquals(json { obj("products" to listOf(productJson)) }, getAllProductsMsg.result().body())
+      assertEquals(productList, getAllProductsMsg.result().body())
 
       testContext.completeNow()
     }
@@ -157,11 +120,11 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testGetProductById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.products.getProductById", productId).onFailure {
+    eventBus.request<Products>("process.products.getProductById", productId).onFailure {
       testContext.failNow(it)
     }.onComplete { getProductByIdMsg ->
       assert(getProductByIdMsg.succeeded())
-      assertEquals(productJson, getProductByIdMsg.result().body())
+      assertEquals(product, getProductByIdMsg.result().body())
 
       testContext.completeNow()
     }
@@ -169,27 +132,25 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testUpdateProduct(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedProductJson = json {
-      obj(
-        "product_id" to productId,
-        "name" to "updated test name",
-        "short_name" to "updated test short name",
-        "description" to "updated test description",
-        "short_description" to "updated test short description"
-      )
-    }
+    val updatedProduct = Products(
+      productId = productId,
+      name = "updated test name",
+      shortName = "updated test short name",
+      description = "updated test description",
+      shortDescription = "updated test short description"
+    )
 
-    eventBus.request<JsonObject>("process.products.updateProduct", updatedProductJson).onFailure {
+    eventBus.request<Products>("process.products.updateProduct", updatedProduct, productDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateProductMsg ->
       assert(updateProductMsg.succeeded())
-      assertEquals("Product updated successfully", updateProductMsg.result().body())
+      assertEquals(updatedProduct, updateProductMsg.result().body())
 
-      eventBus.request<JsonObject>("process.products.getProductById", productId).onFailure {
+      eventBus.request<Products>("process.products.getProductById", productId).onFailure {
         testContext.failNow(it)
       }.onComplete { updatedProductMsg ->
         assert(updatedProductMsg.succeeded())
-        assertEquals(updatedProductJson, updatedProductMsg.result().body())
+        assertEquals(updatedProduct, updatedProductMsg.result().body())
 
         testContext.completeNow()
       }
@@ -198,11 +159,11 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testGetAllProductSeo(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.products.getAllProductsSeo", "").onFailure {
+    eventBus.request<MutableList<ProductsSeo>>("process.products.getAllProductsSeo", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllProductSeoMsg ->
       assert(getAllProductSeoMsg.succeeded())
-      assertEquals(json { obj("productSeo" to listOf(productSeoJson)) }, getAllProductSeoMsg.result().body())
+      assertEquals(productsSeoList, getAllProductSeoMsg.result().body())
 
       testContext.completeNow()
     }
@@ -210,11 +171,11 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testGetProductSeoById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.products.getProductSeoById", productId).onFailure {
+    eventBus.request<ProductsSeo>("process.products.getProductSeoById", productId).onFailure {
       testContext.failNow(it)
     }.onComplete { getProductSeoByIdMsg ->
       assert(getProductSeoByIdMsg.succeeded())
-      assertEquals(productSeoJson, getProductSeoByIdMsg.result().body())
+      assertEquals(productSeo, getProductSeoByIdMsg.result().body())
 
       testContext.completeNow()
     }
@@ -222,27 +183,25 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testUpdateProductSeo(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedProductSeoJson = json {
-      obj(
-        "product_id" to productId,
-        "meta_title" to "updated test meta_title",
-        "meta_description" to "updated test meta_description",
-        "meta_keywords" to "updated test meta_keywords",
-        "page_index" to "index, follow"
-      )
-    }
+    val updatedProductSeo = ProductsSeo(
+      productId = productId,
+      metaTitle = "updated test meta_title",
+      metaDescription = "updated test meta_description",
+      metaKeywords = "updated test meta_keywords",
+      pageIndex = convertStringToPageIndex("noindex, follow")
+    )
 
-    eventBus.request<JsonObject>("process.products.updateProductSeo", updatedProductSeoJson).onFailure {
+    eventBus.request<ProductsSeo>("process.products.updateProductSeo", updatedProductSeo, productSeoDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateProductSeoMsg ->
       assert(updateProductSeoMsg.succeeded())
-      assertEquals("Product SEO updated successfully", updateProductSeoMsg.result().body())
+      assertEquals(updatedProductSeo, updateProductSeoMsg.result().body())
 
-      eventBus.request<JsonObject>("process.products.getProductSeoById", productId).onFailure {
+      eventBus.request<ProductsSeo>("process.products.getProductSeoById", productId).onFailure {
         testContext.failNow(it)
       }.onComplete { updatedProductSeoMsg ->
         assert(updatedProductSeoMsg.succeeded())
-        assertEquals(updatedProductSeoJson, updatedProductSeoMsg.result().body())
+        assertEquals(updatedProductSeo, updatedProductSeoMsg.result().body())
 
         testContext.completeNow()
       }
@@ -251,11 +210,11 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testGetAllProductPricing(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.products.getAllProductsPricing", "").onFailure {
+    eventBus.request<ProductsPricing>("process.products.getAllProductsPricing", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllProductPricingMsg ->
       assert(getAllProductPricingMsg.succeeded())
-      assertEquals(json { obj("productsPricing" to listOf(productPricingJson)) }, getAllProductPricingMsg.result().body())
+      assertEquals(productsPricingList, getAllProductPricingMsg.result().body())
 
       testContext.completeNow()
     }
@@ -263,11 +222,11 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testGetProductPricingById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.products.getProductPricingById", productId).onFailure {
+    eventBus.request<ProductsPricing>("process.products.getProductPricingById", productId).onFailure {
       testContext.failNow(it)
     }.onComplete { getProductPricingByIdMsg ->
       assert(getProductPricingByIdMsg.succeeded())
-      assertEquals(productPricingJson, getProductPricingByIdMsg.result().body())
+      assertEquals(productPricing, getProductPricingByIdMsg.result().body())
 
       testContext.completeNow()
     }
@@ -275,26 +234,24 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testUpdateProductPricing(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedProductPricingJson = json {
-      obj(
-        "product_id" to productId,
-        "price" to 15.0,
-        "sale_price" to 15.0,
-        "cost_price" to 5.0
-      )
-    }
+    val updatedProductPricing = ProductsPricing(
+      productId = productId,
+      price = 10.99,
+      salePrice = 10.99,
+      costPrice = 20.99
+    )
 
-    eventBus.request<JsonObject>("process.products.updateProductPricing", updatedProductPricingJson).onFailure {
+    eventBus.request<ProductsPricing>("process.products.updateProductPricing", updatedProductPricing, productPricingDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateProductPricingMsg ->
       assert(updateProductPricingMsg.succeeded())
-      assertEquals("Product pricing updated successfully", updateProductPricingMsg.result().body())
+      assertEquals(updatedProductPricing, updateProductPricingMsg.result().body())
 
-      eventBus.request<JsonObject>("process.products.getProductPricingById", productId).onFailure {
+      eventBus.request<ProductsPricing>("process.products.getProductPricingById", productId).onFailure {
         testContext.failNow(it)
       }.onComplete { updatedProductPricingMsg ->
         assert(updatedProductPricingMsg.succeeded())
-        assertEquals(updatedProductPricingJson, updatedProductPricingMsg.result().body())
+        assertEquals(updatedProductPricing, updatedProductPricingMsg.result().body())
 
         testContext.completeNow()
       }
@@ -303,11 +260,11 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testGetAllFullProducts(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.products.getAllFullProducts", "").onFailure {
+    eventBus.request<MutableList<FullProduct>>("process.products.getAllFullProducts", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllFullProductsMsg ->
       assert(getAllFullProductsMsg.succeeded())
-      assertEquals(json { obj("fullProducts" to listOf(fullProductJson)) }, getAllFullProductsMsg.result().body())
+      assertEquals(fullProductList, getAllFullProductsMsg.result().body())
 
       testContext.completeNow()
     }
@@ -315,11 +272,11 @@ class ProductJdbcVerticleTest {
 
   @Test
   fun testGetFullProductById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.products.getFullProductsById", productId).onFailure {
+    eventBus.request<FullProduct>("process.products.getFullProductsById", productId).onFailure {
       testContext.failNow(it)
     }.onComplete { getFullProductByIdMsg ->
       assert(getFullProductByIdMsg.succeeded())
-      assertEquals(fullProductJson, getFullProductByIdMsg.result().body())
+      assertEquals(fullProduct, getFullProductByIdMsg.result().body())
 
       testContext.completeNow()
     }
@@ -348,6 +305,16 @@ class ProductJdbcVerticleTest {
           testContext.completeNow()
         }
       }
+    }
+  }
+
+  private fun convertStringToPageIndex(name: String): PageIndex {
+    return when (name) {
+      "noindex, follow" -> PageIndex.NoIndexFollow
+      "noindex, nofollow" -> PageIndex.NoIndexNoFollow
+      "index, follow" -> PageIndex.IndexFollow
+      "index, nofollow" -> PageIndex.IndexNoFollow
+      else -> throw IllegalArgumentException("Invalid page index: $name")
     }
   }
 }

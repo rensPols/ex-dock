@@ -187,6 +187,12 @@ data class MultiSelectFloat(
   var value: Float
 )
 
+data class FullProduct(
+  var product: Products,
+  var productsSeo: ProductsSeo,
+  var productsPricing: ProductsPricing
+)
+
 enum class Type(name: String) {
   BOOL("bool"),
   FLOAT("float"),

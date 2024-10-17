@@ -1,12 +1,12 @@
 package com.ex_dock.ex_dock.database.product
 
+import com.ex_dock.ex_dock.database.category.PageIndex
 import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.jdbcclient.JDBCPool
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
@@ -16,6 +16,11 @@ class ProductJdbcVerticle: AbstractVerticle() {
   private lateinit var client: Pool
   private lateinit var eventBus: EventBus
   private val failedMessage: String = "failed"
+  private val productDeliveryOptions = DeliveryOptions().setCodecName("ProductsCodec")
+  private val productSeoDeliveryOptions = DeliveryOptions().setCodecName("ProductsSeoCodec")
+  private val productPricingDeliveryOptions = DeliveryOptions().setCodecName("ProductsPricingCodec")
+  private val fullProductDeliveryOptions = DeliveryOptions().setCodecName("FullProductCodec")
+  private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
     client = Connection().getConnection(vertx)
@@ -51,7 +56,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
     val allProductsConsumer = eventBus.localConsumer<JsonObject>("process.products.getAllProducts")
     allProductsConsumer.handler { message ->
       val rowsFuture = client.preparedQuery("SELECT * FROM products").execute()
-      var json: JsonObject;
+      val productList: MutableList<Products> = emptyList<Products>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -59,19 +64,12 @@ class ProductJdbcVerticle: AbstractVerticle() {
       }.onSuccess { res ->
         val rows: RowSet<Row> = res
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "products" to rows.map { row ->
-                obj(
-                  makeProductJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            productList.add(makeProduct(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("{}")
         }
+
+        message.reply(productList, listDeliveryOptions)
       }
     }
   }
@@ -79,7 +77,6 @@ class ProductJdbcVerticle: AbstractVerticle() {
   private fun getProductById() {
     val getByIdConsumer = eventBus.localConsumer<Int>("process.products.getProductById")
     getByIdConsumer.handler { message ->
-      var json: JsonObject
       val productId = message.body()
       val rowsFuture = client.preparedQuery("SELECT * FROM products WHERE product_id = ?")
         .execute(Tuple.of(productId))
@@ -91,21 +88,16 @@ class ProductJdbcVerticle: AbstractVerticle() {
         val rows: RowSet<Row> = res
         if (rows.size() > 0) {
           val row = rows.first()
-          json = json {
-            obj(
-              makeProductJsonFields(row)
-            )
-          }
-          message.reply(json)
+          message.reply(makeProduct(row), productDeliveryOptions)
         } else {
-          message.reply("{}")
+          message.reply("No product found!")
         }
       }
     }
   }
 
   private fun createProduct() {
-    val createProductConsumer = eventBus.localConsumer<JsonObject>("process.products.createProduct")
+    val createProductConsumer = eventBus.localConsumer<Products>("process.products.createProduct")
     createProductConsumer.handler { message ->
       val product = message.body()
       val rowsFuture = client.preparedQuery("INSERT INTO products (name, short_name, description, short_description) VALUES (?,?,?,?)")
@@ -115,13 +107,15 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess{ res ->
-        message.reply(res.value().property(JDBCPool.GENERATED_KEYS).getInteger(0))
+        val productId: Int = res.value().property(JDBCPool.GENERATED_KEYS).getInteger(0)
+        product.productId = productId
+        message.reply(product, productDeliveryOptions)
       }
     }
   }
 
   private fun updateProduct() {
-    val updateProductConsumer = eventBus.localConsumer<JsonObject>("process.products.updateProduct")
+    val updateProductConsumer = eventBus.localConsumer<Products>("process.products.updateProduct")
     updateProductConsumer.handler { message ->
       val product = message.body()
       val rowsFuture = client.preparedQuery("UPDATE products SET name =?, short_name =?, description =?, short_description =? WHERE product_id =?")
@@ -132,7 +126,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }.onSuccess{ res ->
         if (res.rowCount() > 0) {
-          message.reply("Product updated successfully")
+          message.reply(product, productDeliveryOptions)
         } else {
           message.reply("Failed to update product")
         }
@@ -164,7 +158,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
     val allProductSeoConsumer = eventBus.localConsumer<JsonObject>("process.products.getAllProductsSeo")
     allProductSeoConsumer.handler { message ->
       val rowsFuture = client.preparedQuery("SELECT * FROM products_seo").execute()
-      var json: JsonObject;
+      val productsSeoList: MutableList<ProductsSeo> = emptyList<ProductsSeo>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -172,19 +166,12 @@ class ProductJdbcVerticle: AbstractVerticle() {
       }.onSuccess { res ->
         val rows: RowSet<Row> = res
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "productSeo" to rows.map { row ->
-                obj(
-                  makeProductSeoJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            productsSeoList.add(makeProductSeo(row))
           }
-          message.reply(json)
-        } else {
-          message.reply(json { obj("productSeo" to "{}") })
         }
+
+        message.reply(productsSeoList, listDeliveryOptions)
       }
     }
   }
@@ -196,8 +183,6 @@ class ProductJdbcVerticle: AbstractVerticle() {
       val rowsFuture = client.preparedQuery("SELECT * FROM products_seo WHERE product_id =?")
         .execute(Tuple.of(productId))
 
-      var json: JsonObject;
-
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
@@ -205,21 +190,16 @@ class ProductJdbcVerticle: AbstractVerticle() {
         val rows: RowSet<Row> = res
         if (rows.size() > 0) {
           val row = rows.first()
-          json = json {
-            obj(
-              makeProductSeoJsonFields(row)
-            )
-          }
-          message.reply(json)
+          message.reply(makeProductSeo(row), productSeoDeliveryOptions)
         } else {
-          message.reply(json { obj("productSeo" to "{}") })
+          message.reply("No products were found!")
         }
       }
     }
   }
 
   private fun createProductSeo() {
-    val createProductSeoConsumer = eventBus.localConsumer<JsonObject>("process.products.createProductSeo")
+    val createProductSeoConsumer = eventBus.localConsumer<ProductsSeo>("process.products.createProductSeo")
     createProductSeoConsumer.handler { message ->
       val productSeo = message.body()
       val rowsFuture = client.preparedQuery("INSERT INTO products_seo (product_id, meta_title, meta_description, meta_keywords, page_index) VALUES (?,?,?,?,?::p_index)")
@@ -229,13 +209,13 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { _ ->
-        message.reply("Product SEO created successfully")
+        message.reply(productSeo, productSeoDeliveryOptions)
       }
     }
   }
 
   private fun updateProductSeo() {
-    val updateProductSeoConsumer = eventBus.localConsumer<JsonObject>("process.products.updateProductSeo")
+    val updateProductSeoConsumer = eventBus.localConsumer<ProductsSeo>("process.products.updateProductSeo")
     updateProductSeoConsumer.handler { message ->
       val productSeo = message.body()
       val rowsFuture = client.preparedQuery("UPDATE products_seo SET meta_title =?, meta_description =?, meta_keywords =?, page_index =?::p_index WHERE product_id =?")
@@ -245,7 +225,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { _ ->
-        message.reply("Product SEO updated successfully")
+        message.reply(productSeo, productSeoDeliveryOptions)
       }
     }
   }
@@ -270,27 +250,18 @@ class ProductJdbcVerticle: AbstractVerticle() {
     val allProductsPricingConsumer = eventBus.localConsumer<JsonObject>("process.products.getAllProductsPricing")
     allProductsPricingConsumer.handler { message ->
       val rowsFuture = client.preparedQuery("SELECT * FROM products_pricing").execute()
-      var json: JsonObject;
+      val productsPricingList: MutableList<ProductsPricing> = emptyList<ProductsPricing>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { res ->
         val rows: RowSet<Row> = res
-        if (rows.size() > 0) {
-          json = json {
-            obj(
-              "productsPricing" to rows.map { row ->
-                obj(
-                  makeProductsPricingJsonFields(row)
-                )
-              }
-            )
-          }
-          message.reply(json)
-        } else {
-          message.reply(json { obj("productsPricing" to "{}") })
+        rows.forEach { row ->
+          productsPricingList.add(makeProductsPricing(row))
         }
+
+        message.reply(productsPricingList, listDeliveryOptions)
       }
     }
   }
@@ -302,8 +273,6 @@ class ProductJdbcVerticle: AbstractVerticle() {
       val rowsFuture = client.preparedQuery("SELECT * FROM products_pricing WHERE product_id =?")
         .execute(Tuple.of(productId))
 
-      var json: JsonObject;
-
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
@@ -311,21 +280,16 @@ class ProductJdbcVerticle: AbstractVerticle() {
         val rows: RowSet<Row> = res
         if (rows.size() > 0) {
           val row = rows.first()
-          json = json {
-            obj(
-              makeProductsPricingJsonFields(row)
-            )
-          }
-          message.reply(json)
+          message.reply(makeProductsPricing(row), productPricingDeliveryOptions)
         } else {
-          message.reply(json { obj("productsPricing" to "{}") })
+          message.reply("No products found!")
         }
       }
     }
   }
 
   private fun createProductPricing() {
-    val createProductPricingConsumer = eventBus.localConsumer<JsonObject>("process.products.createProductPricing")
+    val createProductPricingConsumer = eventBus.localConsumer<ProductsPricing>("process.products.createProductPricing")
     createProductPricingConsumer.handler { message ->
       val productPricing = message.body()
       val rowsFuture = client.preparedQuery("INSERT INTO products_pricing (product_id, price, sale_price, cost_price) VALUES (?,?,?,?)")
@@ -335,13 +299,13 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { _ ->
-        message.reply("Product pricing created successfully")
+        message.reply(productPricing, productPricingDeliveryOptions)
       }
     }
   }
 
   private fun updateProductPricing() {
-    val updateProductPricingConsumer = eventBus.localConsumer<JsonObject>("process.products.updateProductPricing")
+    val updateProductPricingConsumer = eventBus.localConsumer<ProductsPricing>("process.products.updateProductPricing")
     updateProductPricingConsumer.handler { message ->
       val productPricing = message.body()
       val rowsFuture = client.preparedQuery("UPDATE products_pricing SET price =?, sale_price =?, cost_price =? WHERE product_id =?")
@@ -351,7 +315,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { _ ->
-        message.reply("Product pricing updated successfully")
+        message.reply(productPricing, productPricingDeliveryOptions)
       }
     }
   }
@@ -378,7 +342,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
       val rowsFuture = client.preparedQuery("SELECT * FROM products " +
         "JOIN public.products_pricing pp on products.product_id = pp.product_id " +
         "JOIN public.products_seo ps on products.product_id = ps.product_id").execute()
-      var json: JsonObject;
+      val fullProducts: MutableList<FullProduct> = emptyList<FullProduct>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -386,19 +350,12 @@ class ProductJdbcVerticle: AbstractVerticle() {
       }.onSuccess { res ->
         val rows: RowSet<Row> = res
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "fullProducts" to rows.map { row ->
-                obj(
-                  makeFullProductsJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            fullProducts.add(makeFullProducts(row))
           }
-          message.reply(json)
-        } else {
-          message.reply(json { obj("products" to "{}") })
         }
+
+        message.reply(fullProducts, listDeliveryOptions)
       }
     }
   }
@@ -413,7 +370,6 @@ class ProductJdbcVerticle: AbstractVerticle() {
         "WHERE products.product_id =?")
        .execute(Tuple.of(productId))
 
-      var json: JsonObject;
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -422,125 +378,130 @@ class ProductJdbcVerticle: AbstractVerticle() {
         val rows: RowSet<Row> = res
         if (rows.size() > 0) {
           val row = rows.first()
-          json = json {
-            obj(
-              makeFullProductsJsonFields(row)
-            )
-          }
-          message.reply(json)
+          message.reply(makeFullProducts(row), fullProductDeliveryOptions)
         } else {
-          json = json { obj("products" to "{}") }
+          message.reply("No products found!")
         }
       }
     }
   }
 
-  private fun makeProductJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "name" to row.getString("name"),
-      "short_name" to row.getString("short_name"),
-      "description" to row.getString("description"),
-      "short_description" to row.getString("short_description")
+  private fun makeProduct(row: Row): Products {
+    return Products(
+      productId = row.getInteger("product_id"),
+      name = row.getString("name"),
+      shortName = row.getString("short_name"),
+      description = row.getString("description"),
+      shortDescription = row.getString("short_description")
     )
   }
 
-  private fun makeProductSeoJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "meta_title" to row.getString("meta_title"),
-      "meta_description" to row.getString("meta_description"),
-      "meta_keywords" to row.getString("meta_keywords"),
-      "page_index" to row.getString("page_index")
+  private fun makeProductSeo(row: Row): ProductsSeo {
+    return ProductsSeo(
+      productId = row.getInteger("product_id"),
+      metaTitle = row.getString("meta_title"),
+      metaDescription = row.getString("meta_description"),
+      metaKeywords = row.getString("meta_keywords"),
+      pageIndex = convertStringToPageIndex(row.getString("page_index"))
     )
   }
 
-  private fun makeProductsPricingJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "price" to row.getDouble("price"),
-      "sale_price" to row.getDouble("sale_price"),
-      "cost_price" to row.getDouble("cost_price")
+  private fun makeProductsPricing(row: Row): ProductsPricing {
+    return ProductsPricing(
+      productId = row.getInteger("product_id"),
+      price = row.getDouble("price"),
+      salePrice = row.getDouble("sale_price"),
+      costPrice = row.getDouble("cost_price")
     )
   }
 
-  private fun makeFullProductsJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "name" to row.getString("name"),
-      "short_name" to row.getString("short_name"),
-      "description" to row.getString("description"),
-      "short_description" to row.getString("short_description"),
-      "meta_title" to row.getString("meta_title"),
-      "meta_description" to row.getString("meta_description"),
-      "meta_keywords" to row.getString("meta_keywords"),
-      "page_index" to row.getString("page_index"),
-      "price" to row.getDouble("price"),
-      "sale_price" to row.getDouble("sale_price"),
-      "cost_price" to row.getDouble("cost_price"),
+  private fun makeFullProducts(row: Row): FullProduct {
+    return FullProduct(
+      makeProduct(row),
+      makeProductSeo(row),
+      makeProductsPricing(row)
     )
   }
 
-  private fun makeProductTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
+  private fun makeProductTuple(body: Products, isPutRequest: Boolean): Tuple {
     val productTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.getString("name"),
-        body.getString("short_name"),
-        body.getString("description"),
-        body.getString("short_description"),
-        body.getInteger("product_id")
+        body.name,
+        body.shortName,
+        body.description,
+        body.shortDescription,
+        body.productId
       )
     } else {
       Tuple.of(
-        body.getString("name"),
-        body.getString("short_name"),
-        body.getString("description"),
-        body.getString("short_description")
+        body.name,
+        body.shortName,
+        body.description,
+        body.shortDescription,
       )
     }
 
     return productTuple
   }
 
-  private fun makeProductSeoTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
+  private fun makeProductSeoTuple(body: ProductsSeo, isPutRequest: Boolean): Tuple {
     val productSeoTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.getString("meta_title"),
-        body.getString("meta_description"),
-        body.getString("meta_keywords"),
-        body.getString("page_index"),
-        body.getInteger("product_id")
+        body.metaTitle,
+        body.metaDescription,
+        body.metaKeywords,
+        convertPageIndexToString(body.pageIndex),
+        body.productId
       )
     } else {
       Tuple.of(
-        body.getInteger("product_id"),
-        body.getString("meta_title"),
-        body.getString("meta_description"),
-        body.getString("meta_keywords"),
-        body.getString("page_index")
+        body.productId,
+        body.metaTitle,
+        body.metaDescription,
+        body.metaKeywords,
+        convertPageIndexToString(body.pageIndex),
       )
     }
 
     return productSeoTuple
   }
 
-  private fun makeProductsPricingTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
+  private fun makeProductsPricingTuple(body: ProductsPricing, isPutRequest: Boolean): Tuple {
     val productsPricingTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.getDouble("price"),
-        body.getDouble("sale_price"),
-        body.getDouble("cost_price"),
-        body.getInteger("product_id")
+        body.price,
+        body.salePrice,
+        body.costPrice,
+        body.productId
       )
     } else {
       Tuple.of(
-        body.getInteger("product_id"),
-        body.getDouble("price"),
-        body.getDouble("sale_price"),
-        body.getDouble("cost_price")
+        body.productId,
+        body.price,
+        body.salePrice,
+        body.costPrice,
       )
     }
 
     return productsPricingTuple
+  }
+
+  private fun convertPageIndexToString(pageIndex: PageIndex): String {
+    return when (pageIndex) {
+      PageIndex.NoIndexFollow -> "noindex, follow"
+      PageIndex.NoIndexNoFollow -> "noindex, nofollow"
+      PageIndex.IndexFollow -> "index, follow"
+      PageIndex.IndexNoFollow -> "index, nofollow"
+    }
+  }
+
+  private fun convertStringToPageIndex(name: String): PageIndex {
+    return when (name) {
+      "noindex, follow" -> PageIndex.NoIndexFollow
+      "noindex, nofollow" -> PageIndex.NoIndexNoFollow
+      "index, follow" -> PageIndex.IndexFollow
+      "index, nofollow" -> PageIndex.IndexNoFollow
+      else -> throw IllegalArgumentException("Invalid page index: $name")
+    }
   }
 }
