@@ -26,6 +26,7 @@ class JDBCStarter: AbstractVerticle() {
     Future.all(verticles)
       .onComplete {
         println("All JDBC verticles deployed")
+        TODO("Add all codecs to the eventbus")
       }
      .onFailure { error ->
         println("Failed to deploy JDBC verticles: $error")

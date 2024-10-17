@@ -2,6 +2,7 @@ package com.ex_dock.ex_dock.database.product
 
 import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
@@ -14,6 +15,8 @@ class ProductCustomAttributesJdbcVerticle: AbstractVerticle() {
   private lateinit var client: Pool
   private lateinit var eventBus: EventBus
   private val failedMessage: String = "failed"
+  private val customProductAttributesDataDeliveryOptions = DeliveryOptions().setCodecName("CustomProductAttributesCodec")
+  private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
     client = Connection().getConnection(vertx)
@@ -31,7 +34,7 @@ class ProductCustomAttributesJdbcVerticle: AbstractVerticle() {
     getAllCustomAttributesConsumer.handler { message ->
       val query = "SELECT * FROM custom_product_attributes"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val customProductAttributesList: MutableList<CustomProductAttributes> = emptyList<CustomProductAttributes>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -41,17 +44,12 @@ class ProductCustomAttributesJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj("customAttributes" to rows.map { row ->
-              obj(
-                makeCustomAttributesJsonFields(row)
-              )
-            })
+          rows.forEach { row ->
+            customProductAttributesList.add(makeCustomAttribute(row))
           }
-          message.reply(json)
-        } else {
-          message.reply(JsonObject().put("message", "No custom attributes found"))
         }
+
+        message.reply(customProductAttributesList, listDeliveryOptions)
       }
     }
   }
@@ -62,7 +60,6 @@ class ProductCustomAttributesJdbcVerticle: AbstractVerticle() {
       val body = message.body()
       val query = "SELECT * FROM custom_product_attributes WHERE attribute_key =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body))
-      var json: JsonObject
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -72,12 +69,7 @@ class ProductCustomAttributesJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeCustomAttributesJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(makeCustomAttribute(rows.first()), customProductAttributesDataDeliveryOptions)
         } else {
           message.reply("No custom attributes found")
         }
@@ -86,7 +78,7 @@ class ProductCustomAttributesJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createCustomAttribute() {
-    val createCustomAttributeConsumer = eventBus.consumer<JsonObject>("process.attributes.createCustomAttribute")
+    val createCustomAttributeConsumer = eventBus.consumer<CustomProductAttributes>("process.attributes.createCustomAttribute")
     createCustomAttributeConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -103,7 +95,7 @@ class ProductCustomAttributesJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.result().rowCount() > 0) {
-          message.reply("Custom attribute created successfully")
+          message.reply(body, customProductAttributesDataDeliveryOptions)
         } else {
           message.reply("Failed to create custom attribute")
         }
@@ -112,7 +104,7 @@ class ProductCustomAttributesJdbcVerticle: AbstractVerticle() {
   }
 
   private fun updateCustomAttribute() {
-    val updateCustomAttributeConsumer = eventBus.consumer<JsonObject>("process.attributes.updateCustomAttribute")
+    val updateCustomAttributeConsumer = eventBus.consumer<CustomProductAttributes>("process.attributes.updateCustomAttribute")
     updateCustomAttributeConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -129,7 +121,7 @@ class ProductCustomAttributesJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onComplete { res ->
         if (res.result().rowCount() > 0) {
-          message.reply("Custom attribute updated successfully")
+          message.reply(body, customProductAttributesDataDeliveryOptions)
         } else {
           message.reply("No custom attribute found to update")
         }
@@ -159,38 +151,61 @@ class ProductCustomAttributesJdbcVerticle: AbstractVerticle() {
     }
   }
 
-  private fun makeCustomAttributesJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "attribute_key" to row.getString("attribute_key"),
-      "scope" to row.getInteger("scope"),
-      "name" to row.getString("name"),
-      "type" to row.getString("type"),
-      "multiselect" to row.getBoolean("multiselect"),
-      "required" to row.getBoolean("required")
+  private fun makeCustomAttribute(row: Row): CustomProductAttributes {
+    return CustomProductAttributes(
+      attributeKey = row.getString("attribute_key"),
+      scope = row.getInteger("scope"),
+      name = row.getString("name"),
+      type = convertStringToType(row.getString("type")),
+      multiselect = row.getBoolean("multiselect"),
+      required = row.getBoolean("required")
     )
   }
 
-  private fun makeCustomAttributeTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
+  private fun makeCustomAttributeTuple(body: CustomProductAttributes, isPutRequest: Boolean): Tuple {
     val ctaTuple = if (isPutRequest) {
       Tuple.of(
-        body.getInteger("scope"),
-        body.getString("name"),
-        body.getString("type"),
-        body.getString("multiselect"),
-        body.getString("required"),
-        body.getString("attribute_key"),
+        body.scope,
+        body.name,
+        convertTypeToString(body.type),
+        body.multiselect.toInt(),
+        body.required.toInt(),
+        body.attributeKey,
       )
     } else {
       Tuple.of(
-        body.getString("attribute_key"),
-        body.getInteger("scope"),
-        body.getString("name"),
-        body.getString("type"),
-        body.getString("multiselect"),
-        body.getString("required")
+        body.attributeKey,
+        body.scope,
+        body.name,
+        convertTypeToString(body.type),
+        body.multiselect.toInt(),
+        body.required.toInt(),
       )
     }
 
     return ctaTuple
   }
+
+  private fun convertTypeToString(type: Type): String {
+    return when (type) {
+      Type.STRING -> "string"
+      Type.BOOL -> "bool"
+      Type.FLOAT -> "float"
+      Type.INT -> "int"
+      Type.MONEY -> "money"
+    }
+  }
+
+  private fun convertStringToType(name: String): Type {
+    return when (name) {
+      "string" -> Type.STRING
+      "bool" -> Type.BOOL
+      "float" -> Type.FLOAT
+      "int" -> Type.INT
+      "money" -> Type.MONEY
+      else -> throw IllegalArgumentException("Invalid type: $name")
+    }
+  }
+
+  private fun Boolean.toInt() = if (this) 1 else 0
 }

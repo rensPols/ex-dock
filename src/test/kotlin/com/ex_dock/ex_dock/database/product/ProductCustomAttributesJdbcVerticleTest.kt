@@ -1,7 +1,9 @@
 package com.ex_dock.ex_dock.database.product
 
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -21,43 +23,35 @@ class ProductCustomAttributesJdbcVerticleTest {
 
   private val verticleDeployHelper = VerticleDeployHelper()
 
-  private val productCustomAttributesJson = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "scope" to 2,
-      "name" to "test name",
-      "type" to "int",
-      "multiselect" to "0",
-      "required" to "1"
-    )
-  }
+  private val productCustomAttributes = CustomProductAttributes(
+    attributeKey = "test attribute key",
+    scope = 2,
+    name = "test name",
+    type = convertStringToType("int"),
+    multiselect = false,
+    required = true
+  )
 
-
-  private val expectedResult = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "scope" to 2,
-      "name" to "test name",
-      "type" to "int",
-      "multiselect" to false,
-      "required" to true
-    )
-  }
+  private val customProductAttributesDataDeliveryOptions = DeliveryOptions().setCodecName("CustomProductAttributesCodec")
+  private val customProductAttributesList: MutableList<CustomProductAttributes> = emptyList<CustomProductAttributes>().toMutableList()
 
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
+      .registerCodec(GenericCodec(MutableList::class.java))
+      .registerCodec(GenericCodec(CustomProductAttributes::class.java))
     verticleDeployHelper.deployWorkerHelper(
       vertx,
       ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5
     ).onFailure {
       testContext.failNow(it)
     }.onComplete {
-      eventBus.request<Int>("process.attributes.createCustomAttribute", productCustomAttributesJson).onFailure {
+      eventBus.request<Int>("process.attributes.createCustomAttribute", productCustomAttributes, customProductAttributesDataDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createCustomAttributeMsg ->
         assert(createCustomAttributeMsg.succeeded())
-        assertEquals("Custom attribute created successfully", createCustomAttributeMsg.result().body())
+        assertEquals(productCustomAttributes, createCustomAttributeMsg.result().body())
+        customProductAttributesList.add(productCustomAttributes)
 
         testContext.completeNow()
       }
@@ -66,13 +60,11 @@ class ProductCustomAttributesJdbcVerticleTest {
 
   @Test
   fun getAllCustomAttributes(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.attributes.getAllCustomAttributes", "").onFailure {
+    eventBus.request<MutableList<CustomProductAttributes>>("process.attributes.getAllCustomAttributes", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllCustomAttributesMsg ->
       assert(getAllCustomAttributesMsg.succeeded())
-      assertEquals(
-        json { obj("customAttributes" to listOf(expectedResult)) }
-        , getAllCustomAttributesMsg.result().body())
+      assertEquals(customProductAttributesList, getAllCustomAttributesMsg.result().body())
 
       testContext.completeNow()
     }
@@ -80,12 +72,12 @@ class ProductCustomAttributesJdbcVerticleTest {
 
   @Test
   fun getCustomAttributeByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.attributes.getCustomAttributeByKey",
-      productCustomAttributesJson.getString("attribute_key")).onFailure {
+    eventBus.request<CustomProductAttributes>("process.attributes.getCustomAttributeByKey",
+      productCustomAttributes.attributeKey).onFailure {
       testContext.failNow(it)
     }.onComplete { getCustomAttributeByKeyMsg ->
       assert(getCustomAttributeByKeyMsg.succeeded())
-      assertEquals(expectedResult, getCustomAttributeByKeyMsg.result().body())
+      assertEquals(productCustomAttributes, getCustomAttributeByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -93,40 +85,29 @@ class ProductCustomAttributesJdbcVerticleTest {
 
   @Test
   fun updateCustomAttribute(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedProductCustomAttributesJson = json {
-      obj(
-        "attribute_key" to productCustomAttributesJson.getString("attribute_key"),
-        "scope" to 2,
-        "name" to "updated test name",
-        "type" to "int",
-        "multiselect" to "0",
-        "required" to "1"
-      )
-    }
+    val updatedProductCustomAttributes = CustomProductAttributes(
+      attributeKey = productCustomAttributes.attributeKey,
+      scope = 2,
+      name = "updated test name",
+      type = convertStringToType("int"),
+      multiselect = false,
+      required = true
+    )
 
-    val expectedUpdatedResult = json {
-      obj(
-        "attribute_key" to productCustomAttributesJson.getString("attribute_key"),
-        "scope" to 2,
-        "name" to "updated test name",
-        "type" to "int",
-        "multiselect" to false,
-        "required" to true
-      )
-    }
 
-    eventBus.request<JsonObject>("process.attributes.updateCustomAttribute", updatedProductCustomAttributesJson).onFailure {
+    eventBus.request<CustomProductAttributes>("process.attributes.updateCustomAttribute",
+      updatedProductCustomAttributes, customProductAttributesDataDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateCustomAttributeMsg ->
       assert(updateCustomAttributeMsg.succeeded())
-      assertEquals("Custom attribute updated successfully", updateCustomAttributeMsg.result().body())
+      assertEquals(updatedProductCustomAttributes, updateCustomAttributeMsg.result().body())
 
-      eventBus.request<JsonObject>("process.attributes.getCustomAttributeByKey",
-        updatedProductCustomAttributesJson.getString("attribute_key")).onFailure {
+      eventBus.request<CustomProductAttributes>("process.attributes.getCustomAttributeByKey",
+        updatedProductCustomAttributes.attributeKey).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedCustomAttributeByKeyMsg ->
         assert(getUpdatedCustomAttributeByKeyMsg.succeeded())
-        assertEquals(expectedUpdatedResult, getUpdatedCustomAttributeByKeyMsg.result().body())
+        assertEquals(updatedProductCustomAttributes, getUpdatedCustomAttributeByKeyMsg.result().body())
 
         testContext.completeNow()
       }
@@ -136,13 +117,24 @@ class ProductCustomAttributesJdbcVerticleTest {
   @AfterEach
   fun tearDown(vertx: Vertx, testContext: VertxTestContext) {
     eventBus.request<String>("process.attributes.deleteCustomAttribute",
-      productCustomAttributesJson.getString("attribute_key")).onFailure {
+      productCustomAttributes.attributeKey).onFailure {
       testContext.failNow(it)
     }.onComplete { deleteCustomAttributeMsg ->
       assert(deleteCustomAttributeMsg.succeeded())
       assertEquals("Custom attribute deleted successfully", deleteCustomAttributeMsg.result().body())
 
       testContext.completeNow()
+    }
+  }
+
+  private fun convertStringToType(name: String): Type {
+    return when (name) {
+      "string" -> Type.STRING
+      "bool" -> Type.BOOL
+      "float" -> Type.FLOAT
+      "int" -> Type.INT
+      "money" -> Type.MONEY
+      else -> throw IllegalArgumentException("Invalid type: $name")
     }
   }
 }
