@@ -35,7 +35,9 @@ jobs:
           - "com.ex_dock.ex_dock.database.account.AccountJdbcVerticleTest"
     steps:
       - name: Test file location
-        run: ls
+        run: |
+          cd /usr/bin/bash
+          ls
 
       - name: Checkout code
         uses: actions/checkout@v3
