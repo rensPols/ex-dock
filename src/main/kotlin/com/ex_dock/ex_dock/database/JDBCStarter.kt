@@ -9,7 +9,7 @@ import com.ex_dock.ex_dock.database.scope.ScopeJdbcVerticle
 import com.ex_dock.ex_dock.database.server.ServerJDBCVerticle
 import com.ex_dock.ex_dock.database.text_pages.TextPagesJdbcVerticle
 import com.ex_dock.ex_dock.database.url.UrlJdbcVerticle
-import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.Promise
@@ -17,8 +17,6 @@ import io.vertx.core.Promise
 class JDBCStarter: AbstractVerticle() {
 
   private var verticles: MutableList<Future<Void>> = emptyList<Future<Void>>().toMutableList()
-
-  private var verticleDeployHelper = VerticleDeployHelper()
 
   override fun start(starPromise: Promise<Void>) {
     addAllVerticles()
@@ -33,36 +31,21 @@ class JDBCStarter: AbstractVerticle() {
   }
 
   private fun addAllVerticles() {
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, AccountJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, CategoryJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, CheckoutJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, HomeJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, ProductJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, TextPagesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, ServerJDBCVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, UrlJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, ProductCompleteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, ProductGlobalEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, ProductMultiSelectJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, ProductStoreViewEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, ProductWebsiteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(verticleDeployHelper
-      .deployWorkerHelper(vertx, ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, AccountJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, CategoryJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, CheckoutJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, HomeJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, ProductJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, TextPagesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, ServerJDBCVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, UrlJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, ProductCompleteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, ProductGlobalEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, ProductMultiSelectJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, ProductStoreViewEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, ProductWebsiteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
   }
 
 }
