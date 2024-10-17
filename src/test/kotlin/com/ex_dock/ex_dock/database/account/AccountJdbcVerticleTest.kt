@@ -47,6 +47,11 @@ class AccountJdbcVerticleTest {
 
   @Test
   fun testUserData(vertx: Vertx, testContext: VertxTestContext) {
+    val processAccountCreateUserCheckpoint = testContext.checkpoint()
+    val processAccountGetAllUsersCheckpoint = testContext.checkpoint(2)
+    val processAccountGetUserByIdCheckpoint = testContext.checkpoint(2)
+    val processAccountUpdateUserCheckpoint = testContext.checkpoint()
+    val processAccountDeleteUserCheckpoint = testContext.checkpoint()
 
     var newUserId: Int = -1
 
@@ -62,7 +67,12 @@ class AccountJdbcVerticleTest {
         eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createMsg ->
-          assert(createMsg.succeeded())
+          try {
+            assert(createMsg.succeeded())
+          } catch (e: Exception) {
+            testContext.failNow(e)
+          }
+
           testUser.userId = createMsg.result().body().userId
           newUserId = testUser.userId
           updateUser= User(
@@ -71,61 +81,119 @@ class AccountJdbcVerticleTest {
             password = "updatedPassword"
           )
 
-          assertEquals(createMsg.result().body(), testUser)
+          try {
+            assertEquals(createMsg.result().body(), testUser)
+          } catch (e: Exception) {
+            testContext.failNow(e)
+          }
 
-          eventBus.request<MutableList<User>>("process.account.getAllUsers", "").onFailure {
+          processAccountCreateUserCheckpoint.flag()
+
+          eventBus.request<List<User>>("process.account.getAllUsers", "").onFailure {
             testContext.failNow(it)
           }.onComplete { getAllMsg ->
-            assert(getAllMsg.succeeded())
-            assertNotEquals(emptyList<User>().toMutableList(), getAllMsg.result().body())
-            assertTrue(
-              BCrypt.checkpw("password",
-              getAllMsg.result().body()[0].password)
-            )
+            try {
+              assert(getAllMsg.succeeded())
+              assertNotEquals(emptyList<User>(), getAllMsg.result().body())
+              assertTrue(
+                BCrypt.checkpw(
+                  "password",
+                  getAllMsg.result().body()[0].password
+                )
+              )
+            } catch (e: Exception) {
+              testContext.failNow(e)
+            }
+
+            processAccountGetAllUsersCheckpoint.flag()
 
             eventBus.request<User>("process.account.getUserById", newUserId).onFailure {
               testContext.failNow(it)
             }.onComplete { getMsg ->
-              assert(getMsg.succeeded())
+              try {
+                assert(getMsg.succeeded())
+              } catch (e: Exception) {
+                testContext.failNow(e)
+              }
+
               val user: User = getMsg.result().body()
-              assertEquals(testUser.userId, user.userId)
-              assertEquals(testUser.email, user.email)
-              assertTrue(
-                BCrypt.checkpw("password",
-                  user.password)
-              )
+
+              try {
+                assertEquals(testUser.userId, user.userId)
+                assertEquals(testUser.email, user.email)
+                assertTrue(
+                  BCrypt.checkpw(
+                    "password",
+                    user.password
+                  )
+                )
+              } catch (e: Exception) {
+                testContext.failNow(e)
+              }
+
+              processAccountGetUserByIdCheckpoint.flag()
 
               eventBus.request<User>("process.account.updateUser", updateUser, userDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { updateMsg ->
-                assert(updateMsg.succeeded())
-                assertEquals(updateMsg.result().body(), updateUser)
+                try {
+                  assert(updateMsg.succeeded())
+                  assertEquals(updateMsg.result().body(), updateUser)
+                } catch (e: Exception) {
+                  testContext.failNow(e)
+                }
+
+                processAccountUpdateUserCheckpoint.flag()
 
                 eventBus.request<User>("process.account.getUserById", newUserId).onFailure {
                   testContext.failNow(it)
                 }.onComplete { getUpdatedUserMsg ->
-                  assert(getUpdatedUserMsg.succeeded())
+                  try {
+                    assert(getUpdatedUserMsg.succeeded())
+                  } catch (e: Exception) {
+                    testContext.failNow(e)
+                  }
+
                   val updatedUser: User = getUpdatedUserMsg.result().body()
-                  assertEquals(updateUser.userId, updatedUser.userId)
-                  assertEquals(updateUser.email, updatedUser.email)
-                  assertTrue(
-                    BCrypt.checkpw("updatedPassword",
-                      updatedUser.password)
-                  )
+
+                  try {
+                    assertEquals(updateUser.userId, updatedUser.userId)
+                    assertEquals(updateUser.email, updatedUser.email)
+                    assertTrue(
+                      BCrypt.checkpw(
+                        "updatedPassword",
+                        updatedUser.password
+                      )
+                    )
+                  } catch (e: Exception) {
+                    testContext.failNow(e)
+                  }
+
+                  processAccountGetUserByIdCheckpoint.flag()
 
                   eventBus.request<String>("process.account.deleteUser", newUserId).onFailure {
                     testContext.failNow(it)
                   }.onComplete { deleteMsg ->
-                    assert(deleteMsg.succeeded())
-                    assertEquals(deleteMsg.result().body(), "User deleted successfully")
+                    try {
+                      assert(deleteMsg.succeeded())
+                      assertEquals(deleteMsg.result().body(), "User deleted successfully")
+                    } catch (e: Exception) {
+                      testContext.failNow(e)
+                    }
+
+                    processAccountDeleteUserCheckpoint.flag()
 
                     eventBus.request<MutableList<User>>("process.account.getAllUsers", "").onFailure {
                       testContext.failNow(it)
                     }.onComplete { emptyMsg ->
-                      assert(emptyMsg.succeeded())
-                      assertEquals(emptyMsg.result().body(), emptyList<User>().toMutableList())
+                      try {
+                        assert(emptyMsg.succeeded())
+                        assertEquals(emptyMsg.result().body(), emptyList<User>().toMutableList())
+                      } catch (e: Exception) {
+                        testContext.failNow(e)
+                      }
 
-                      testContext.completeNow()
+                      processAccountGetAllUsersCheckpoint.flag()
                     }
                   }
                 }
