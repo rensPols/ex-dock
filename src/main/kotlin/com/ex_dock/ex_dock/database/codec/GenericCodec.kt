@@ -45,7 +45,7 @@ class GenericCodec<T: Any>(private val codecClass: KClass<T>): MessageCodec<T, T
 
     try {
       val ois = ObjectInputStream(bis)
-      @SuppressWarnings("UNCHECKED_CAST")
+      @Suppress("UNCHECKED_CAST")
       val msg: T = ois.readObject() as T
       ois.close()
       return msg
