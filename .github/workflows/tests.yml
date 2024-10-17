@@ -15,8 +15,8 @@ jobs:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: ex_dock_test
-#        volumes:
-#          - ./database/ex-dock:/docker-entrypoint-initdb.d
+        volumes:
+          - ./database/ex-dock:/docker-entrypoint-initdb.d
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
