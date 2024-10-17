@@ -11,7 +11,7 @@ import java.io.ObjectOutput
 import java.io.ObjectOutputStream
 
 
-class ListCodec<T : Any>(private val codecClass: KClass<T>) : MessageCodec<List<T>, List<T>> {
+class GenericListCodec<T : Any>(private val codecClass: KClass<T>) : MessageCodec<List<T>, List<T>> {
   override fun encodeToWire(buffer: Buffer, list: List<T>) {
     val bos = ByteArrayOutputStream()
     var out: ObjectOutput? = null
