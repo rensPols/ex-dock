@@ -35,6 +35,8 @@ fun deployVerticleHelper(vertx: Vertx, name: String): Future<Void> {
         println(buildString {
           append("\u001b[31m")
           append("⨯ - Failed to deploy Verticle: $name\nCause: ${res.cause()}")
+          append("\n")
+          append("    - cause: ${res.cause()}")
           append("\u001b[0m")
         })
         promise.fail(res.cause())
@@ -65,7 +67,9 @@ fun deployWorkerVerticleHelper(vertx: Vertx, name: String, workerPoolSize: Int, 
       if (res.failed()) {
         println(buildString {
           append("\u001b[31m")
-          append("⨯ - Failed to worker Verticle: $name")
+          append("⨯ - Failed deploy to worker Verticle: $name")
+          append("\n")
+          append("    - cause: ${res.cause()}")
           append("\u001b[0m")
         })
         promise.fail(res.cause())
@@ -91,7 +95,9 @@ fun deployVirtualVerticleHelper(vertx: Vertx, name: String): Future<Void> {
       if (res.failed()) {
         println(buildString {
           append("\u001b[31m")
-          append("⨯ - Failed to virtual Verticle: $name")
+          append("⨯ - Failed to deploy virtual Verticle: $name")
+          append("\n")
+          append("    - cause: ${res.cause()}")
           append("\u001b[0m")
         })
         promise.fail(res.cause())
