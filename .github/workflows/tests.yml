@@ -6,22 +6,22 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    services:
-      database:
-        image: postgres:14-alpine
-        ports:
-          - "5432:8890"
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: ex_dock_test
-        volumes:
-          - ${{ github.workspace }}/database/ex-dock.sql:/docker-entrypoint-initdb.d/ex-dock.sql
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 20
+#    services:
+#      database:
+#        image: postgres:14-alpine
+#        ports:
+#          - "5432:8890"
+#        env:
+#          POSTGRES_USER: test_user
+#          POSTGRES_PASSWORD: test_password
+#          POSTGRES_DB: ex_dock_test
+#        volumes:
+#          - ${{ github.workspace }}/database/ex-dock.sql:/docker-entrypoint-initdb.d/ex-dock.sql
+#        options: >-
+#          --health-cmd pg_isready
+#          --health-interval 10s
+#          --health-timeout 5s
+#          --health-retries 20
     strategy:
       matrix:
         test_class:
@@ -55,4 +55,5 @@ jobs:
 
       - name: Run Tests
         run: |
+          run ls
           mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
