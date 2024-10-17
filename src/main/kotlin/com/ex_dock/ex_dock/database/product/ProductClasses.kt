@@ -193,6 +193,16 @@ data class FullProduct(
   var productsPricing: ProductsPricing
 )
 
+data class EavGlobalInfo(
+  val eav: Eav,
+  val eavGlobalBool: EavGlobalBool,
+  val eavGlobalFloat: EavGlobalFloat,
+  val eavGlobalString: EavGlobalString,
+  val eavGlobalInt: EavGlobalInt,
+  val eavGlobalMoney: EavGlobalMoney,
+  val eavGlobalMultiSelect: EavGlobalMultiSelect
+)
+
 enum class Type(name: String) {
   BOOL("bool"),
   FLOAT("float"),

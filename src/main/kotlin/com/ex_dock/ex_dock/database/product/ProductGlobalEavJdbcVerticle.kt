@@ -1,11 +1,10 @@
-package com.ex_dock.ex_dock.database.product;
+package com.ex_dock.ex_dock.database.product
 
 import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.Tuple
@@ -14,6 +13,15 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
   private lateinit var client: Pool
   private lateinit var eventBus: EventBus
   private val failedMessage: String = "failed"
+  private val eavGlobalBoolDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalBoolCodec")
+  private val eavGlobalFloatDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalFloatCodec")
+  private val eavGlobalIntDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalIntCodec")
+  private val eavGlobalMoneyDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalMoneyCodec")
+  private val eavGlobalMultiSelectDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalMultiSelectCodec")
+  private val eavGlobalStringDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalStringCodec")
+  private val eavGlobalInfoDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalInfoCodec")
+  private val eavDeliveryOptions = DeliveryOptions().setCodecName("EavCodec")
+  private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
     client = Connection().getConnection(vertx)
@@ -70,7 +78,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
     getAllEavGlobalBoolConsumer.handler { message ->
       val query = "SELECT * FROM eav_global_bool"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val eavGlobalBools: MutableList<EavGlobalBool> = emptyList<EavGlobalBool>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -80,31 +88,23 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj (
-              "eavGlobalBool" to rows.map { row ->
-                obj(
-                  makeEavGlobalBoolJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            eavGlobalBools.add(makeEavGlobalBool(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No global bool found")
         }
+
+        message.reply(eavGlobalBools, listDeliveryOptions)
       }
     }
   }
 
   private fun getEavGlobalBoolByKey() {
-    val getEavGlobalBoolByKeyConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.getEavGlobalBoolByKey")
+    val getEavGlobalBoolByKeyConsumer = eventBus.consumer<EavGlobalBool>("process.eavGlobal.getEavGlobalBoolByKey")
     getEavGlobalBoolByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM eav_global_bool WHERE product_id =? AND attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -114,12 +114,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeEavGlobalBoolJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(makeEavGlobal(rows.first()), eavGlobalBoolDeliveryOptions)
         } else {
           message.reply("No global bool found")
         }
@@ -128,7 +123,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createEavGlobalBool() {
-    val createEavGlobalBoolConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.createEavGlobalBool")
+    val createEavGlobalBoolConsumer = eventBus.consumer<EavGlobalBool>("process.eavGlobal.createEavGlobalBool")
     createEavGlobalBoolConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -140,14 +135,14 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global bool created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalBoolDeliveryOptions)
       }
     }
   }
 
   private fun updateEavGlobalBool() {
-    val updateEavGlobalBoolConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.updateEavGlobalBool")
+    val updateEavGlobalBoolConsumer = eventBus.consumer<EavGlobalBool>("process.eavGlobal.updateEavGlobalBool")
     updateEavGlobalBoolConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -159,25 +154,25 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global bool updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalBoolDeliveryOptions)
       }
     }
   }
 
   private fun deleteEavGlobalBool() {
-    val deleteEavGlobalBoolConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.deleteEavGlobalBool")
+    val deleteEavGlobalBoolConsumer = eventBus.consumer<EavGlobalBool>("process.eavGlobal.deleteEavGlobalBool")
     deleteEavGlobalBoolConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM eav_global_bool WHERE product_id =? AND attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("EAV global bool deleted successfully")
       }
     }
@@ -188,7 +183,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
     allEavGlobalFloatConsumer.handler { message ->
       val query = "SELECT * FROM eav_global_float"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val eavGlobalFloats: MutableList<EavGlobalFloat> = emptyList<EavGlobalFloat>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -198,31 +193,23 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj (
-              "eavGlobalFloat" to rows.map { row ->
-                obj(
-                  makeEavGlobalFloatJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            eavGlobalFloats.add(makeEavGlobalFloat(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No global float found")
         }
+
+        message.reply(eavGlobalFloats, listDeliveryOptions)
       }
     }
   }
 
   private fun getEavGlobalFloatByKey() {
-    val getEavGlobalFloatByKeyConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.getEavGlobalFloatByKey")
+    val getEavGlobalFloatByKeyConsumer = eventBus.consumer<EavGlobalFloat>("process.eavGlobal.getEavGlobalFloatByKey")
     getEavGlobalFloatByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM eav_global_float WHERE product_id =? AND attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -232,12 +219,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeEavGlobalFloatJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(makeEavGlobalFloat(rows.first()))
         } else {
           message.reply("No global float found")
         }
@@ -246,7 +228,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createEavGlobalFloat() {
-    val createEavGlobalFloatConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.createEavGlobalFloat")
+    val createEavGlobalFloatConsumer = eventBus.consumer<EavGlobalFloat>("process.eavGlobal.createEavGlobalFloat")
     createEavGlobalFloatConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -258,14 +240,14 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global float created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalFloatDeliveryOptions)
       }
     }
   }
 
   private fun updateEavGlobalFloat() {
-    val updateEavGlobalFloatConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.updateEavGlobalFloat")
+    val updateEavGlobalFloatConsumer = eventBus.consumer<EavGlobalFloat>("process.eavGlobal.updateEavGlobalFloat")
     updateEavGlobalFloatConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -277,25 +259,25 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global float updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalFloatDeliveryOptions)
       }
     }
   }
 
   private fun deleteEavGlobalFloat() {
-    val deleteEavGlobalFloatConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.deleteEavGlobalFloat")
+    val deleteEavGlobalFloatConsumer = eventBus.consumer<EavGlobalFloat>("process.eavGlobal.deleteEavGlobalFloat")
     deleteEavGlobalFloatConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM eav_global_float WHERE product_id =? AND attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("EAV global float deleted successfully")
       }
     }
@@ -306,7 +288,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
     allEavGlobalStringConsumer.handler { message ->
       val query = "SELECT * FROM eav_global_string"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val eavGlobalStrings: MutableList<EavGlobalString> = emptyList<EavGlobalString>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -316,31 +298,23 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "eavGlobalString" to rows.map { row ->
-                obj(
-                  makeEavGlobalStringJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            eavGlobalStrings.add(makeEavGlobalString(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No global string found")
         }
+
+        message.reply(eavGlobalStrings, listDeliveryOptions)
       }
     }
   }
 
   private fun getEavGlobalStringByKey() {
-    val getEavGlobalStringByKeyConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.getEavGlobalStringByKey")
+    val getEavGlobalStringByKeyConsumer = eventBus.consumer<EavGlobalString>("process.eavGlobal.getEavGlobalStringByKey")
     getEavGlobalStringByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM eav_global_string WHERE product_id =? AND attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -350,12 +324,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeEavGlobalStringJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(body, eavGlobalStringDeliveryOptions)
         } else {
           message.reply("No global string found")
         }
@@ -364,7 +333,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createEavGlobalString() {
-    val createEavGlobalStringConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.createEavGlobalString")
+    val createEavGlobalStringConsumer = eventBus.consumer<EavGlobalString>("process.eavGlobal.createEavGlobalString")
     createEavGlobalStringConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -376,14 +345,14 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global string created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalStringDeliveryOptions)
       }
     }
   }
 
   private fun updateEavGlobalString() {
-    val updateEavGlobalStringConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.updateEavGlobalString")
+    val updateEavGlobalStringConsumer = eventBus.consumer<EavGlobalString>("process.eavGlobal.updateEavGlobalString")
     updateEavGlobalStringConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -395,25 +364,25 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global string updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalStringDeliveryOptions)
       }
     }
   }
 
   private fun deleteEavGlobalString() {
-    val deleteEavGlobalStringConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.deleteEavGlobalString")
+    val deleteEavGlobalStringConsumer = eventBus.consumer<EavGlobalString>("process.eavGlobal.deleteEavGlobalString")
     deleteEavGlobalStringConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM eav_global_string WHERE product_id =? AND attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("EAV global string deleted successfully")
       }
     }
@@ -424,7 +393,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
     allEavGlobalIntConsumer.handler { message ->
       val query = "SELECT * FROM eav_global_int"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val eavGlobalInts: MutableList<EavGlobalInt> = emptyList<EavGlobalInt>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -434,31 +403,23 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "eavGlobalInt" to rows.map { row ->
-                obj(
-                  makeEavGlobalIntJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            eavGlobalInts.add(makeEavGlobalInt(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No global int found")
         }
+
+        message.reply(eavGlobalInts, listDeliveryOptions)
       }
     }
   }
 
   private fun getEavGlobalIntByKey() {
-    val getEavGlobalIntByKeyConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.getEavGlobalIntByKey")
+    val getEavGlobalIntByKeyConsumer = eventBus.consumer<EavGlobalInt>("process.eavGlobal.getEavGlobalIntByKey")
     getEavGlobalIntByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM eav_global_int WHERE product_id =? AND attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -468,12 +429,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeEavGlobalIntJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(makeEavGlobalInt(rows.first()), eavGlobalIntDeliveryOptions)
         } else {
           message.reply("No rows returned")
         }
@@ -482,7 +438,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createEavGlobalInt() {
-    val createEavGlobalIntConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.createEavGlobalInt")
+    val createEavGlobalIntConsumer = eventBus.consumer<EavGlobalInt>("process.eavGlobal.createEavGlobalInt")
     createEavGlobalIntConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -494,14 +450,14 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global int created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalIntDeliveryOptions)
       }
     }
   }
 
   private fun updateEavGlobalInt() {
-    val updateEavGlobalIntConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.updateEavGlobalInt")
+    val updateEavGlobalIntConsumer = eventBus.consumer<EavGlobalInt>("process.eavGlobal.updateEavGlobalInt")
     updateEavGlobalIntConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -513,25 +469,25 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global int updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalIntDeliveryOptions)
       }
     }
   }
 
   private fun deleteEavGlobalInt() {
-    val deleteEavGlobalIntConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.deleteEavGlobalInt")
+    val deleteEavGlobalIntConsumer = eventBus.consumer<EavGlobalInt>("process.eavGlobal.deleteEavGlobalInt")
     deleteEavGlobalIntConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM eav_global_int WHERE product_id =? AND attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("EAV global int deleted successfully")
       }
     }
@@ -542,7 +498,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
     allEavGlobalMoneyConsumer.handler { message ->
       val query = "SELECT * FROM eav_global_money"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val eavGlobalMoneys: MutableList<EavGlobalMoney> = emptyList<EavGlobalMoney>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -552,31 +508,23 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "eavGlobalMoney" to rows.map { row ->
-                obj(
-                  makeEavGlobalMoneyJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            eavGlobalMoneys.add(makeEavGlobalMoney(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No global money found")
         }
+
+        message.reply(eavGlobalMoneys, listDeliveryOptions)
       }
     }
   }
 
   private fun getEavGlobalMoneyByKey() {
-    val getEavGlobalMoneyByKeyConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.getEavGlobalMoneyByKey")
+    val getEavGlobalMoneyByKeyConsumer = eventBus.consumer<EavGlobalMoney>("process.eavGlobal.getEavGlobalMoneyByKey")
     getEavGlobalMoneyByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM eav_global_money WHERE product_id =? AND attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -586,12 +534,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeEavGlobalMoneyJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(makeEavGlobalMoney(rows.first()), eavGlobalMoneyDeliveryOptions)
         } else {
           message.reply("No Eav Global Money found")
         }
@@ -600,7 +543,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createEavGlobalMoney() {
-    val createEavGlobalMoneyConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.createEavGlobalMoney")
+    val createEavGlobalMoneyConsumer = eventBus.consumer<EavGlobalMoney>("process.eavGlobal.createEavGlobalMoney")
     createEavGlobalMoneyConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -612,14 +555,14 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global money created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalMoneyDeliveryOptions)
       }
     }
   }
 
   private fun updateEavGlobalMoney() {
-    val updateEavGlobalMoneyConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.updateEavGlobalMoney")
+    val updateEavGlobalMoneyConsumer = eventBus.consumer<EavGlobalMoney>("process.eavGlobal.updateEavGlobalMoney")
     updateEavGlobalMoneyConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -631,25 +574,25 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global money updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalMoneyDeliveryOptions)
       }
     }
   }
 
   private fun deleteEavGlobalMoney() {
-    val deleteEavGlobalMoneyConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.deleteEavGlobalMoney")
+    val deleteEavGlobalMoneyConsumer = eventBus.consumer<EavGlobalMoney>("process.eavGlobal.deleteEavGlobalMoney")
     deleteEavGlobalMoneyConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM eav_global_money WHERE product_id =? AND attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("EAV global money deleted successfully")
       }
     }
@@ -660,7 +603,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
     allEavGlobalMultiSelectConsumer.handler { message ->
       val query = "SELECT * FROM eav_global_multi_select"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val eavGlobalMultiSelects: MutableList<EavGlobalMoney> = emptyList<EavGlobalMoney>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -670,31 +613,23 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "eavGlobalMultiSelect" to rows.map { row ->
-                obj(
-                  makeEavGlobalMultiSelectJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            eavGlobalMultiSelects.add(makeEavGlobalMoney(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No global multi-select found")
         }
+
+        message.reply(eavGlobalMultiSelects, listDeliveryOptions)
       }
     }
   }
 
   private fun getEavGlobalMultiSelectByKey() {
-    val getEavGlobalMultiSelectByKeyConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.getEavGlobalMultiSelectByKey")
+    val getEavGlobalMultiSelectByKeyConsumer = eventBus.consumer<EavGlobalMultiSelect>("process.eavGlobal.getEavGlobalMultiSelectByKey")
     getEavGlobalMultiSelectByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM eav_global_multi_select WHERE product_id =? AND attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -704,19 +639,14 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeEavGlobalMultiSelectJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(makeEavGlobalMultiSelect(rows.first()), eavGlobalMultiSelectDeliveryOptions)
         }
       }
     }
   }
 
   private fun createEavGlobalMultiSelect() {
-    val createEavGlobalMultiSelectConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.createEavGlobalMultiSelect")
+    val createEavGlobalMultiSelectConsumer = eventBus.consumer<EavGlobalMultiSelect>("process.eavGlobal.createEavGlobalMultiSelect")
     createEavGlobalMultiSelectConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -728,14 +658,14 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global multi-select created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalMultiSelectDeliveryOptions)
       }
     }
   }
 
   private fun updateEavGlobalMultiSelect() {
-    val updateEavGlobalMultiSelectConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.updateEavGlobalMultiSelect")
+    val updateEavGlobalMultiSelectConsumer = eventBus.consumer<EavGlobalMultiSelect>("process.eavGlobal.updateEavGlobalMultiSelect")
     updateEavGlobalMultiSelectConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -747,25 +677,25 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global multi-select updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavGlobalMultiSelectDeliveryOptions)
       }
     }
   }
 
   private fun deleteEavGlobalMultiSelect() {
-    val deleteEavGlobalMultiSelectConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.deleteEavGlobalMultiSelect")
+    val deleteEavGlobalMultiSelectConsumer = eventBus.consumer<EavGlobalMultiSelect>("process.eavGlobal.deleteEavGlobalMultiSelect")
     deleteEavGlobalMultiSelectConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM eav_global_multi_select WHERE product_id =? AND attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("EAV global multi-select deleted successfully")
       }
     }
@@ -776,7 +706,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
     allEavGlobalConsumer.handler { message ->
       val query = "SELECT * FROM eav"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val eavs: MutableList<Eav> = emptyList<Eav>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -786,31 +716,23 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "eavGlobal" to rows.map { row ->
-                obj(
-                  makeEavGlobalJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            eavs.add(makeEavGlobal(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No global found")
         }
+
+        message.reply(eavs, listDeliveryOptions)
       }
     }
   }
 
   private fun getEavGlobalByKey() {
-    val getEavGlobalByKeyConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.getEavGlobalByKey")
+    val getEavGlobalByKeyConsumer = eventBus.consumer<Eav>("process.eavGlobal.getEavGlobalByKey")
     getEavGlobalByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM eav WHERE product_id =? AND attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -820,19 +742,14 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeEavGlobalJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(makeEavGlobal(rows.first()), eavDeliveryOptions)
         }
       }
     }
   }
 
   private fun createEavGlobal() {
-    val createEavGlobalConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.createEavGlobal")
+    val createEavGlobalConsumer = eventBus.consumer<Eav>("process.eavGlobal.createEavGlobal")
     createEavGlobalConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -844,14 +761,14 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavDeliveryOptions)
       }
     }
   }
 
   private fun updateEavGlobal() {
-    val updateEavGlobalConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.updateEavGlobal")
+    val updateEavGlobalConsumer = eventBus.consumer<Eav>("process.eavGlobal.updateEavGlobal")
     updateEavGlobalConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -863,25 +780,25 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("EAV global updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, eavDeliveryOptions)
       }
     }
   }
 
   private fun deleteEavGlobal() {
-    val deleteEavGlobalConsumer = eventBus.consumer<JsonObject>("process.eavGlobal.deleteEavGlobal")
+    val deleteEavGlobalConsumer = eventBus.consumer<Eav>("process.eavGlobal.deleteEavGlobal")
     deleteEavGlobalConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM eav WHERE product_id =? AND attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(makeBasicGetKeyTuple(body))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.productId, body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete {
+      rowsFuture.onComplete { _ ->
         message.reply("EAV global deleted successfully")
       }
     }
@@ -904,7 +821,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         "Left Join public.eav e on products.product_id = e.product_id " +
         "LEFT JOIN public.custom_product_attributes cpa on cpa.attribute_key = e.attribute_key "
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val eavGlobalInfoList: MutableList<EavGlobalInfo> = emptyList<EavGlobalInfo>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -914,19 +831,12 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "eavGlobalInfo" to rows.map { row ->
-                obj(
-                  makeEavGlobalInfoJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            eavGlobalInfoList.add(makeEavGlobalInfo(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No global info found")
         }
+
+        message.reply(eavGlobalInfoList, listDeliveryOptions)
       }
     }
   }
@@ -951,7 +861,6 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         "WHERE products.product_id =?"
 
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body))
-      var json: JsonObject
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
@@ -960,16 +869,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "eavGlobalInfo" to rows.map { row ->
-                obj(
-                  makeEavGlobalInfoJsonFields(row)
-                )
-              }
-            )
-          }
-          message.reply(json)
+          message.reply(makeEavGlobal(rows.first()), eavGlobalInfoDeliveryOptions)
         } else {
           message.reply("No global info found for product ID: $body")
         }
@@ -977,159 +877,196 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
     }
   }
 
-  private fun makeEavGlobalBoolJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "attribute_key" to row.getString("attribute_key"),
-      "value" to row.getBoolean("value")
+  private fun makeEavGlobalBool(row: Row): EavGlobalBool {
+    return EavGlobalBool(
+      productId = row.getInteger("product_id"),
+      attributeKey = row.getString("attribute_key"),
+      value = row.getBoolean("value")
     )
   }
 
-  private fun makeEavGlobalFloatJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "attribute_key" to row.getString("attribute_key"),
-      "value" to row.getDouble("value")
+  private fun makeEavGlobalFloat(row: Row): EavGlobalFloat {
+    return EavGlobalFloat(
+      productId = row.getInteger("product_id"),
+      attributeKey = row.getString("attribute_key"),
+      value = row.getFloat("value")
     )
   }
 
-  private fun makeEavGlobalStringJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "attribute_key" to row.getString("attribute_key"),
-      "value" to row.getString("value")
+  private fun makeEavGlobalString(row: Row): EavGlobalString {
+    return EavGlobalString(
+      productId = row.getInteger("product_id"),
+      attributeKey = row.getString("attribute_key"),
+      value = row.getString("value")
     )
   }
 
-  private fun makeEavGlobalIntJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "attribute_key" to row.getString("attribute_key"),
-      "value" to row.getInteger("value")
+  private fun makeEavGlobalInt(row: Row): EavGlobalInt {
+    return EavGlobalInt(
+      productId = row.getInteger("product_id"),
+      attributeKey = row.getString("attribute_key"),
+      value = row.getInteger("value")
     )
   }
 
-  private fun makeEavGlobalMoneyJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "attribute_key" to row.getString("attribute_key"),
-      "value" to row.getDouble("value")
+  private fun makeEavGlobalMoney(row: Row): EavGlobalMoney {
+    return EavGlobalMoney(
+      productId = row.getInteger("product_id"),
+      attributeKey = row.getString("attribute_key"),
+      value = row.getDouble("value")
     )
   }
 
-  private fun makeEavGlobalMultiSelectJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "attribute_key" to row.getString("attribute_key"),
-      "value" to row.getInteger("value")
+  private fun makeEavGlobalMultiSelect(row: Row): EavGlobalMultiSelect {
+    return EavGlobalMultiSelect(
+      productId = row.getInteger("product_id"),
+      attributeKey = row.getString("attribute_key"),
+      value = row.getInteger("value")
     )
   }
 
-  private fun makeEavGlobalJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "attribute_key" to row.getString("attribute_key"),
+  private fun makeEavGlobal(row: Row): Eav {
+    return Eav(
+      productId = row.getInteger("product_id"),
+      attributeKey = row.getString("attribute_key")
     )
   }
 
-  private fun makeEavGlobalInfoJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "attribute_key" to row.getString("attribute_key"),
-      "globalBool" to row.getBoolean("bool_value"),
-      "globalFloat" to row.getDouble("float_value"),
-      "globalString" to row.getString("string_value"),
-      "globalInt" to row.getInteger("int_value"),
-      "globalMoney" to row.getDouble("money_value"),
-      "globalMultiSelect" to row.getInteger("multi_select_value"),
+  private fun makeEavGlobalInfo(row: Row): EavGlobalInfo {
+    return EavGlobalInfo(
+      eav = makeEavGlobal(row),
+      eavGlobalBool = makeEavGlobalBool(row),
+      eavGlobalFloat = makeEavGlobalFloat(row),
+      eavGlobalString = makeEavGlobalString(row),
+      eavGlobalInt = makeEavGlobalInt(row),
+      eavGlobalMoney = makeEavGlobalMoney(row),
+      eavGlobalMultiSelect = makeEavGlobalMultiSelect(row)
     )
   }
 
-  private fun makeEavGlobalBoolTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
+  private fun makeEavGlobalBoolTuple(body: EavGlobalBool, isPutRequest: Boolean): Tuple {
     val eavGlobalBoolTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.getString("value"),
-        body.getInteger("product_id"),
-        body.getString("attribute_key"),
+        body.value,
+        body.productId,
+        body.attributeKey,
       )
     } else {
       Tuple.of(
-        body.getInteger("product_id"),
-        body.getString("attribute_key"),
-        body.getString("value"),
+        body.productId,
+        body.attributeKey,
+        body.value,
       )
     }
 
     return eavGlobalBoolTuple
   }
 
-  private fun makeEavGlobalFloatTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
+  private fun makeEavGlobalFloatTuple(body: EavGlobalFloat, isPutRequest: Boolean): Tuple {
     val eavGlobalFloatTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.getDouble("value"),
-        body.getInteger("product_id"),
-        body.getString("attribute_key"),
+        body.value,
+        body.productId,
+        body.attributeKey,
       )
     } else {
       Tuple.of(
-        body.getInteger("product_id"),
-        body.getString("attribute_key"),
-        body.getDouble("value"),
+        body.productId,
+        body.attributeKey,
+        body.value,
       )
     }
 
     return eavGlobalFloatTuple
   }
 
-  private fun makeEavGlobalStringTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
-    return makeEavGlobalBoolTuple(body, isPutRequest)
-  }
-
-  private fun makeEavGlobalIntTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
-    val eavGlobalIntTuple: Tuple = if (isPutRequest) {
+  private fun makeEavGlobalStringTuple(body: EavGlobalString, isPutRequest: Boolean): Tuple {
+    val eavGlobalStringTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.getInteger("value"),
-        body.getInteger("product_id"),
-        body.getString("attribute_key"),
+        body.value,
+        body.productId,
+        body.attributeKey,
       )
     } else {
       Tuple.of(
-        body.getInteger("product_id"),
-        body.getString("attribute_key"),
-        body.getInteger("value"),
+        body.productId,
+        body.attributeKey,
+        body.value,
+      )
+    }
+
+    return eavGlobalStringTuple
+  }
+
+  private fun makeEavGlobalIntTuple(body: EavGlobalInt, isPutRequest: Boolean): Tuple {
+    val eavGlobalIntTuple: Tuple = if (isPutRequest) {
+      Tuple.of(
+        body.value,
+        body.productId,
+        body.attributeKey,
+      )
+    } else {
+      Tuple.of(
+        body.productId,
+        body.attributeKey,
+        body.value,
       )
     }
 
     return eavGlobalIntTuple
   }
 
-  private fun makeEavGlobalMoneyTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
-    return makeEavGlobalFloatTuple(body, isPutRequest)
-  }
-
-  private fun makeEavGlobalMultiSelectTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
-    return makeEavGlobalIntTuple(body, isPutRequest)
-  }
-
-  private fun makeEavGlobalTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
-    val eavGlobalTuple = if (isPutRequest) {
+  private fun makeEavGlobalMoneyTuple(body: EavGlobalMoney, isPutRequest: Boolean): Tuple {
+    val eavGlobalMoneyTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.getInteger("product_id"),
-        body.getString("attribute_key"),
-        body.getInteger("product_id"),
-        body.getString("attribute_key"),
+        body.value,
+        body.productId,
+        body.attributeKey,
       )
     } else {
       Tuple.of(
-        body.getInteger("product_id"),
-        body.getString("attribute_key"),
+        body.productId,
+        body.attributeKey,
+        body.value,
+      )
+    }
+
+    return eavGlobalMoneyTuple
+  }
+
+  private fun makeEavGlobalMultiSelectTuple(body: EavGlobalMultiSelect, isPutRequest: Boolean): Tuple {
+    val eavGlobalMultiSelectTuple: Tuple = if (isPutRequest) {
+      Tuple.of(
+        body.value,
+        body.productId,
+        body.attributeKey,
+      )
+    } else {
+      Tuple.of(
+        body.productId,
+        body.attributeKey,
+        body.value,
+      )
+    }
+
+    return eavGlobalMultiSelectTuple
+  }
+
+  private fun makeEavGlobalTuple(body: Eav, isPutRequest: Boolean): Tuple {
+    val eavGlobalTuple = if (isPutRequest) {
+      Tuple.of(
+        body.productId,
+        body.attributeKey,
+        body.productId,
+        body.attributeKey,
+      )
+    } else {
+      Tuple.of(
+        body.productId,
+        body.attributeKey,
       )
     }
 
     return eavGlobalTuple
-  }
-
-  private fun makeBasicGetKeyTuple(body: JsonObject): Tuple {
-    return Tuple.of(body.getInteger("product_id"), body.getString("attribute_key"))
   }
 }
