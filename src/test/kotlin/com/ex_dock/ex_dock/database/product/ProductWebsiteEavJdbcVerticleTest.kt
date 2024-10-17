@@ -2,6 +2,7 @@ package com.ex_dock.ex_dock.database.product
 
 import com.ex_dock.ex_dock.database.scope.ScopeJdbcVerticle
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.EventBus
@@ -789,25 +790,25 @@ class ProductWebsiteEavJdbcVerticleTest {
     val verticleList: MutableList<Future<Void>> = emptyList<Future<Void>>().toMutableList()
 
     verticleList.add(
-      verticleDeployHelper.deployWorkerHelper(
+      deployWorkerVerticleHelper(
         vertx,
         ProductWebsiteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5
       )
     )
     verticleList.add(
-      verticleDeployHelper.deployWorkerHelper(
+      deployWorkerVerticleHelper(
         vertx,
         ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5
       )
     )
     verticleList.add(
-      verticleDeployHelper.deployWorkerHelper(
+      deployWorkerVerticleHelper(
         vertx,
         ProductJdbcVerticle::class.qualifiedName.toString(), 5, 5
       )
     )
     verticleList.add(
-      verticleDeployHelper.deployWorkerHelper(
+      deployWorkerVerticleHelper(
         vertx,
         ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5
       )

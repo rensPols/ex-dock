@@ -1,6 +1,6 @@
 package com.ex_dock.ex_dock.database.product
 
-import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.EventBus
@@ -18,8 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 @ExtendWith(VertxExtension::class)
 class ProductMultiSelectJdbcVerticleTest {
   private lateinit var eventBus: EventBus
-
-  private val verticleDeployHelper = VerticleDeployHelper()
 
   private var productId = -1
 
@@ -578,25 +576,25 @@ class ProductMultiSelectJdbcVerticleTest {
     val verticleList: MutableList<Future<Void>> = emptyList<Future<Void>>().toMutableList()
 
     verticleList.add(
-      verticleDeployHelper.deployWorkerHelper(
+      deployWorkerVerticleHelper(
         vertx,
         ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5
       )
     )
     verticleList.add(
-      verticleDeployHelper.deployWorkerHelper(
+      deployWorkerVerticleHelper(
         vertx,
         ProductJdbcVerticle::class.qualifiedName.toString(), 5, 5
       )
     )
     verticleList.add(
-      verticleDeployHelper.deployWorkerHelper(
+      deployWorkerVerticleHelper(
         vertx,
         ProductMultiSelectJdbcVerticle::class.qualifiedName.toString(), 5, 5
       )
     )
     verticleList.add(
-      verticleDeployHelper.deployWorkerHelper(
+      deployWorkerVerticleHelper(
         vertx,
         ProductGlobalEavJdbcVerticle::class.qualifiedName.toString(), 5, 5
       )
