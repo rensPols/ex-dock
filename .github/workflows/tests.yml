@@ -1,0 +1,34 @@
+name: Run the tests
+
+on: [pull_request]
+
+jobs:
+  test-codecs:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test_class: [
+          # Codecs
+          "com.ex_dock.ex_dock.codecs.template_engine.SingleUseTemplateDataCodecTest",
+
+          # Templating Engine
+          "com.ex_dock.ex_dock.frontend.template_engine.TemplateEngineVerticleTest"
+        ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: actions/setup-java@v4.4.0
+        with:
+          java-version: 21
+          distribution: oracle
+
+      - name: Install dependencies
+        run: mvn clean install -DskipTests=true --no-transfer-progress
+
+      - name: Install test dependencies
+        run: mvn test -DskipTests=true --no-transfer-progress
+
+      - name: Run Tests
+        run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
