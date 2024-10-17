@@ -3,7 +3,7 @@ package com.ex_dock.ex_dock.database.url
 import com.ex_dock.ex_dock.database.category.CategoryJdbcVerticle
 import com.ex_dock.ex_dock.database.product.ProductJdbcVerticle
 import com.ex_dock.ex_dock.database.text_pages.TextPagesJdbcVerticle
-import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.EventBus
@@ -22,8 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 @ExtendWith(VertxExtension::class)
 class UrlJdbcVerticleTest {
   private lateinit var eventBus: EventBus
-
-  private val verticleDeployHelper = VerticleDeployHelper()
 
   private var productId = -1
 
@@ -549,19 +547,21 @@ class UrlJdbcVerticleTest {
   private fun deployNeededVerticles(vertx: Vertx): MutableList<Future<Void>> {
     val verticleList: MutableList<Future<Void>> = emptyList<Future<Void>>().toMutableList()
 
-    verticleList.add(verticleDeployHelper.deployWorkerHelper(
+    verticleList.add(deployWorkerVerticleHelper(
       vertx,
       UrlJdbcVerticle::class.qualifiedName.toString(), 5, 5
     ))
-    verticleList.add(verticleDeployHelper.deployWorkerHelper(
-      vertx,
-      TextPagesJdbcVerticle::class.qualifiedName.toString(), 5, 5
-    ))
-    verticleList.add(verticleDeployHelper.deployWorkerHelper(
+    verticleList.add(
+      deployWorkerVerticleHelper(
+        vertx,
+        TextPagesJdbcVerticle::class.qualifiedName.toString(), 5, 5
+      )
+    )
+    verticleList.add(deployWorkerVerticleHelper(
       vertx,
       CategoryJdbcVerticle::class.qualifiedName.toString(), 5, 5
     ))
-    verticleList.add(verticleDeployHelper.deployWorkerHelper(
+    verticleList.add(deployWorkerVerticleHelper(
       vertx,
       ProductJdbcVerticle::class.qualifiedName.toString(), 5, 5
     ))

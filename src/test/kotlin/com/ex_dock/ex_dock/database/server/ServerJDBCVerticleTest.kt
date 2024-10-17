@@ -1,19 +1,15 @@
 package com.ex_dock.ex_dock.database.server
 
 import com.ex_dock.ex_dock.database.codec.GenericCodec
-import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
-import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -21,7 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 class ServerJDBCVerticleTest {
   private val numTests = 1
   private lateinit var eventBus: EventBus
-  private val verticleDeployHelper = VerticleDeployHelper()
   private val serverDataDataDeliveryOptions = DeliveryOptions().setCodecName("ServerDataDataCodec")
   private val serverVersionDataDeliveryOptions = DeliveryOptions().setCodecName("ServerVersionDataCodec")
   private val serverDataList: MutableList<ServerDataData> = emptyList<ServerDataData>().toMutableList()
@@ -49,7 +44,7 @@ class ServerJDBCVerticleTest {
     serverDataList.add(serverData)
     serverVersionList.add(serverVersion)
 
-    verticleDeployHelper.deployWorkerHelper(vertx,
+    deployWorkerVerticleHelper(vertx,
       ServerJDBCVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
         eventBus.request<ServerDataData>("process.server.createServerData", serverData, serverDataDataDeliveryOptions).onFailure {
           testContext.failNow(it)

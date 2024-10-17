@@ -1,6 +1,6 @@
 package com.ex_dock.ex_dock.database.product
 
-import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
@@ -18,8 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 @ExtendWith(VertxExtension::class)
 class ProductCustomAttributesJdbcVerticleTest {
   private lateinit var eventBus: EventBus
-
-  private val verticleDeployHelper = VerticleDeployHelper()
 
   private val productCustomAttributesJson = json {
     obj(
@@ -47,7 +45,7 @@ class ProductCustomAttributesJdbcVerticleTest {
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
-    verticleDeployHelper.deployWorkerHelper(
+    deployWorkerVerticleHelper(
       vertx,
       ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5
     ).onFailure {
