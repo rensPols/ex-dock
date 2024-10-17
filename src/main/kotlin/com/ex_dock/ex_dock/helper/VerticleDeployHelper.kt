@@ -1,6 +1,10 @@
 package com.ex_dock.ex_dock.helper
 
-import io.vertx.core.*
+import io.vertx.core.Future
+import io.vertx.core.Promise
+import io.vertx.core.ThreadingModel
+import io.vertx.core.Vertx
+import io.vertx.core.DeploymentOptions
 
 class VerticleDeployHelper {
   companion object {
