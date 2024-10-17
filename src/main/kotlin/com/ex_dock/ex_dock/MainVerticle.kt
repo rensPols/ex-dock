@@ -1,5 +1,6 @@
 package com.ex_dock.ex_dock
 
+import com.ex_dock.ex_dock.backend.enableBackendRouter
 import com.ex_dock.ex_dock.frontend.account.router.initAccount
 import com.ex_dock.ex_dock.frontend.category.router.initCategory
 import com.ex_dock.ex_dock.frontend.checkout.router.initCheckout
@@ -35,6 +36,8 @@ class MainVerticle : AbstractVerticle() {
       }
 
     val mainRouter : Router = Router.router(vertx)
+
+    mainRouter.enableBackendRouter(vertx)
 
     mainRouter.initHome()
     mainRouter.initProduct(vertx)
