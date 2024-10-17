@@ -16,6 +16,11 @@ data class BackendPermissions(
   var apiKey: String?
 )
 
+data class FullUserInformation(
+  val user: User,
+  val backendPermissions: BackendPermissions
+)
+
 enum class Permissions(name: String) {
   NONE("none"),
   READ("read"),
