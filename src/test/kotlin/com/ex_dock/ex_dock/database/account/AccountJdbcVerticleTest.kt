@@ -1,6 +1,8 @@
 package com.ex_dock.ex_dock.database.account
 
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -16,107 +18,95 @@ import kotlin.reflect.typeOf
 
 @ExtendWith(VertxExtension::class)
 class AccountJdbcVerticleTest {
+  private val userDeliveryOptions = DeliveryOptions().setCodecName("UserCodec")
+  private val backendPermissionsDeliveryOptions = DeliveryOptions().setCodecName("BackendPermissionsCodec")
+  private var backendPermissionsList: MutableList<BackendPermissions> = emptyList<BackendPermissions>().toMutableList()
 
   @Test
   fun testUserData(vertx: Vertx, testContext: VertxTestContext) {
     val eventBus: EventBus = vertx.eventBus()
-    val createUser = testContext.checkpoint()
-    val getAllUsers = testContext.checkpoint()
-    val getUserById = testContext.checkpoint()
-    val updateUser = testContext.checkpoint()
-    val deleteUser = testContext.checkpoint()
+      .registerCodec(GenericCodec(User::class.java))
+      .registerCodec(GenericCodec(BackendPermissions::class.java))
+      .registerCodec(GenericCodec(FullUserInformation::class.java))
+      .registerCodec(GenericCodec(MutableList::class.java))
     var newUserId: Int = -1
 
-    var testUserJson: JsonObject = json {
-      obj(
-        "user_id" to newUserId,
-        "email" to "test@example.com",
-        "password" to "password",
-      )
-    }
+    val testUser = User(
+      userId = newUserId,
+      email = "test@example.com",
+      password = "password"
+    )
 
-    var updateUserJson: JsonObject
+    var updateUser: User
 
     vertx.deployVerticle(AccountJdbcVerticle(), testContext.succeeding {
-        eventBus.request<Int>("process.account.createUser", testUserJson).onFailure {
+        eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createMsg ->
           assert(createMsg.succeeded())
-          assertEquals(createMsg.result().body()::class.simpleName, "Int")
-          newUserId = createMsg.result().body()
+          testUser.userId = createMsg.result().body().userId
+          newUserId = testUser.userId
+          updateUser= User(
+            userId = newUserId,
+            email = "test@example.com",
+            password = "updatedPassword"
+          )
 
-          testUserJson = json {
-            obj(
-              "user_id" to newUserId,
-              "email" to "test@example.com",
-              "password" to "efc13eb549289c919d235c7cc325ae4c3bfc2dabc14c125dea6afefbbc8f15f2",
-            )
-          }
-          updateUserJson = json {
-            obj(
-              "user_id" to newUserId,
-              "email" to "updated@example.com",
-              "password" to "updatedPassword",
-            )
-          }
+          assertEquals(createMsg.result().body(), testUser)
 
-          createUser.flag()
-
-          eventBus.request<JsonObject>("process.account.getAllUsers", "").onFailure {
+          eventBus.request<MutableList<User>>("process.account.getAllUsers", "").onFailure {
             testContext.failNow(it)
           }.onComplete { getAllMsg ->
             assert(getAllMsg.succeeded())
-            assertNotEquals(json { obj("user" to "{}") }, getAllMsg.result().body())
+            assertNotEquals(emptyList<User>().toMutableList(), getAllMsg.result().body())
             assertTrue(
               BCrypt.checkpw("password",
-              getAllMsg.result().body().getJsonArray("users").getJsonObject(0).getString("password"))
+              getAllMsg.result().body()[0].password)
             )
-            getAllUsers.flag()
 
-            eventBus.request<JsonObject>("process.account.getUserById", newUserId).onFailure {
+            eventBus.request<User>("process.account.getUserById", newUserId).onFailure {
               testContext.failNow(it)
             }.onComplete { getMsg ->
               assert(getMsg.succeeded())
-              val user: JsonObject = getMsg.result().body()
-              assertEquals(testUserJson.getInteger("user_id"), user.getInteger("user_id"))
-              assertEquals(testUserJson.getString("email"), user.getString("email"))
+              val user: User = getMsg.result().body()
+              assertEquals(testUser.userId, user.userId)
+              assertEquals(testUser.email, user.email)
               assertTrue(
                 BCrypt.checkpw("password",
-                  user.getString("password"))
+                  user.password)
               )
-              getUserById.flag()
 
-              eventBus.request<JsonObject>("process.account.updateUser", updateUserJson).onFailure {
+              eventBus.request<User>("process.account.updateUser", updateUser, userDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { updateMsg ->
                 assert(updateMsg.succeeded())
-                assertEquals(updateMsg.result().body(), "User updated successfully")
+                assertEquals(updateMsg.result().body(), updateUser)
 
-                eventBus.request<JsonObject>("process.account.getUserById", newUserId).onFailure {
+                eventBus.request<User>("process.account.getUserById", newUserId).onFailure {
                   testContext.failNow(it)
                 }.onComplete { getUpdatedUserMsg ->
                   assert(getUpdatedUserMsg.succeeded())
-                  val updatedUser: JsonObject = getUpdatedUserMsg.result().body()
-                  assertEquals(updateUserJson.getInteger("user_id"), updatedUser.getInteger("user_id"))
-                  assertEquals(updateUserJson.getString("email"), updatedUser.getString("email"))
+                  val updatedUser: User = getUpdatedUserMsg.result().body()
+                  assertEquals(updateUser.userId, updatedUser.userId)
+                  assertEquals(updateUser.email, updatedUser.email)
                   assertTrue(
                     BCrypt.checkpw("updatedPassword",
-                      updatedUser.getString("password"))
+                      updatedUser.password)
                   )
-                  updateUser.flag()
 
-                  eventBus.request<JsonObject>("process.account.deleteUser", newUserId).onFailure {
+                  eventBus.request<String>("process.account.deleteUser", newUserId).onFailure {
                     testContext.failNow(it)
                   }.onComplete { deleteMsg ->
                     assert(deleteMsg.succeeded())
                     assertEquals(deleteMsg.result().body(), "User deleted successfully")
 
-                    eventBus.request<JsonObject>("process.account.getAllUsers", "").onFailure {
+                    eventBus.request<MutableList<User>>("process.account.getAllUsers", "").onFailure {
                       testContext.failNow(it)
                     }.onComplete { emptyMsg ->
                       assert(emptyMsg.succeeded())
-                      assertEquals(emptyMsg.result().body(), json { obj("users" to "{}") })
-                      deleteUser.flag()
+                      assertEquals(emptyMsg.result().body(), emptyList<User>().toMutableList())
+
+                      testContext.completeNow()
                     }
                   }
                 }
@@ -130,113 +120,101 @@ class AccountJdbcVerticleTest {
   @Test
   fun testBackendPermissions(vertx: Vertx, testContext: VertxTestContext) {
     val eventBus = vertx.eventBus()
-    val createPermission = testContext.checkpoint()
-    val getAllPermissions = testContext.checkpoint()
-    val getPermissionById = testContext.checkpoint()
-    val updatePermission = testContext.checkpoint()
-    val deletePermission = testContext.checkpoint()
-    var permissionId = -1
+      .registerCodec(GenericCodec(User::class.java))
+      .registerCodec(GenericCodec(BackendPermissions::class.java))
+      .registerCodec(GenericCodec(FullUserInformation::class.java))
+      .registerCodec(GenericCodec(MutableList::class.java))
+    val permissionId = -1
 
-    var permissionResult: JsonObject
+    var permissionResult: BackendPermissions
+    backendPermissionsList = emptyList<BackendPermissions>().toMutableList()
 
-    val testUserJson: JsonObject = json {
-      obj(
-        "user_id" to permissionId,
-        "email" to "test@example.com",
-        "password" to "password",
-      )
-    }
+    var testUser = User(
+      userId = permissionId,
+      email = "test@example.com",
+      password = BCrypt.hashpw("password", BCrypt.gensalt())
+    )
 
     vertx.deployVerticle(AccountJdbcVerticle(), testContext.succeeding {
-      eventBus.request<Int>("process.account.createUser", testUserJson).onFailure {
+      eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createUserMsg ->
         assert(createUserMsg.succeeded())
-        assertEquals(createUserMsg.result().body()::class.simpleName, "Int")
-        permissionId = createUserMsg.result().body()
+        testUser = createUserMsg.result().body()
 
-        permissionResult = json {
-          obj(
-            "user_id" to permissionId,
-            "user_permissions" to "none",
-            "server_settings" to "none",
-            "template" to "none",
-            "category_content" to "none",
-            "category_products" to "none",
-            "product_content" to "none",
-            "product_price" to "none",
-            "product_warehouse" to "none",
-            "text_pages" to "none",
-            "api_key" to null
-          )
-        }
-        eventBus.request<String>("process.account.createBackendPermissions", permissionResult).onFailure {
+        permissionResult = BackendPermissions(
+          userId = testUser.userId,
+          userPermissions = convertStringToPermission("none"),
+          serverSettings = convertStringToPermission("none"),
+          template = convertStringToPermission("none"),
+          categoryContent = convertStringToPermission("none"),
+          categoryProducts = convertStringToPermission("none"),
+          productContent = convertStringToPermission("none"),
+          productPrice = convertStringToPermission("none"),
+          productWarehouse = convertStringToPermission("none"),
+          textPages = convertStringToPermission("none"),
+          apiKey = null
+        )
+        backendPermissionsList.add(permissionResult)
+
+        assertEquals(createUserMsg.result().body(), testUser)
+        eventBus.request<BackendPermissions>("process.account.createBackendPermissions", permissionResult, backendPermissionsDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createMsg ->
           assert(createMsg.succeeded())
+          assertEquals(permissionResult, createMsg.result().body())
 
-          createPermission.flag()
-
-          eventBus.request<JsonObject>("process.account.getAllBackendPermissions", "").onFailure {
+          eventBus.request<MutableList<BackendPermissions>>("process.account.getAllBackendPermissions", "").onFailure {
             testContext.failNow(it)
           }.onComplete { getAllMsg ->
             assert(getAllMsg.succeeded())
-            assertEquals(json {
-              obj(
-                "backend_permissions" to listOf(permissionResult)
-              )
-            }, getAllMsg.result().body())
-            getAllPermissions.flag()
+            assertEquals(backendPermissionsList, getAllMsg.result().body())
 
-            eventBus.request<JsonObject>(
+            eventBus.request<BackendPermissions>(
               "process.account.getBackendPermissionsByUserId",
-              permissionResult.getInteger("user_id")
+              permissionResult.userId
             )
               .onFailure {
                 testContext.failNow(it)
               }.onComplete { getMsg ->
                 assert(getMsg.succeeded())
-                val permission: JsonObject = getMsg.result().body()
+                val permission: BackendPermissions = getMsg.result().body()
                 assertEquals(permissionResult, permission)
-                getPermissionById.flag()
 
-                permissionResult = json {
-                  obj(
-                    "user_id" to permissionId,
-                    "user_permissions" to "read",
-                    "server_settings" to "read",
-                    "template" to "read",
-                    "category_content" to "read",
-                    "category_products" to "read",
-                    "product_content" to "read",
-                    "product_price" to "read",
-                    "product_warehouse" to "read",
-                    "text_pages" to "read",
-                    "api_key" to null
-                  )
-                }
+                permissionResult = BackendPermissions(
+                  userId = permissionResult.userId,
+                  userPermissions = convertStringToPermission("read"),
+                  serverSettings = convertStringToPermission("read"),
+                  template = convertStringToPermission("read"),
+                  categoryContent = convertStringToPermission("read"),
+                  categoryProducts = convertStringToPermission("read"),
+                  productContent = convertStringToPermission("read"),
+                  productPrice = convertStringToPermission("read"),
+                  productWarehouse = convertStringToPermission("read"),
+                  textPages = convertStringToPermission("read"),
+                  apiKey = null
+                )
 
-                eventBus.request<JsonObject>("process.account.updateBackendPermissions", permissionResult).onFailure {
+                eventBus.request<BackendPermissions>("process.account.updateBackendPermissions", permissionResult, backendPermissionsDeliveryOptions).onFailure {
                   testContext.failNow(it)
                 }.onComplete { updateMsg ->
                   assert(updateMsg.succeeded())
-                  assertEquals(updateMsg.result().body(), "Backend permissions updated successfully")
+                  assertEquals(updateMsg.result().body(), permissionResult)
 
-                  eventBus.request<JsonObject>(
+                  eventBus.request<BackendPermissions>(
                     "process.account.getBackendPermissionsByUserId",
-                    permissionResult.getInteger("user_id")
+                    permissionResult.userId
                   )
                     .onFailure {
                       testContext.failNow(it)
                     }.onComplete { getUpdatedMsg ->
                       assert(getUpdatedMsg.succeeded())
-                      val updatedPermission: JsonObject = getUpdatedMsg.result().body()
+                      val updatedPermission: BackendPermissions = getUpdatedMsg.result().body()
                       assertEquals(permissionResult, updatedPermission)
-                      updatePermission.flag()
 
-                      eventBus.request<JsonObject>(
+                      eventBus.request<String>(
                         "process.account.deleteBackendPermissions",
-                        permissionResult.getInteger("user_id")
+                        permissionResult.userId
                       )
                         .onFailure {
                           testContext.failNow(it)
@@ -244,16 +222,16 @@ class AccountJdbcVerticleTest {
                           assert(deleteMsg.succeeded())
                           assertEquals(deleteMsg.result().body(), "Backend permissions deleted successfully")
 
-                          eventBus.request<JsonObject>("process.account.getAllBackendPermissions", "").onFailure {
+                          eventBus.request<MutableList<BackendPermissions>>("process.account.getAllBackendPermissions", "").onFailure {
                             testContext.failNow(it)
                           }.onComplete { emptyMsg ->
                             assert(emptyMsg.succeeded())
-                            assertEquals(emptyMsg.result().body(), json { obj("backend_permissions" to "{}") })
+                            assertEquals(emptyMsg.result().body(), emptyList<BackendPermissions>().toMutableList())
 
                             eventBus.request<String>("process.account.deleteUser", permissionId).onFailure {
                               testContext.failNow(it)
                             }.onComplete {
-                              deletePermission.flag()
+                              testContext.completeNow()
                             }
                           }
                         }
@@ -269,86 +247,73 @@ class AccountJdbcVerticleTest {
   @Test
   fun testFullUserInformation(vertx: Vertx, testContext: VertxTestContext) {
     val eventBus = vertx.eventBus()
-    val getAllDataCheckpoint = testContext.checkpoint()
-    val getDataById = testContext.checkpoint()
+      .registerCodec(GenericCodec(User::class.java))
+      .registerCodec(GenericCodec(BackendPermissions::class.java))
+      .registerCodec(GenericCodec(FullUserInformation::class.java))
+      .registerCodec(GenericCodec(MutableList::class.java))
     var userId = -1
+    val fullUserInformationList: MutableList<FullUserInformation> = emptyList<FullUserInformation>().toMutableList()
 
-    val testUserJson: JsonObject = json {
-      obj(
-        "user_id" to userId,
-        "email" to "test@example.com",
-        "password" to "password",
-      )
-    }
+    var testUser = User(
+      userId = userId,
+      email = "test@example.com",
+      password = BCrypt.hashpw("password", BCrypt.gensalt())
+    )
 
-    var allInfoResult: JsonObject
+    var allInfoResult: FullUserInformation
 
-    var testPermissionJson: JsonObject
+    var testPermission: BackendPermissions
 
     vertx.deployVerticle(AccountJdbcVerticle(), testContext.succeeding {
-      eventBus.request<Int>("process.account.createUser", testUserJson).onFailure {
+      eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete{ createUserMsg ->
         assert(createUserMsg.succeeded())
-        assertEquals(createUserMsg.result().body()::class.simpleName, "Int")
-        userId = createUserMsg.result().body()
+        testUser = createUserMsg.result().body()
+        userId = testUser.userId
 
-        allInfoResult = json {
-          obj(
-            "user_id" to userId,
-            "email" to "test@example.com",
-            "user_permissions" to "none",
-            "server_settings" to "none",
-            "template" to "none",
-            "category_content" to "none",
-            "category_products" to "none",
-            "product_content" to "none",
-            "product_price" to "none",
-            "product_warehouse" to "none",
-            "text_pages" to "none",
-            "api_key" to null
-          )
-        }
+        testPermission = BackendPermissions(
+          userId = userId,
+          userPermissions = convertStringToPermission("read"),
+          serverSettings = convertStringToPermission("read"),
+          template = convertStringToPermission("read"),
+          categoryContent = convertStringToPermission("read"),
+          categoryProducts = convertStringToPermission("read"),
+          productContent = convertStringToPermission("read"),
+          productPrice = convertStringToPermission("read"),
+          productWarehouse = convertStringToPermission("read"),
+          textPages = convertStringToPermission("read"),
+          apiKey = null
+        )
 
-        testPermissionJson = json {
-          obj(
-            "user_id" to userId,
-            "user_permissions" to "none",
-            "server_settings" to "none",
-            "template" to "none",
-            "category_content" to "none",
-            "category_products" to "none",
-            "product_content" to "none",
-            "product_price" to "none",
-            "product_warehouse" to "none",
-            "text_pages" to "none",
-            "api_key" to null
-          )
-        }
+        allInfoResult = FullUserInformation(
+          testUser,
+          testPermission
+        )
+        allInfoResult.user.password = ""
 
-        eventBus.request<String>("process.account.createBackendPermissions", testPermissionJson).onFailure {
+        fullUserInformationList.add(allInfoResult)
+
+        assertEquals(createUserMsg.result().body(), testUser)
+
+        eventBus.request<BackendPermissions>("process.account.createBackendPermissions", testPermission, backendPermissionsDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createPermissionMsg ->
           assert(createPermissionMsg.succeeded())
+          assertEquals(testPermission, createPermissionMsg.result().body())
 
-          eventBus.request<JsonObject>("process.account.getAllFullUserInfo", "").onFailure {
+          eventBus.request<MutableList<FullUserInformation>>("process.account.getAllFullUserInfo", "").onFailure {
             testContext.failNow(it)
           }.onComplete { getAllFullMsg ->
             val fullBody = getAllFullMsg.result().body()
-            fullBody.getJsonArray("full_user_info").getJsonObject(0).remove("password")
-            assertEquals(fullBody, json {
-              obj(
-                "full_user_info" to listOf(allInfoResult)
-              )
-            })
+            fullBody[0].user.password = ""
+            assertEquals(fullBody, fullUserInformationList)
 
-            getAllDataCheckpoint.flag()
-
-            eventBus.request<JsonObject>("process.account.getFullUserInformationByUserId", userId).onFailure {
+            eventBus.request<FullUserInformation>("process.account.getFullUserInformationByUserId", userId).onFailure {
               testContext.failNow(it)
             }.onComplete { fullInfoByIdMsg ->
               val fullBodyById = fullInfoByIdMsg.result().body()
-              fullBodyById.remove("password")
+              fullBodyById.user.password = ""
               assertEquals(fullBodyById, allInfoResult)
 
               eventBus.request<String>("process.account.deleteBackendPermissions", userId).onFailure {
@@ -360,7 +325,7 @@ class AccountJdbcVerticleTest {
                 eventBus.request<String>("process.account.deleteUser", userId).onFailure {
                   testContext.failNow(it)
                 }.onComplete {
-                  getDataById.flag()
+                  testContext.completeNow()
                 }
               }
             }
@@ -368,5 +333,15 @@ class AccountJdbcVerticleTest {
         }
       }
     })
+  }
+
+  private fun convertStringToPermission(name: String): Permissions {
+    when (name) {
+      "read" -> return Permissions.READ
+      "write" -> return Permissions.WRITE
+      "read-write" -> return Permissions.READ_WRITE
+    }
+
+    return Permissions.NONE
   }
 }
