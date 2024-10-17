@@ -18,15 +18,15 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
 
   companion object {
-    const val FAILED_MESSAGE = "failed"
-    const val NO_USER_MESSAGE = "User does not exist"
+    const val FAILED = "failed"
+    const val NO_USER = "User does not exist"
     const val USER_DELETED_SUCCESS = "User deleted successfully"
 
     const val BACKEND_PERMISSION_CREATION_FAILED = "Failed to create backend permissions"
-    const val BACKEND_PERMISSION_UPDATED = "Backend Permissions were successfully updated!"
     const val BACKEND_PERMISSION_UPDATE_FAILED = "Failed to update backend permissions"
     const val BACKEND_PERMISSION_DELETED = "Backend Permissions were successfully deleted!"
     const val BACKEND_PERMISSION_DELETE_FAILED = "Failed to delete backend permissions"
+    const val NO_BACKEND_PERMISSION = "No backend permissions found"
   }
 
   private val userDeliveryOptions = DeliveryOptions().setCodecName("UserCodec")
@@ -55,8 +55,8 @@ class AccountJdbcVerticle: AbstractVerticle() {
     deleteBackendPermissions()
 
     // Initialize all eventbus connections for full user information
-    getAllFullUserInfo()
-    getFullUserInformationByUserId()
+    getAllFullUser()
+    getFullUserByUserId()
   }
 
   private fun getAllUsers() {
@@ -67,7 +67,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
@@ -90,7 +90,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
@@ -98,7 +98,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
         if (rows.size() > 0) {
           message.reply(makeUserObject(rows.first()), userDeliveryOptions)
         } else {
-          message.fail(404, json {obj("user" to "{}") }.toString())
+          message.fail(404, NO_USER)
         }
       }
     }
@@ -114,7 +114,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(400, FAILED_MESSAGE)
+        message.fail(400, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
@@ -137,14 +137,14 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
           message.reply(body, userDeliveryOptions)
         } else {
-          message.fail(404, NO_USER_MESSAGE)
+          message.fail(404, NO_USER)
         }
       }
     }
@@ -159,14 +159,14 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
           message.reply(USER_DELETED_SUCCESS)
         } else {
-          message.fail(404, NO_USER_MESSAGE)
+          message.fail(404, NO_USER)
         }
       }
     }
@@ -180,7 +180,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
@@ -204,7 +204,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
@@ -212,7 +212,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
         if (rows.size() > 0) {
           message.reply(makeBackendPermissionsObject(rows.first()), backendPermissionsDeliveryOptions)
         } else {
-          message.fail(404, json { obj("backend_permissions" to "{}") }.toString())
+          message.fail(404, NO_BACKEND_PERMISSION)
         }
       }
     }
@@ -232,7 +232,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
@@ -261,7 +261,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
@@ -284,7 +284,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
@@ -297,7 +297,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
     }
   }
 
-  private fun getAllFullUserInfo() {
+  private fun getAllFullUser() {
     val getAllFullUserInfoConsumer = eventBus.consumer<String>("process.account.getAllFullUserInfo")
     getAllFullUserInfoConsumer.handler { message ->
       val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
@@ -308,7 +308,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
@@ -322,7 +322,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
     }
   }
 
-  private fun getFullUserInformationByUserId() {
+  private fun getFullUserByUserId() {
     val getFullUserInformationByUserIdConsumer =
       eventBus.consumer<Int>("process.account.getFullUserInformationByUserId")
     getFullUserInformationByUserIdConsumer.handler { message ->
@@ -335,7 +335,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
-        message.fail(500, FAILED_MESSAGE)
+        message.fail(500, FAILED)
       }
 
       rowsFuture.onSuccess { res ->
@@ -343,7 +343,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
         if (rows.size() > 0) {
           message.reply(makeFullUserObject(rows.first()), fullUserDeliveryOptions)
           } else {
-          message.fail(404, json { obj("full_user_info" to "{}") }.toString())
+          message.fail(404, NO_USER)
         }
       }
     }
@@ -401,7 +401,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private fun makeBackendPermissionsTuple(body: BackendPermissions, isPutRequest: Boolean): Tuple {
     val backendPermissionsTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        convertPermissionToString(body.userPermissions),
+        convertPermissionToString(body.userPermission),
         convertPermissionToString(body.serverSettings),
         convertPermissionToString(body.template),
         convertPermissionToString(body.categoryContent),
@@ -416,7 +416,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
     } else {
       Tuple.of(
         body.userId,
-        convertPermissionToString(body.userPermissions),
+        convertPermissionToString(body.userPermission),
         convertPermissionToString(body.serverSettings),
         convertPermissionToString(body.template),
         convertPermissionToString(body.categoryContent),
@@ -436,7 +436,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
     return BCrypt.hashpw(password, BCrypt.gensalt(12))
   }
 
-  private fun convertStringToPermission(name: String): Permissions {
+  private fun convertStringToPermission(name: String): Permission {
     when (name) {
       "read" -> return Permission.READ
       "write" -> return Permission.WRITE
