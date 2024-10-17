@@ -34,5 +34,8 @@ jobs:
       - name: Install test dependencies
         run: mvn test -DskipTests=true --no-transfer-progress
 
+      - name: Start database docker
+        run: docker run -p 8890:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=docker -e POSTGRES_DB=ex-dock -v ./database/ex-dock.sql:/docker-entrypoint-initdb.d/datadump.sql postgres:14-alpine
+
       - name: Run Tests
         run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
