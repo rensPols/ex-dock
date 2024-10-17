@@ -3,7 +3,7 @@ name: Run the tests
 on: [pull_request]
 
 jobs:
-  test-codecs:
+  tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
