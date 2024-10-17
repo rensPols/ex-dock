@@ -54,7 +54,7 @@ jobs:
         run: mvn test -DskipTests=true --no-transfer-progress
 
       - name: Run Tests
-        run: |
+        run:
 #          cd database
 #          ls
           mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
