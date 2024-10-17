@@ -8,7 +8,7 @@ on:
       - ready_for_review
 
 jobs:
-  test-codecs:
+  tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -30,6 +30,7 @@ jobs:
         with:
           java-version: 21
           distribution: oracle
+          cache: maven
 
       - name: Install dependencies
         run: mvn clean install -DskipTests=true --no-transfer-progress
