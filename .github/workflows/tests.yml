@@ -12,16 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test_class: [
+        test_class:
           # Codecs
-          "com.ex_dock.ex_dock.codecs.template_engine.SingleUseTemplateDataCodecTest",
+          - "com.ex_dock.ex_dock.codecs.template_engine.SingleUseTemplateDataCodecTest",
 
           # Templating Engine
-          "com.ex_dock.ex_dock.frontend.template_engine.TemplateEngineVerticleTest"
+          - "com.ex_dock.ex_dock.frontend.template_engine.TemplateEngineVerticleTest"
 
           # Database
-          "com.ex_dock.ex_dock.database.account.AccountJdbcVerticleTest"
-      ]
+          - "com.ex_dock.ex_dock.database.account.AccountJdbcVerticleTest"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
