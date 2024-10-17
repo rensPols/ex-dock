@@ -13,6 +13,9 @@ jobs:
 
           # Templating Engine
           "com.ex_dock.ex_dock.frontend.template_engine.TemplateEngineVerticleTest"
+
+          # Database
+          "com.ex_dock.ex_dock.database.account.AccountJdbcVerticleTest"
         ]
     steps:
       - name: Checkout code
