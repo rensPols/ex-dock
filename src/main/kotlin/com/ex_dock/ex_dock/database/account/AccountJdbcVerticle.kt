@@ -1,6 +1,6 @@
 package com.ex_dock.ex_dock.database.account
 
-import com.ex_dock.ex_dock.database.connection.Connection
+import com.ex_dock.ex_dock.database.connection.getConnection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.EventBus
 import io.vertx.kotlin.core.json.json
@@ -16,7 +16,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private lateinit var eventBus: EventBus
 
   override fun start() {
-    client = Connection().getConnection(vertx)
+    client = getConnection(vertx)
     eventBus = vertx.eventBus()
 
     getAccountData()
