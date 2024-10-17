@@ -10,18 +10,13 @@ jobs:
       database:
         image: postgres:14-alpine
         ports:
-          - "8890:5432"
+          - 8890:5432
         env:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: ex_dock_test
         volumes:
           - ./database/ex-dock.sql:/docker-entrypoint-initdb.d/datadump.sql
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 20s
-          --health-timeout 10s
-          --health-retries 5
     strategy:
       matrix:
         test_class:
