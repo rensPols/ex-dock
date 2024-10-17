@@ -55,5 +55,5 @@ jobs:
 
       - name: Run Tests
         run: |
-          run ls
+          ls
           mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
