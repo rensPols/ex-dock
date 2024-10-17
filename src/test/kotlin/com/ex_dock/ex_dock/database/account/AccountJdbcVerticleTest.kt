@@ -46,6 +46,22 @@ class AccountJdbcVerticleTest {
   }
 
   @Test
+  fun getAllUsersEmpty(vertx: Vertx, testContext: VertxTestContext) {
+    val request = eventBus.request<String>("process.account.getAllUsers", "")
+
+    testContext.failNow("test failNow")
+
+    request.onFailure { testContext.failNow(it) }
+    request.onComplete { msg ->
+      if (msg.failed()) testContext.failNow(msg.result().toString())
+      if (msg.result() != emptyList<User>()) testContext.failNow(
+        "result is not equal to emptyList<User>()\nmsg.result().toString(): ${msg.result()}"
+      )
+      testContext.completeNow()
+    }
+  }
+
+  @Test
   fun testUserData(vertx: Vertx, testContext: VertxTestContext) {
     val processAccountCreateUserCheckpoint = testContext.checkpoint()
     val processAccountGetAllUsersCheckpoint = testContext.checkpoint(2)
