@@ -65,7 +65,7 @@ fun deployWorkerVerticleHelper(vertx: Vertx, name: String, workerPoolSize: Int, 
   vertx.deployVerticle(name, options)
     .onComplete{ res ->
       if (res.failed()) {
-        var stackTrace: String = ""
+        var stackTrace = ""
         for (stackTraceElement in res.cause().stackTrace) {
           stackTrace += "\t$stackTraceElement\n"
         }
