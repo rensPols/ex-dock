@@ -36,8 +36,8 @@ class ProductCustomAttributesJdbcVerticleTest {
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(MutableList::class))
-      .registerCodec(GenericCodec(CustomProductAttributes::class))
+      .registerCodec(GenericCodec(MutableList::class.java))
+      .registerCodec(GenericCodec(CustomProductAttributes::class.java))
     ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString()
     deployWorkerVerticleHelper(vertx,
       ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5).onFailure {

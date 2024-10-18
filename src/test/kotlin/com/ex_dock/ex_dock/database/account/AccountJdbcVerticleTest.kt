@@ -2,6 +2,7 @@ package com.ex_dock.ex_dock.database.account
 
 import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.database.codec.GenericListCodec
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
@@ -16,9 +17,9 @@ import org.mindrot.jbcrypt.BCrypt
 
 @ExtendWith(VertxExtension::class)
 class AccountJdbcVerticleTest {
-  private val userCodec: MessageCodec<User, User> = GenericCodec(User::class)
-  private val backendPermissionsCodec: MessageCodec<BackendPermissions, BackendPermissions> = GenericCodec(BackendPermissions::class)
-  private val fullUserCodec: MessageCodec<FullUser, FullUser> = GenericCodec(FullUser::class)
+  private val userCodec: MessageCodec<User, User> = GenericCodec(User::class.java)
+  private val backendPermissionsCodec: MessageCodec<BackendPermissions, BackendPermissions> = GenericCodec(BackendPermissions::class.java)
+  private val fullUserCodec: MessageCodec<FullUser, FullUser> = GenericCodec(FullUser::class.java)
   private val userListCodec: MessageCodec<List<User>, List<User>> = GenericListCodec(User::class)
   private val backendPermissionsListCodec: MessageCodec<List<BackendPermissions>, List<BackendPermissions>> = GenericListCodec(BackendPermissions::class)
   private val fullUserListCodec: MessageCodec<List<FullUser>, List<FullUser>> = GenericListCodec(FullUser::class)
@@ -33,29 +34,34 @@ class AccountJdbcVerticleTest {
   private var backendPermissionsList: MutableList<BackendPermissions> = emptyList<BackendPermissions>().toMutableList()
 
   private lateinit var eventBus: EventBus
-  
+
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
-     .registerCodec(userCodec)
-     .registerCodec(userListCodec)
-     .registerCodec(backendPermissionsCodec)
-     .registerCodec(backendPermissionsListCodec)
-     .registerCodec(fullUserCodec)
-     .registerCodec(fullUserListCodec)
+      .registerCodec(userCodec)
+      .registerCodec(userListCodec)
+      .registerCodec(backendPermissionsCodec)
+      .registerCodec(backendPermissionsListCodec)
+      .registerCodec(fullUserCodec)
+      .registerCodec(fullUserListCodec)
+
+    deployWorkerVerticleHelper(vertx,
+      AccountJdbcVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
+      testContext.completeNow()
+    }
+
+
   }
 
   @Test
   fun getAllUsersEmpty(vertx: Vertx, testContext: VertxTestContext) {
     val request = eventBus.request<String>("process.account.getAllUsers", "")
 
-    testContext.failNow("test failNow")
-
     request.onFailure { testContext.failNow(it) }
     request.onComplete { msg ->
       if (msg.failed()) testContext.failNow(msg.result().toString())
       if (msg.result() != emptyList<User>()) testContext.failNow(
-        "result is not equal to emptyList<User>()\nmsg.result().toString(): ${msg.result()}"
+        "result is not equal to emptyList<User>()\nmsg.result().toString(): ${msg.result().body()}"
       )
       testContext.completeNow()
     }
@@ -318,7 +324,7 @@ class AccountJdbcVerticleTest {
                           testContext.failNow(it)
                         }.onComplete { deleteMsg ->
                           assert(deleteMsg.succeeded())
-                          assertEquals(deleteMsg.result().body(), "Backend permissions deleted successfully")
+                          assertEquals(deleteMsg.result().body(), "Backend Permissions were successfully deleted!")
 
                           eventBus.request<MutableList<BackendPermissions>>("process.account.getAllBackendPermissions", "").onFailure {
                             testContext.failNow(it)
