@@ -53,4 +53,6 @@ jobs:
         run: mvn test -DskipTests=true --no-transfer-progress
 
       - name: Run Tests
-        run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
+        run: |
+          docker compose -f .ci/compose.yaml ci up -d
+          mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
