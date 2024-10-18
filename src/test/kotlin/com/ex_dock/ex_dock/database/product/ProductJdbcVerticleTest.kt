@@ -3,6 +3,7 @@ package com.ex_dock.ex_dock.database.product
 import com.ex_dock.ex_dock.database.category.PageIndex
 import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
@@ -66,12 +67,13 @@ class ProductJdbcVerticleTest {
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(Products::class.java))
-      .registerCodec(GenericCodec(ProductsSeo::class.java))
-      .registerCodec(GenericCodec(ProductsPricing::class.java))
-      .registerCodec(GenericCodec(FullProduct::class.java))
-      .registerCodec(GenericCodec(MutableList::class.java))
-    verticleDeployHelper.deployWorkerHelper(vertx,
+      .registerCodec(GenericCodec(Products::class))
+      .registerCodec(GenericCodec(ProductsSeo::class))
+      .registerCodec(GenericCodec(ProductsPricing::class))
+      .registerCodec(GenericCodec(FullProduct::class))
+      .registerCodec(GenericCodec(MutableList::class))
+    ProductJdbcVerticle::class.qualifiedName.toString()
+    deployWorkerVerticleHelper(vertx,
       ProductJdbcVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
       eventBus.request<Products>("process.products.createProduct", product, productDeliveryOptions).onFailure {
         testContext.failNow(it)

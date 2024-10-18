@@ -2,14 +2,12 @@ package com.ex_dock.ex_dock.database.product
 
 import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
-import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 
@@ -38,12 +36,11 @@ class ProductCustomAttributesJdbcVerticleTest {
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(MutableList::class.java))
-      .registerCodec(GenericCodec(CustomProductAttributes::class.java))
-    verticleDeployHelper.deployWorkerHelper(
-      vertx,
-      ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5
-    ).onFailure {
+      .registerCodec(GenericCodec(MutableList::class))
+      .registerCodec(GenericCodec(CustomProductAttributes::class))
+    ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString()
+    deployWorkerVerticleHelper(vertx,
+      ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5).onFailure {
       testContext.failNow(it)
     }.onComplete {
       eventBus.request<Int>("process.attributes.createCustomAttribute", productCustomAttributes, customProductAttributesDataDeliveryOptions).onFailure {
