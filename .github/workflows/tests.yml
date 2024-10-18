@@ -16,7 +16,7 @@ jobs:
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: ex_dock_test
         volumes:
-          - /home/runner/work/ex-dock/ex-dock/database/ex-dock.sql:/docker-entrypoint-initdb.d/ex-dock.sql
+          - ${{ github.workspace }}/database/ex-dock.sql:/docker-entrypoint-initdb.d/ex-dock.sql
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
