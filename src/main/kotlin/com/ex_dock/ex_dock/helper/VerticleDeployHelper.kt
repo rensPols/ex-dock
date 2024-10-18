@@ -65,13 +65,17 @@ fun deployWorkerVerticleHelper(vertx: Vertx, name: String, workerPoolSize: Int, 
   vertx.deployVerticle(name, options)
     .onComplete{ res ->
       if (res.failed()) {
+        var stackTrace: String = ""
+        for (stackTraceElement in res.cause().stackTrace) {
+          stackTrace += "\t$stackTraceElement\n"
+        }
         println(buildString {
           append("\u001b[31m")
           append("⨯ - Failed deploy to worker Verticle: $name")
           append("\n")
           append("    - cause: ${res.cause()}")
           append("\n")
-          append("    - stacktrace: ${res.cause().message}")
+          append("    - stacktrace: $stackTrace")
           append("\u001b[0m")
         })
         promise.fail(res.cause())
