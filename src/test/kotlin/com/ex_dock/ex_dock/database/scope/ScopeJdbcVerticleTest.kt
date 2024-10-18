@@ -47,8 +47,11 @@ class ScopeJdbcVerticleTest {
       .registerCodec(GenericCodec(Websites::class.java))
       .registerCodec(GenericCodec(StoreView::class.java))
       .registerCodec(GenericCodec(FullScope::class.java))
-    deployWorkerVerticleHelper(vertx,
-      ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
+    try {
+      deployWorkerVerticleHelper(
+        vertx,
+        ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5
+      ).onComplete {
         eventBus.request<Websites>("process.scope.createWebsite", website, websiteDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createWebsiteMsg ->
@@ -73,6 +76,10 @@ class ScopeJdbcVerticleTest {
             testContext.completeNow()
           }
         }
+      }
+    } catch (e: Exception) {
+      println(e.message)
+      testContext.failNow(e)
     }
   }
   @Test
