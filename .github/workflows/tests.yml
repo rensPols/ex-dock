@@ -56,7 +56,6 @@ jobs:
       - name: Test files
         run: |
           psql --username=postgres ex-dock < database/ex-dock.sql
-          docker
 
       - name: Run Tests
         run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
