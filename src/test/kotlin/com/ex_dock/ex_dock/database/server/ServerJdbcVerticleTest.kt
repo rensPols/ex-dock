@@ -1,16 +1,15 @@
 package com.ex_dock.ex_dock.database.server
 
 import com.ex_dock.ex_dock.database.codec.GenericCodec
-import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -18,7 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 class ServerJdbcVerticleTest {
   private val numTests = 1
   private lateinit var eventBus: EventBus
-  private val verticleDeployHelper = VerticleDeployHelper()
   private val serverDataDataDeliveryOptions = DeliveryOptions().setCodecName("ServerDataDataCodec")
   private val serverVersionDataDeliveryOptions = DeliveryOptions().setCodecName("ServerVersionDataCodec")
   private val serverDataList: MutableList<ServerDataData> = emptyList<ServerDataData>().toMutableList()
@@ -40,13 +38,13 @@ class ServerJdbcVerticleTest {
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(ServerDataData::class.java))
-      .registerCodec(GenericCodec(MutableList::class.java))
-      .registerCodec(GenericCodec(ServerVersionData::class.java))
+      .registerCodec(GenericCodec(ServerDataData::class))
+      .registerCodec(GenericCodec(MutableList::class))
+      .registerCodec(GenericCodec(ServerVersionData::class))
     serverDataList.add(serverData)
     serverVersionList.add(serverVersion)
 
-    verticleDeployHelper.deployWorkerHelper(vertx,
+    deployWorkerVerticleHelper(vertx,
       ServerJDBCVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
         eventBus.request<ServerDataData>("process.server.createServerData", serverData, serverDataDataDeliveryOptions).onFailure {
           testContext.failNow(it)

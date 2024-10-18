@@ -1,19 +1,15 @@
 package com.ex_dock.ex_dock.database.scope
 
 import com.ex_dock.ex_dock.database.codec.GenericCodec
-import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
-import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -22,7 +18,6 @@ class ScopeJdbcVerticleTest {
   private lateinit var eventBus: EventBus
   private var storeViewId = -1
   private var websiteId: Int? = -1
-  private val verticleDeployHelper = VerticleDeployHelper()
   private val websiteDeliveryOptions: DeliveryOptions = DeliveryOptions().setCodecName("WebsitesCodec")
   private val storeViewDeliveryOptions: DeliveryOptions = DeliveryOptions().setCodecName("StoreViewCodec")
   private val websiteList: MutableList<Websites> = emptyList<Websites>().toMutableList()
@@ -48,11 +43,11 @@ class ScopeJdbcVerticleTest {
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(MutableList::class.java))
-      .registerCodec(GenericCodec(Websites::class.java))
-      .registerCodec(GenericCodec(StoreView::class.java))
-      .registerCodec(GenericCodec(FullScope::class.java))
-    verticleDeployHelper.deployWorkerHelper(vertx,
+      .registerCodec(GenericCodec(MutableList::class))
+      .registerCodec(GenericCodec(Websites::class))
+      .registerCodec(GenericCodec(StoreView::class))
+      .registerCodec(GenericCodec(FullScope::class))
+    deployWorkerVerticleHelper(vertx,
       ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
         eventBus.request<Websites>("process.scope.createWebsite", website, websiteDeliveryOptions).onFailure {
           testContext.failNow(it)

@@ -1,34 +1,74 @@
 package com.ex_dock.ex_dock.database.account
 
 import com.ex_dock.ex_dock.database.codec.GenericCodec
+import com.ex_dock.ex_dock.database.codec.GenericListCodec
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
-import io.vertx.core.json.JsonObject
+import io.vertx.core.eventbus.MessageCodec
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.coroutines.coAwait
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mindrot.jbcrypt.BCrypt
-import kotlin.reflect.typeOf
 
 @ExtendWith(VertxExtension::class)
 class AccountJdbcVerticleTest {
-  private val userDeliveryOptions = DeliveryOptions().setCodecName("UserCodec")
-  private val backendPermissionsDeliveryOptions = DeliveryOptions().setCodecName("BackendPermissionsCodec")
+  private val userCodec: MessageCodec<User, User> = GenericCodec(User::class)
+  private val backendPermissionsCodec: MessageCodec<BackendPermissions, BackendPermissions> = GenericCodec(BackendPermissions::class)
+  private val fullUserCodec: MessageCodec<FullUser, FullUser> = GenericCodec(FullUser::class)
+  private val userListCodec: MessageCodec<List<User>, List<User>> = GenericListCodec(User::class)
+  private val backendPermissionsListCodec: MessageCodec<List<BackendPermissions>, List<BackendPermissions>> = GenericListCodec(BackendPermissions::class)
+  private val fullUserListCodec: MessageCodec<List<FullUser>, List<FullUser>> = GenericListCodec(FullUser::class)
+
+  private val userDeliveryOptions = DeliveryOptions().setCodecName(userCodec.name())
+  private val backendPermissionsDeliveryOptions = DeliveryOptions().setCodecName(backendPermissionsCodec.name())
+  private val fullUserDeliveryOptions = DeliveryOptions().setCodecName(fullUserCodec.name())
+  private val userListDeliveryOptions = DeliveryOptions().setCodecName(userListCodec.name())
+  private val backendPermissionsListDeliveryOptions = DeliveryOptions().setCodecName(backendPermissionsListCodec.name())
+  private val fullUserListDeliveryOptions = DeliveryOptions().setCodecName(fullUserListCodec.name())
+
   private var backendPermissionsList: MutableList<BackendPermissions> = emptyList<BackendPermissions>().toMutableList()
+
+  private lateinit var eventBus: EventBus
+  
+  @BeforeEach
+  fun setUp(vertx: Vertx, testContext: VertxTestContext) {
+    eventBus = vertx.eventBus()
+     .registerCodec(userCodec)
+     .registerCodec(userListCodec)
+     .registerCodec(backendPermissionsCodec)
+     .registerCodec(backendPermissionsListCodec)
+     .registerCodec(fullUserCodec)
+     .registerCodec(fullUserListCodec)
+  }
+
+  @Test
+  fun getAllUsersEmpty(vertx: Vertx, testContext: VertxTestContext) {
+    val request = eventBus.request<String>("process.account.getAllUsers", "")
+
+    testContext.failNow("test failNow")
+
+    request.onFailure { testContext.failNow(it) }
+    request.onComplete { msg ->
+      if (msg.failed()) testContext.failNow(msg.result().toString())
+      if (msg.result() != emptyList<User>()) testContext.failNow(
+        "result is not equal to emptyList<User>()\nmsg.result().toString(): ${msg.result()}"
+      )
+      testContext.completeNow()
+    }
+  }
 
   @Test
   fun testUserData(vertx: Vertx, testContext: VertxTestContext) {
-    val eventBus: EventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(User::class.java))
-      .registerCodec(GenericCodec(BackendPermissions::class.java))
-      .registerCodec(GenericCodec(FullUserInformation::class.java))
-      .registerCodec(GenericCodec(MutableList::class.java))
+    val processAccountCreateUserCheckpoint = testContext.checkpoint()
+    val processAccountGetAllUsersCheckpoint = testContext.checkpoint(2)
+    val processAccountGetUserByIdCheckpoint = testContext.checkpoint(2)
+    val processAccountUpdateUserCheckpoint = testContext.checkpoint()
+    val processAccountDeleteUserCheckpoint = testContext.checkpoint()
+
     var newUserId: Int = -1
 
     val testUser = User(
@@ -43,7 +83,12 @@ class AccountJdbcVerticleTest {
         eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createMsg ->
-          assert(createMsg.succeeded())
+          try {
+            assert(createMsg.succeeded())
+          } catch (e: Exception) {
+            testContext.failNow(e)
+          }
+
           testUser.userId = createMsg.result().body().userId
           newUserId = testUser.userId
           updateUser= User(
@@ -52,61 +97,119 @@ class AccountJdbcVerticleTest {
             password = "updatedPassword"
           )
 
-          assertEquals(createMsg.result().body(), testUser)
+          try {
+            assertEquals(createMsg.result().body(), testUser)
+          } catch (e: Exception) {
+            testContext.failNow(e)
+          }
 
-          eventBus.request<MutableList<User>>("process.account.getAllUsers", "").onFailure {
+          processAccountCreateUserCheckpoint.flag()
+
+          eventBus.request<List<User>>("process.account.getAllUsers", "").onFailure {
             testContext.failNow(it)
           }.onComplete { getAllMsg ->
-            assert(getAllMsg.succeeded())
-            assertNotEquals(emptyList<User>().toMutableList(), getAllMsg.result().body())
-            assertTrue(
-              BCrypt.checkpw("password",
-              getAllMsg.result().body()[0].password)
-            )
+            try {
+              assert(getAllMsg.succeeded())
+              assertNotEquals(emptyList<User>(), getAllMsg.result().body())
+              assertTrue(
+                BCrypt.checkpw(
+                  "password",
+                  getAllMsg.result().body()[0].password
+                )
+              )
+            } catch (e: Exception) {
+              testContext.failNow(e)
+            }
+
+            processAccountGetAllUsersCheckpoint.flag()
 
             eventBus.request<User>("process.account.getUserById", newUserId).onFailure {
               testContext.failNow(it)
             }.onComplete { getMsg ->
-              assert(getMsg.succeeded())
+              try {
+                assert(getMsg.succeeded())
+              } catch (e: Exception) {
+                testContext.failNow(e)
+              }
+
               val user: User = getMsg.result().body()
-              assertEquals(testUser.userId, user.userId)
-              assertEquals(testUser.email, user.email)
-              assertTrue(
-                BCrypt.checkpw("password",
-                  user.password)
-              )
+
+              try {
+                assertEquals(testUser.userId, user.userId)
+                assertEquals(testUser.email, user.email)
+                assertTrue(
+                  BCrypt.checkpw(
+                    "password",
+                    user.password
+                  )
+                )
+              } catch (e: Exception) {
+                testContext.failNow(e)
+              }
+
+              processAccountGetUserByIdCheckpoint.flag()
 
               eventBus.request<User>("process.account.updateUser", updateUser, userDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { updateMsg ->
-                assert(updateMsg.succeeded())
-                assertEquals(updateMsg.result().body(), updateUser)
+                try {
+                  assert(updateMsg.succeeded())
+                  assertEquals(updateMsg.result().body(), updateUser)
+                } catch (e: Exception) {
+                  testContext.failNow(e)
+                }
+
+                processAccountUpdateUserCheckpoint.flag()
 
                 eventBus.request<User>("process.account.getUserById", newUserId).onFailure {
                   testContext.failNow(it)
                 }.onComplete { getUpdatedUserMsg ->
-                  assert(getUpdatedUserMsg.succeeded())
+                  try {
+                    assert(getUpdatedUserMsg.succeeded())
+                  } catch (e: Exception) {
+                    testContext.failNow(e)
+                  }
+
                   val updatedUser: User = getUpdatedUserMsg.result().body()
-                  assertEquals(updateUser.userId, updatedUser.userId)
-                  assertEquals(updateUser.email, updatedUser.email)
-                  assertTrue(
-                    BCrypt.checkpw("updatedPassword",
-                      updatedUser.password)
-                  )
+
+                  try {
+                    assertEquals(updateUser.userId, updatedUser.userId)
+                    assertEquals(updateUser.email, updatedUser.email)
+                    assertTrue(
+                      BCrypt.checkpw(
+                        "updatedPassword",
+                        updatedUser.password
+                      )
+                    )
+                  } catch (e: Exception) {
+                    testContext.failNow(e)
+                  }
+
+                  processAccountGetUserByIdCheckpoint.flag()
 
                   eventBus.request<String>("process.account.deleteUser", newUserId).onFailure {
                     testContext.failNow(it)
                   }.onComplete { deleteMsg ->
-                    assert(deleteMsg.succeeded())
-                    assertEquals(deleteMsg.result().body(), "User deleted successfully")
+                    try {
+                      assert(deleteMsg.succeeded())
+                      assertEquals(deleteMsg.result().body(), "User deleted successfully")
+                    } catch (e: Exception) {
+                      testContext.failNow(e)
+                    }
+
+                    processAccountDeleteUserCheckpoint.flag()
 
                     eventBus.request<MutableList<User>>("process.account.getAllUsers", "").onFailure {
                       testContext.failNow(it)
                     }.onComplete { emptyMsg ->
-                      assert(emptyMsg.succeeded())
-                      assertEquals(emptyMsg.result().body(), emptyList<User>().toMutableList())
+                      try {
+                        assert(emptyMsg.succeeded())
+                        assertEquals(emptyMsg.result().body(), emptyList<User>().toMutableList())
+                      } catch (e: Exception) {
+                        testContext.failNow(e)
+                      }
 
-                      testContext.completeNow()
+                      processAccountGetAllUsersCheckpoint.flag()
                     }
                   }
                 }
@@ -119,11 +222,6 @@ class AccountJdbcVerticleTest {
 
   @Test
   fun testBackendPermissions(vertx: Vertx, testContext: VertxTestContext) {
-    val eventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(User::class.java))
-      .registerCodec(GenericCodec(BackendPermissions::class.java))
-      .registerCodec(GenericCodec(FullUserInformation::class.java))
-      .registerCodec(GenericCodec(MutableList::class.java))
     val permissionId = -1
 
     var permissionResult: BackendPermissions
@@ -144,15 +242,15 @@ class AccountJdbcVerticleTest {
 
         permissionResult = BackendPermissions(
           userId = testUser.userId,
-          userPermissions = convertStringToPermission("none"),
-          serverSettings = convertStringToPermission("none"),
-          template = convertStringToPermission("none"),
-          categoryContent = convertStringToPermission("none"),
-          categoryProducts = convertStringToPermission("none"),
-          productContent = convertStringToPermission("none"),
-          productPrice = convertStringToPermission("none"),
-          productWarehouse = convertStringToPermission("none"),
-          textPages = convertStringToPermission("none"),
+          userPermission = Permission.fromString("none"),
+          serverSettings = Permission.fromString("none"),
+          template = Permission.fromString("none"),
+          categoryContent = Permission.fromString("none"),
+          categoryProducts = Permission.fromString("none"),
+          productContent = Permission.fromString("none"),
+          productPrice = Permission.fromString("none"),
+          productWarehouse = Permission.fromString("none"),
+          textPages = Permission.fromString("none"),
           apiKey = null
         )
         backendPermissionsList.add(permissionResult)
@@ -183,15 +281,15 @@ class AccountJdbcVerticleTest {
 
                 permissionResult = BackendPermissions(
                   userId = permissionResult.userId,
-                  userPermissions = convertStringToPermission("read"),
-                  serverSettings = convertStringToPermission("read"),
-                  template = convertStringToPermission("read"),
-                  categoryContent = convertStringToPermission("read"),
-                  categoryProducts = convertStringToPermission("read"),
-                  productContent = convertStringToPermission("read"),
-                  productPrice = convertStringToPermission("read"),
-                  productWarehouse = convertStringToPermission("read"),
-                  textPages = convertStringToPermission("read"),
+                  userPermission = Permission.fromString("read"),
+                  serverSettings = Permission.fromString("read"),
+                  template = Permission.fromString("read"),
+                  categoryContent = Permission.fromString("read"),
+                  categoryProducts = Permission.fromString("read"),
+                  productContent = Permission.fromString("read"),
+                  productPrice = Permission.fromString("read"),
+                  productWarehouse = Permission.fromString("read"),
+                  textPages = Permission.fromString("read"),
                   apiKey = null
                 )
 
@@ -245,14 +343,9 @@ class AccountJdbcVerticleTest {
   }
 
   @Test
-  fun testFullUserInformation(vertx: Vertx, testContext: VertxTestContext) {
-    val eventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(User::class.java))
-      .registerCodec(GenericCodec(BackendPermissions::class.java))
-      .registerCodec(GenericCodec(FullUserInformation::class.java))
-      .registerCodec(GenericCodec(MutableList::class.java))
+  fun testFullUser(vertx: Vertx, testContext: VertxTestContext) {
     var userId = -1
-    val fullUserInformationList: MutableList<FullUserInformation> = emptyList<FullUserInformation>().toMutableList()
+    val FullUserList: MutableList<FullUser> = emptyList<FullUser>().toMutableList()
 
     var testUser = User(
       userId = userId,
@@ -260,7 +353,7 @@ class AccountJdbcVerticleTest {
       password = BCrypt.hashpw("password", BCrypt.gensalt())
     )
 
-    var allInfoResult: FullUserInformation
+    var allInfoResult: FullUser
 
     var testPermission: BackendPermissions
 
@@ -274,25 +367,25 @@ class AccountJdbcVerticleTest {
 
         testPermission = BackendPermissions(
           userId = userId,
-          userPermissions = convertStringToPermission("read"),
-          serverSettings = convertStringToPermission("read"),
-          template = convertStringToPermission("read"),
-          categoryContent = convertStringToPermission("read"),
-          categoryProducts = convertStringToPermission("read"),
-          productContent = convertStringToPermission("read"),
-          productPrice = convertStringToPermission("read"),
-          productWarehouse = convertStringToPermission("read"),
-          textPages = convertStringToPermission("read"),
+          userPermission = Permission.fromString("read"),
+          serverSettings = Permission.fromString("read"),
+          template = Permission.fromString("read"),
+          categoryContent = Permission.fromString("read"),
+          categoryProducts = Permission.fromString("read"),
+          productContent = Permission.fromString("read"),
+          productPrice = Permission.fromString("read"),
+          productWarehouse = Permission.fromString("read"),
+          textPages = Permission.fromString("read"),
           apiKey = null
         )
 
-        allInfoResult = FullUserInformation(
+        allInfoResult = FullUser(
           testUser,
           testPermission
         )
         allInfoResult.user.password = ""
 
-        fullUserInformationList.add(allInfoResult)
+        FullUserList.add(allInfoResult)
 
         assertEquals(createUserMsg.result().body(), testUser)
 
@@ -302,14 +395,14 @@ class AccountJdbcVerticleTest {
           assert(createPermissionMsg.succeeded())
           assertEquals(testPermission, createPermissionMsg.result().body())
 
-          eventBus.request<MutableList<FullUserInformation>>("process.account.getAllFullUserInfo", "").onFailure {
+          eventBus.request<MutableList<FullUser>>("process.account.getAllFullUserInfo", "").onFailure {
             testContext.failNow(it)
           }.onComplete { getAllFullMsg ->
             val fullBody = getAllFullMsg.result().body()
             fullBody[0].user.password = ""
-            assertEquals(fullBody, fullUserInformationList)
+            assertEquals(fullBody, FullUserList)
 
-            eventBus.request<FullUserInformation>("process.account.getFullUserInformationByUserId", userId).onFailure {
+            eventBus.request<FullUser>("process.account.getFullUserByUserId", userId).onFailure {
               testContext.failNow(it)
             }.onComplete { fullInfoByIdMsg ->
               val fullBodyById = fullInfoByIdMsg.result().body()
@@ -333,15 +426,5 @@ class AccountJdbcVerticleTest {
         }
       }
     })
-  }
-
-  private fun convertStringToPermission(name: String): Permissions {
-    when (name) {
-      "read" -> return Permissions.READ
-      "write" -> return Permissions.WRITE
-      "read-write" -> return Permissions.READ_WRITE
-    }
-
-    return Permissions.NONE
   }
 }

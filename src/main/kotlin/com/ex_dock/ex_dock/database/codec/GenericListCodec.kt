@@ -10,14 +10,15 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutput
 import java.io.ObjectOutputStream
 
-class GenericCodec<T: Any>(private val codecClass: KClass<T>): MessageCodec<T, T> {
-  override fun encodeToWire(buffer: Buffer, s: T) {
+
+class GenericListCodec<T : Any>(private val codecClass: KClass<T>) : MessageCodec<List<T>, List<T>> {
+  override fun encodeToWire(buffer: Buffer, list: List<T>) {
     val bos = ByteArrayOutputStream()
     var out: ObjectOutput? = null
 
     try {
       out = ObjectOutputStream(bos)
-      out.writeObject(s)
+      out.writeObject(list)
       out.flush()
       val bytes: ByteArray = bos.toByteArray()
       buffer.appendInt(bytes.size)
@@ -34,45 +35,44 @@ class GenericCodec<T: Any>(private val codecClass: KClass<T>): MessageCodec<T, T
     }
   }
 
-  override fun decodeFromWire(pos: Int, buffer: Buffer): T? {
+  override fun decodeFromWire(pos: Int, buffer: Buffer): List<T>? {
     var _pos: Int = pos
-
-    var length = buffer.getInt(_pos)
+    val length = buffer.getInt(_pos)
 
     val bytes: ByteArray = buffer.getBytes(_pos + 4, _pos + 4 + length)
     _pos += 4 + length
     val bis = ByteArrayInputStream(bytes)
 
-    try {
+    return try {
       val ois = ObjectInputStream(bis)
       @Suppress("UNCHECKED_CAST")
-      val msg: T = ois.readObject() as T
+      val list: List<T> = ois.readObject() as List<T>
       ois.close()
-      return msg
+      list
     } catch (e: IOException) {
       e.printStackTrace()
+      null
     } catch (e: ClassNotFoundException) {
       e.printStackTrace()
+      null
     } finally {
-        try {
-            bis.close()
-        } catch (e: IOException) {
-          e.printStackTrace()
-        }
+      try {
+        bis.close()
+      } catch (e: IOException) {
+        e.printStackTrace()
+      }
     }
-
-    return null
   }
 
   override fun name(): String {
-    return codecClass.simpleName+"Codec"
+    return "${codecClass.simpleName}ListCodec"
   }
 
   override fun systemCodecID(): Byte {
     return -1
   }
 
-  override fun transform(s: T): T {
-    return s
+  override fun transform(list: List<T>): List<T> {
+    return list
   }
 }

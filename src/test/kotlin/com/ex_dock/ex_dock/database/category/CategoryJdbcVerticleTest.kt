@@ -1,15 +1,13 @@
 package com.ex_dock.ex_dock.database.category
 
 import com.ex_dock.ex_dock.database.codec.GenericCodec
-import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 
@@ -20,8 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 @ExtendWith(VertxExtension::class)
 class CategoryJdbcVerticleTest {
   private lateinit var eventBus: EventBus
-
-  private val verticleDeployHelper = VerticleDeployHelper()
 
   private var categoryId: Int? = null
 
@@ -44,12 +40,12 @@ class CategoryJdbcVerticleTest {
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(MutableList::class.java))
-      .registerCodec(GenericCodec(Categories::class.java))
-      .registerCodec(GenericCodec(CategoriesSeo::class.java))
-      .registerCodec(GenericCodec(CategoriesProducts::class.java))
-      .registerCodec(GenericCodec(FullCategoryInfo::class.java))
-    verticleDeployHelper.deployWorkerHelper(
+      .registerCodec(GenericCodec(MutableList::class))
+      .registerCodec(GenericCodec(Categories::class))
+      .registerCodec(GenericCodec(CategoriesSeo::class))
+      .registerCodec(GenericCodec(CategoriesProducts::class))
+      .registerCodec(GenericCodec(FullCategoryInfo::class))
+    deployWorkerVerticleHelper(
       vertx,
       CategoryJdbcVerticle::class.qualifiedName.toString(), 5, 5
     ).onFailure {
