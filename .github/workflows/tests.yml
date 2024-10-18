@@ -15,8 +15,8 @@ jobs:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: ex_dock_test
-        volumes:
-          - ${{ github.workspace }}/database/ex-dock.sql:/docker-entrypoint-initdb.d/ex-dock.sql
+#        volumes:
+#          - ${{ github.workspace }}/database/ex-dock.sql:/docker-entrypoint-initdb.d/ex-dock.sql
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -54,7 +54,6 @@ jobs:
         run: mvn test -DskipTests=true --no-transfer-progress
 
       - name: Run Tests
-        run:
-#          cd database
-#          ls
+        run: |
+          postgres -V
           mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
