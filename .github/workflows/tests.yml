@@ -10,7 +10,7 @@ jobs:
       database:
         image: postgres:14-alpine
         ports:
-          - "5432:8890"
+          - 5432:8890
         env:
           POSTGRES_USER: docker
           POSTGRES_PASSWORD: docker
