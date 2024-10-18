@@ -7,12 +7,12 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     services:
-      database:
+      postgres:
         image: postgres:14-alpine
         ports:
           - 5432:8890
         env:
-          POSTGRES_USER: docker
+          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: docker
           POSTGRES_DB: ex-dock
 #        volumes:
@@ -53,12 +53,15 @@ jobs:
       - name: Install test dependencies
         run: mvn test -DskipTests=true --no-transfer-progress
 
-      - name: Migrate database
-        uses: vovavc/migrate-github-action@v0.2.1
-        with:
-          path: ./database
-          database: postgres://docker:docker@localhost:5432/ex-dock?sslmode=disable
-          command: up
+      - name: Setup database
+        env:
+          POSTGRES_HOST: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: docker
+          POSTGRES_DB: ex-dock
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+        run: |
+            postgres -V
 
       - name: Run Tests
         run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
