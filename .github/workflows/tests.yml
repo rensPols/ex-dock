@@ -16,7 +16,7 @@ jobs:
           POSTGRES_PASSWORD: docker
           POSTGRES_DB: ex-dock
 #        volumes:
-#          - ${{ github.workspace }}/database/ex-dock.sql:/docker-entrypoint-initdb.d/ex-dock.sql
+#          - https://github.com/rensPols/ex-dock/blob/7e5cc4cd8ab046ad3907e470902c0783c71195a9/database/ex-dock.sql:/docker-entrypoint-initdb.d/ex-dock.sql
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -53,15 +53,9 @@ jobs:
       - name: Install test dependencies
         run: mvn test -DskipTests=true --no-transfer-progress
 
-      - name: Setup database
-        env:
-          POSTGRES_HOST: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: docker
-          POSTGRES_DB: ex-dock
-          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+      - name: Test files
         run: |
-            postgres -V
+          ls
 
       - name: Run Tests
         run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
