@@ -71,7 +71,7 @@ fun deployWorkerVerticleHelper(vertx: Vertx, name: String, workerPoolSize: Int, 
           append("\n")
           append("    - cause: ${res.cause()}")
           append("\n")
-          append("    - result: ${res.result()}")
+          append("    - stacktrace: ${res.cause().stackTrace}")
           append("\u001b[0m")
         })
         promise.fail(res.cause())
