@@ -12,9 +12,9 @@ jobs:
         ports:
           - "5432:8890"
         env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: ex_dock_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: docker
+          POSTGRES_DB: ex-dock
 #        volumes:
 #          - ${{ github.workspace }}/database/ex-dock.sql:/docker-entrypoint-initdb.d/ex-dock.sql
         options: >-
@@ -53,7 +53,12 @@ jobs:
       - name: Install test dependencies
         run: mvn test -DskipTests=true --no-transfer-progress
 
+      - name: Migrate database
+        uses: vovavc/migrate-github-action@v0.2.1
+        with:
+          path: ./database
+          database: postgres://postgres:docker@localhost:5432/ex-dock?sslmode=disable
+          command: up
+
       - name: Run Tests
-        run: |
-          postgres -V
-          mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
+        run: mvn test -Dtest=${{ matrix.test_class }} --no-transfer-progress
