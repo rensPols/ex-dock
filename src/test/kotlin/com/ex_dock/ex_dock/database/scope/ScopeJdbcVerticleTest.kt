@@ -47,7 +47,6 @@ class ScopeJdbcVerticleTest {
       .registerCodec(GenericCodec(Websites::class.java))
       .registerCodec(GenericCodec(StoreView::class.java))
       .registerCodec(GenericCodec(FullScope::class.java))
-    try {
       deployWorkerVerticleHelper(
         vertx,
         ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5
@@ -77,11 +76,7 @@ class ScopeJdbcVerticleTest {
           }
         }
       }
-    } catch (e: Exception) {
-      println(e.message)
-      testContext.failNow(e)
     }
-  }
   @Test
   fun testGetAllWebsites(vertx: Vertx, testContext: VertxTestContext) {
     eventBus.request<MutableList<Websites>>("process.scope.getAllWebsites", "").onFailure {
