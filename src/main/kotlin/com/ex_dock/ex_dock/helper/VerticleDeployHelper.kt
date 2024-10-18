@@ -70,6 +70,8 @@ fun deployWorkerVerticleHelper(vertx: Vertx, name: String, workerPoolSize: Int, 
           append("⨯ - Failed deploy to worker Verticle: $name")
           append("\n")
           append("    - cause: ${res.cause()}")
+          append("\n")
+          append("    - result: ${res.result()}")
           append("\u001b[0m")
         })
         promise.fail(res.cause())
