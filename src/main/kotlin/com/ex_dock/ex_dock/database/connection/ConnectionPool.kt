@@ -10,7 +10,7 @@ import java.util.*
 class Connection {
   fun getConnection(vertx: Vertx): Pool {
     val connection: Pool
-    val connectOptions: JDBCConnectOptions = JDBCConnectOptions()
+    val connectOptions = JDBCConnectOptions()
 
     try {
       val props: Properties = javaClass.classLoader.getResourceAsStream("secret.properties").use {
@@ -23,7 +23,9 @@ class Connection {
         .setPassword(props.getProperty("DATABASE_PASSWORD"))
     } catch (e: Exception) {
       try {
-        println("ENV VAR:" + System.getenv("DOCKER_RUNNING"))
+        System.getenv().forEach{ variable ->
+          println("ENV VAR:$variable\n")
+        }
           val isDocker: Boolean = System.getenv("DOCKER_RUNNING").toBoolean()
           if (isDocker) {
             connectOptions
