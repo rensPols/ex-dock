@@ -9,9 +9,11 @@ import java.util.*
 
 class Connection {
   fun getConnection(vertx: Vertx): Pool {
-    var connection: Pool
+    val connection: Pool
 
-    var props: Properties = javaClass.classLoader.getResourceAsStream("secret.properties").use {
+    println(javaClass.classLoader.toString())
+
+    val props: Properties = javaClass.classLoader.getResourceAsStream("secret.properties").use {
       Properties().apply { load(it) }
     }
 
