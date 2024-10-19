@@ -23,6 +23,7 @@ class Connection {
         .setPassword(props.getProperty("DATABASE_PASSWORD"))
     } catch (e: Exception) {
       try {
+        println("ENV VAR:" + System.getenv("DOCKER_RUNNING"))
           val isDocker: Boolean = System.getenv("DOCKER_RUNNING").toBoolean()
           if (isDocker) {
             connectOptions
