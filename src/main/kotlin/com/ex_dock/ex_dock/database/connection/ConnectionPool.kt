@@ -11,7 +11,7 @@ class Connection {
   fun getConnection(vertx: Vertx): Pool {
     val connection: Pool
 
-    println(javaClass.classLoader.getResource("secret.properties").file)
+    println(javaClass.classLoader.parent)
 
     val props: Properties = javaClass.classLoader.getResourceAsStream("secret.properties").use {
       Properties().apply { load(it) }
