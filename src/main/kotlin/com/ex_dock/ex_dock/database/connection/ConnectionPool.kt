@@ -23,9 +23,6 @@ class Connection {
         .setPassword(props.getProperty("DATABASE_PASSWORD"))
     } catch (e: Exception) {
       try {
-        System.getenv().forEach{ variable ->
-          println("ENV VAR:$variable\n")
-        }
           val isDocker: Boolean = !System.getenv("GITHUB_RUN_NUMBER").isNullOrEmpty()
           if (isDocker) {
             connectOptions
