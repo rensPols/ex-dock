@@ -7,5 +7,6 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=docker
       - POSTGRES_DB=ex-dock
+      - DOCKER_RUNNING=true
     volumes:
       - ../database/ex-dock.sql:/docker-entrypoint-initdb.d/datadump.sql

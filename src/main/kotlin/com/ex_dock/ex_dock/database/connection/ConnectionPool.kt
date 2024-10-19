@@ -10,17 +10,32 @@ import java.util.*
 class Connection {
   fun getConnection(vertx: Vertx): Pool {
     val connection: Pool
+    val connectOptions: JDBCConnectOptions = JDBCConnectOptions()
 
-    println(javaClass.classLoader.parent)
+    try {
+      val props: Properties = javaClass.classLoader.getResourceAsStream("secret.properties").use {
+        Properties().apply { load(it) }
+      }
 
-    val props: Properties = javaClass.classLoader.getResourceAsStream("secret.properties").use {
-      Properties().apply { load(it) }
+      connectOptions
+        .setJdbcUrl(props.getProperty("DATABASE_URL"))
+        .setUser(props.getProperty("DATABASE_USERNAME"))
+        .setPassword(props.getProperty("DATABASE_PASSWORD"))
+    } catch (e: Exception) {
+      try {
+          val isDocker: Boolean = System.getenv("DOCKER_RUNNING").toBoolean()
+          if (isDocker) {
+            connectOptions
+              .setJdbcUrl("jdbc:postgresql://localhost:8890/ex-dock")
+              .setUser("postgres")
+              .setPassword("docker")
+          } else {
+            error("Could not load the Properties file!")
+          }
+      } catch (e: Exception) {
+        error("Could not read the Properties file!")
+      }
     }
-
-    val connectOptions = JDBCConnectOptions()
-      .setJdbcUrl(props.getProperty("DATABASE_URL"))
-      .setUser(props.getProperty("DATABASE_USERNAME"))
-      .setPassword(props.getProperty("DATABASE_PASSWORD"))
 
     val poolOptions = PoolOptions()
       .setMaxSize(16)
