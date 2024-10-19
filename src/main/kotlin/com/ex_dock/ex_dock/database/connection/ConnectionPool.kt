@@ -11,7 +11,7 @@ class Connection {
   fun getConnection(vertx: Vertx): Pool {
     val connection: Pool
 
-    println(javaClass.classLoader.toString())
+    println(javaClass.classLoader.getResource("secret.properties").file)
 
     val props: Properties = javaClass.classLoader.getResourceAsStream("secret.properties").use {
       Properties().apply { load(it) }
@@ -28,6 +28,6 @@ class Connection {
 
     connection = JDBCPool.pool(vertx, connectOptions, poolOptions)
 
-    return connection;
+    return connection
   }
 }
