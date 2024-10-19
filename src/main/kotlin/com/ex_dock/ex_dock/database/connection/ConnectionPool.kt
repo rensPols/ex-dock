@@ -26,7 +26,7 @@ class Connection {
         System.getenv().forEach{ variable ->
           println("ENV VAR:$variable\n")
         }
-          val isDocker: Boolean = System.getenv("DOCKER_RUNNING").toBoolean()
+          val isDocker: Boolean = !System.getenv("GITHUB_RUN_NUMBER").isNullOrEmpty()
           if (isDocker) {
             connectOptions
               .setJdbcUrl("jdbc:postgresql://localhost:8890/ex-dock")
