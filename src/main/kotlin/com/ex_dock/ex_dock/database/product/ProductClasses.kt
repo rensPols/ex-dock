@@ -209,6 +209,14 @@ data class MultiSelectFloat(
   var value: Float
 )
 
+data class MultiSelectInfo(
+  val multiSelectBool: MultiSelectBool,
+  val multiSelectFloat: MultiSelectFloat,
+  val multiSelectString: MultiSelectString,
+  val multiSelectInt: MultiSelectInt,
+  val multiSelectMoney: MultiSelectMoney,
+)
+
 data class FullProduct(
   var product: Products,
   var productsSeo: ProductsSeo,
