@@ -114,6 +114,17 @@ data class EavWebsiteMultiSelect(
   var productId: Int,
   var websiteId: Int,
   var attributeKey: String,
+  var value: Int
+)
+
+data class EavWebsiteInfo(
+  val eav: Eav,
+  val eavWebsiteBool: EavWebsiteBool,
+  val eavWebsiteFloat: EavWebsiteFloat,
+  val eavWebsiteString: EavWebsiteString,
+  val eavWebsiteInt: EavWebsiteInt,
+  val eavWebsiteMoney: EavWebsiteMoney,
+  val eavWebsiteMultiSelect: EavWebsiteMultiSelect
 )
 
 data class EavStoreViewBool(
@@ -148,6 +159,7 @@ data class EavStoreViewMultiSelect(
   var productId: Int,
   var storeViewId: Int,
   var attributeKey: String,
+  var value: Int
 )
 
 data class EavStoreViewMoney(
@@ -155,6 +167,16 @@ data class EavStoreViewMoney(
   var storeViewId: Int,
   var attributeKey: String,
   var value: Double
+)
+
+data class EavStoreViewInfo(
+  val eav: Eav,
+  val eavStoreViewBool: EavStoreViewBool,
+  val eavStoreViewFloat: EavStoreViewFloat,
+  val eavStoreViewInt: EavStoreViewInt,
+  val eavStoreViewString: EavStoreViewString,
+  val eavStoreViewMultiSelect: EavStoreViewMultiSelect,
+  val eavStoreViewMoney: EavStoreViewMoney
 )
 
 data class MultiSelectString(
