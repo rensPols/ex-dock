@@ -2,10 +2,9 @@ package com.ex_dock.ex_dock.database.product;
 
 import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.Tuple
@@ -14,6 +13,13 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
   private lateinit var client: Pool
   private lateinit var eventBus: EventBus
   private val failedMessage: String = "failed"
+  private val multiSelectBoolDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectBoolCodec")
+  private val multiSelectFloatDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectFloatCodec")
+  private val multiSelectIntDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectIntCodec")
+  private val multiSelectMoneyDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectMoneyCodec")
+  private val multiSelectStringDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectStringCodec")
+  private val multiSelectInfoDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectInfoCodec")
+  private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
     client = Connection().getConnection(vertx)
@@ -58,7 +64,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
     getAllMultiSelectAttributesBoolConsumer.handler { message ->
       val query = "SELECT * FROM multi_select_attributes_bool"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val multiSelectBoolList: MutableList<MultiSelectBool> = emptyList<MultiSelectBool>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -68,31 +74,23 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj (
-              "multiSelectBool" to rows.map { row ->
-                obj(
-                  makeMultiSelectAttributesBoolJsonFields(row)
-                )
-              }
-            )
+          rows.forEach{ row ->
+            multiSelectBoolList.add(makeMultiSelectAttributesBool(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No website bool found")
         }
+
+        message.reply(multiSelectBoolList, listDeliveryOptions)
       }
     }
   }
 
   private fun getMultiSelectAttributesBoolByKey() {
-    val getMultiSelectAttributesBoolByKeyConsumer = eventBus.consumer<JsonObject>("process.multiSelect.getMultiSelectAttributesBoolByKey")
+    val getMultiSelectAttributesBoolByKeyConsumer = eventBus.consumer<MultiSelectBool>("process.multiSelect.getMultiSelectAttributesBoolByKey")
     getMultiSelectAttributesBoolByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM multi_select_attributes_bool WHERE attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(Tuple.of(body.getString("attribute_key")))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -102,12 +100,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeMultiSelectAttributesBoolJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(makeMultiSelectAttributesBool(rows.first()), multiSelectBoolDeliveryOptions)
         } else {
           message.reply("No website bool found")
         }
@@ -116,7 +109,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createMultiSelectAttributesBool() {
-    val createMultiSelectAttributesBoolConsumer = eventBus.consumer<JsonObject>("process.multiSelect.createMultiSelectAttributesBool")
+    val createMultiSelectAttributesBoolConsumer = eventBus.consumer<MultiSelectBool>("process.multiSelect.createMultiSelectAttributesBool")
     createMultiSelectAttributesBoolConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -128,14 +121,14 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("Multi-select attribute bool created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, multiSelectBoolDeliveryOptions)
       }
     }
   }
 
   private fun updateMultiSelectAttributesBool() {
-    val updateMultiSelectAttributesBoolConsumer = eventBus.consumer<JsonObject>("process.multiSelect.updateMultiSelectAttributesBool")
+    val updateMultiSelectAttributesBoolConsumer = eventBus.consumer<MultiSelectBool>("process.multiSelect.updateMultiSelectAttributesBool")
     updateMultiSelectAttributesBoolConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -147,25 +140,25 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("Multi-select attribute bool updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, multiSelectBoolDeliveryOptions)
       }
     }
   }
 
   private fun deleteMultiSelectAttributesBool() {
-    val deleteMultiSelectAttributesBoolConsumer = eventBus.consumer<JsonObject>("process.multiSelect.deleteMultiSelectAttributesBool")
+    val deleteMultiSelectAttributesBoolConsumer = eventBus.consumer<MultiSelectBool>("process.multiSelect.deleteMultiSelectAttributesBool")
     deleteMultiSelectAttributesBoolConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM multi_select_attributes_bool WHERE attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.getString("attribute_key")))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("Multi-select attribute bool deleted successfully")
       }
     }
@@ -176,7 +169,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
     allMultiSelectAttributesFloatConsumer.handler { message ->
       val query = "SELECT * FROM multi_select_attributes_float"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val multiSelectFloatList: MutableList<MultiSelectFloat> = emptyList<MultiSelectFloat>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -186,31 +179,23 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj (
-              "multiSelectFloat" to rows.map { row ->
-                obj(
-                  makeMultiSelectAttributesFloatJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            multiSelectFloatList.add(makeMultiSelectAttributesFloat(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No website float found")
         }
+
+        message.reply(multiSelectFloatList, listDeliveryOptions)
       }
     }
   }
 
   private fun getMultiSelectAttributesFloatByKey() {
-    val getMultiSelectAttributesFloatByKeyConsumer = eventBus.consumer<JsonObject>("process.multiSelect.getMultiSelectAttributesFloatByKey")
+    val getMultiSelectAttributesFloatByKeyConsumer = eventBus.consumer<MultiSelectFloat>("process.multiSelect.getMultiSelectAttributesFloatByKey")
     getMultiSelectAttributesFloatByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM multi_select_attributes_float WHERE attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(Tuple.of(body.getString("attribute_key")))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -220,12 +205,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeMultiSelectAttributesFloatJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(body, multiSelectFloatDeliveryOptions)
         } else {
           message.reply("No website float found")
         }
@@ -234,7 +214,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createMultiSelectAttributesFloat() {
-    val createMultiSelectAttributesFloatConsumer = eventBus.consumer<JsonObject>("process.multiSelect.createMultiSelectAttributesFloat")
+    val createMultiSelectAttributesFloatConsumer = eventBus.consumer<MultiSelectFloat>("process.multiSelect.createMultiSelectAttributesFloat")
     createMultiSelectAttributesFloatConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -246,14 +226,14 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("Multi-select attribute float created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, multiSelectFloatDeliveryOptions)
       }
     }
   }
 
   private fun updateMultiSelectAttributesFloat() {
-    val updateMultiSelectAttributesFloatConsumer = eventBus.consumer<JsonObject>("process.multiSelect.updateMultiSelectAttributesFloat")
+    val updateMultiSelectAttributesFloatConsumer = eventBus.consumer<MultiSelectFloat>("process.multiSelect.updateMultiSelectAttributesFloat")
     updateMultiSelectAttributesFloatConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -265,25 +245,25 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("Multi-select attribute float updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, multiSelectFloatDeliveryOptions)
       }
     }
   }
 
   private fun deleteMultiSelectAttributesFloat() {
-    val deleteMultiSelectAttributesFloatConsumer = eventBus.consumer<JsonObject>("process.multiSelect.deleteMultiSelectAttributesFloat")
+    val deleteMultiSelectAttributesFloatConsumer = eventBus.consumer<MultiSelectFloat>("process.multiSelect.deleteMultiSelectAttributesFloat")
     deleteMultiSelectAttributesFloatConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM multi_select_attributes_float WHERE attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.getString("attribute_key")))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("Multi-select attribute float deleted successfully")
       }
     }
@@ -294,7 +274,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
     allMultiSelectAttributesStringConsumer.handler { message ->
       val query = "SELECT * FROM multi_select_attributes_string"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val multiSelectStringList: MutableList<MultiSelectString> = emptyList<MultiSelectString>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -304,31 +284,23 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "multiSelectString" to rows.map { row ->
-                obj(
-                  makeMultiSelectAttributesStringJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            multiSelectStringList.add(makeMultiSelectAttributesString(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No website string found")
         }
+
+        message.reply(multiSelectStringList, listDeliveryOptions)
       }
     }
   }
 
   private fun getMultiSelectAttributesStringByKey() {
-    val getMultiSelectAttributesStringByKeyConsumer = eventBus.consumer<JsonObject>("process.multiSelect.getMultiSelectAttributesStringByKey")
+    val getMultiSelectAttributesStringByKeyConsumer = eventBus.consumer<MultiSelectString>("process.multiSelect.getMultiSelectAttributesStringByKey")
     getMultiSelectAttributesStringByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM multi_select_attributes_string WHERE attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(Tuple.of(body.getString("attribute_key")))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -338,12 +310,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeMultiSelectAttributesStringJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(body, multiSelectStringDeliveryOptions)
         } else {
           message.reply("No website string found")
         }
@@ -352,7 +319,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createMultiSelectAttributesString() {
-    val createMultiSelectAttributesStringConsumer = eventBus.consumer<JsonObject>("process.multiSelect.createMultiSelectAttributesString")
+    val createMultiSelectAttributesStringConsumer = eventBus.consumer<MultiSelectString>("process.multiSelect.createMultiSelectAttributesString")
     createMultiSelectAttributesStringConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -364,14 +331,14 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("Multi-select attribute string created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, multiSelectStringDeliveryOptions)
       }
     }
   }
 
   private fun updateMultiSelectAttributesString() {
-    val updateMultiSelectAttributesStringConsumer = eventBus.consumer<JsonObject>("process.multiSelect.updateMultiSelectAttributesString")
+    val updateMultiSelectAttributesStringConsumer = eventBus.consumer<MultiSelectString>("process.multiSelect.updateMultiSelectAttributesString")
     updateMultiSelectAttributesStringConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -383,25 +350,25 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("Multi-select attribute string updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body,  multiSelectStringDeliveryOptions)
       }
     }
   }
 
   private fun deleteMultiSelectAttributesString() {
-    val deleteMultiSelectAttributesStringConsumer = eventBus.consumer<JsonObject>("process.multiSelect.deleteMultiSelectAttributesString")
+    val deleteMultiSelectAttributesStringConsumer = eventBus.consumer<MultiSelectString>("process.multiSelect.deleteMultiSelectAttributesString")
     deleteMultiSelectAttributesStringConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM multi_select_attributes_string WHERE attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.getString("attribute_key")))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("Multi-select attribute string deleted successfully")
       }
     }
@@ -412,7 +379,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
     allMultiSelectAttributesIntConsumer.handler { message ->
       val query = "SELECT * FROM multi_select_attributes_int"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val multiSelectIntList: MutableList<MultiSelectInt> = emptyList<MultiSelectInt>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -422,31 +389,23 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "multiSelectInt" to rows.map { row ->
-                obj(
-                  makeMultiSelectAttributesIntJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            multiSelectIntList.add(makeMultiSelectAttributesInt(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No website int found")
         }
+
+        message.reply(multiSelectIntList, listDeliveryOptions)
       }
     }
   }
 
   private fun getMultiSelectAttributesIntByKey() {
-    val getMultiSelectAttributesIntByKeyConsumer = eventBus.consumer<JsonObject>("process.multiSelect.getMultiSelectAttributesIntByKey")
+    val getMultiSelectAttributesIntByKeyConsumer = eventBus.consumer<MultiSelectInt>("process.multiSelect.getMultiSelectAttributesIntByKey")
     getMultiSelectAttributesIntByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM multi_select_attributes_int WHERE attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(Tuple.of(body.getString("attribute_key")))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -456,12 +415,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeMultiSelectAttributesIntJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(body, multiSelectIntDeliveryOptions)
         } else {
           message.reply("No rows returned")
         }
@@ -470,7 +424,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createMultiSelectAttributesInt() {
-    val createMultiSelectAttributesIntConsumer = eventBus.consumer<JsonObject>("process.multiSelect.createMultiSelectAttributesInt")
+    val createMultiSelectAttributesIntConsumer = eventBus.consumer<MultiSelectInt>("process.multiSelect.createMultiSelectAttributesInt")
     createMultiSelectAttributesIntConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -482,14 +436,14 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("Multi-select attribute int created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, multiSelectIntDeliveryOptions)
       }
     }
   }
 
   private fun updateMultiSelectAttributesInt() {
-    val updateMultiSelectAttributesIntConsumer = eventBus.consumer<JsonObject>("process.multiSelect.updateMultiSelectAttributesInt")
+    val updateMultiSelectAttributesIntConsumer = eventBus.consumer<MultiSelectInt>("process.multiSelect.updateMultiSelectAttributesInt")
     updateMultiSelectAttributesIntConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -501,25 +455,25 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("Multi-select attribute int updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, multiSelectIntDeliveryOptions)
       }
     }
   }
 
   private fun deleteMultiSelectAttributesInt() {
-    val deleteMultiSelectAttributesIntConsumer = eventBus.consumer<JsonObject>("process.multiSelect.deleteMultiSelectAttributesInt")
+    val deleteMultiSelectAttributesIntConsumer = eventBus.consumer<MultiSelectInt>("process.multiSelect.deleteMultiSelectAttributesInt")
     deleteMultiSelectAttributesIntConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM multi_select_attributes_int WHERE attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.getString("attribute_key")))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("Multi-select attribute int deleted successfully")
       }
     }
@@ -530,7 +484,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
     allMultiSelectAttributesMoneyConsumer.handler { message ->
       val query = "SELECT * FROM multi_select_attributes_money"
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val multiSelectMoney: MutableList<MultiSelectMoney> = emptyList<MultiSelectMoney>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -540,31 +494,23 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "multiSelectMoney" to rows.map { row ->
-                obj(
-                  makeMultiSelectAttributesMoneyJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            multiSelectMoney.add(makeMultiSelectAttributesMoney(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No website money found")
         }
+
+        message.reply(multiSelectMoney, listDeliveryOptions)
       }
     }
   }
 
   private fun getMultiSelectAttributesMoneyByKey() {
-    val getMultiSelectAttributesMoneyByKeyConsumer = eventBus.consumer<JsonObject>("process.multiSelect.getMultiSelectAttributesMoneyByKey")
+    val getMultiSelectAttributesMoneyByKeyConsumer = eventBus.consumer<MultiSelectMoney>("process.multiSelect.getMultiSelectAttributesMoneyByKey")
     getMultiSelectAttributesMoneyByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM multi_select_attributes_money WHERE attribute_key =?"
       val rowsFuture =
-        client.preparedQuery(query).execute(Tuple.of(body.getString("attribute_key")))
-      var json: JsonObject
+        client.preparedQuery(query).execute(Tuple.of(body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -574,12 +520,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              makeMultiSelectAttributesMoneyJsonFields(rows.first())
-            )
-          }
-          message.reply(json)
+          message.reply(body, multiSelectMoneyDeliveryOptions)
         } else {
           message.reply("No Multi-select attribute Money found")
         }
@@ -588,7 +529,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createMultiSelectAttributesMoney() {
-    val createMultiSelectAttributesMoneyConsumer = eventBus.consumer<JsonObject>("process.multiSelect.createMultiSelectAttributesMoney")
+    val createMultiSelectAttributesMoneyConsumer = eventBus.consumer<MultiSelectMoney>("process.multiSelect.createMultiSelectAttributesMoney")
     createMultiSelectAttributesMoneyConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -600,14 +541,14 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("Multi-select attribute money created successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, multiSelectMoneyDeliveryOptions)
       }
     }
   }
 
   private fun updateMultiSelectAttributesMoney() {
-    val updateMultiSelectAttributesMoneyConsumer = eventBus.consumer<JsonObject>("process.multiSelect.updateMultiSelectAttributesMoney")
+    val updateMultiSelectAttributesMoneyConsumer = eventBus.consumer<MultiSelectMoney>("process.multiSelect.updateMultiSelectAttributesMoney")
     updateMultiSelectAttributesMoneyConsumer.handler { message ->
       val body = message.body()
       val query =
@@ -619,25 +560,25 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
-        message.reply("Multi-select attribute money updated successfully")
+      rowsFuture.onComplete { _ ->
+        message.reply(body, multiSelectMoneyDeliveryOptions)
       }
     }
   }
 
   private fun deleteMultiSelectAttributesMoney() {
-    val deleteMultiSelectAttributesMoneyConsumer = eventBus.consumer<JsonObject>("process.multiSelect.deleteMultiSelectAttributesMoney")
+    val deleteMultiSelectAttributesMoneyConsumer = eventBus.consumer<MultiSelectMoney>("process.multiSelect.deleteMultiSelectAttributesMoney")
     deleteMultiSelectAttributesMoneyConsumer.handler { message ->
       val body = message.body()
       val query = "DELETE FROM multi_select_attributes_money WHERE attribute_key =?"
-      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.getString("attribute_key")))
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body.attributeKey))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }
 
-      rowsFuture.onComplete { res ->
+      rowsFuture.onComplete { _ ->
         message.reply("Multi-select attribute money deleted successfully")
       }
     }
@@ -659,7 +600,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         "LEFT JOIN public.multi_select_attributes_string msas on cpa.attribute_key = msas.attribute_key " +
         "LEFT JOIN public.multi_select_attributes_money msam on cpa.attribute_key = msam.attribute_key "
       val rowsFuture = client.preparedQuery(query).execute()
-      var json: JsonObject
+      val multiSelectInfoList: MutableList<MultiSelectInfo> = emptyList<MultiSelectInfo>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -669,19 +610,12 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "multiSelectInfo" to rows.map { row ->
-                obj(
-                  makeMultiSelectAttributesInfoJsonFields(row)
-                )
-              }
-            )
+          rows.forEach { row ->
+            multiSelectInfoList.add(makeMultiSelectAttributesInfo(row))
           }
-          message.reply(json)
-        } else {
-          message.reply("No website info found")
         }
+
+        message.reply(multiSelectInfoList, listDeliveryOptions)
       }
     }
   }
@@ -703,9 +637,8 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         "LEFT JOIN public.multi_select_attributes_string msas on cpa.attribute_key = msas.attribute_key " +
         "LEFT JOIN public.multi_select_attributes_money msam on cpa.attribute_key = msam.attribute_key " +
         "WHERE products.product_id =?"
-
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body))
-      var json: JsonObject
+
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
@@ -714,16 +647,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          json = json {
-            obj(
-              "multiSelectInfo" to rows.map { row ->
-                obj(
-                  makeMultiSelectAttributesInfoJsonFields(row)
-                )
-              }
-            )
-          }
-          message.reply(json)
+          message.reply(makeMultiSelectAttributesInfo(rows.first()), multiSelectInfoDeliveryOptions)
         } else {
           message.reply("No website info found for product ID: $body")
         }
@@ -731,117 +655,143 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
     }
   }
 
-  private fun makeMultiSelectAttributesBoolJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "attribute_key" to row.getString("attribute_key"),
-      "option" to row.getInteger("option"),
-      "value" to row.getBoolean("value")
+  private fun makeMultiSelectAttributesBool(row: Row): MultiSelectBool {
+    return MultiSelectBool(
+      attributeKey = row.getString("attribute_key"),
+      option = row.getInteger("option"),
+      value = row.getBoolean("value")
     )
   }
 
-  private fun makeMultiSelectAttributesFloatJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "attribute_key" to row.getString("attribute_key"),
-      "option" to row.getInteger("option"),
-      "value" to row.getDouble("value")
+  private fun makeMultiSelectAttributesFloat(row: Row): MultiSelectFloat {
+    return MultiSelectFloat(
+      attributeKey = row.getString("attribute_key"),
+      option = row.getInteger("option"),
+      value = row.getFloat("value")
     )
   }
 
-  private fun makeMultiSelectAttributesStringJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "attribute_key" to row.getString("attribute_key"),
-      "option" to row.getInteger("option"),
-      "value" to row.getString("value")
+  private fun makeMultiSelectAttributesString(row: Row): MultiSelectString {
+    return MultiSelectString(
+      attributeKey = row.getString("attribute_key"),
+      option = row.getInteger("option"),
+      value = row.getString("value")
     )
   }
 
-  private fun makeMultiSelectAttributesIntJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "attribute_key" to row.getString("attribute_key"),
-      "option" to row.getInteger("option"),
-      "value" to row.getInteger("value")
+  private fun makeMultiSelectAttributesInt(row: Row): MultiSelectInt {
+    return MultiSelectInt(
+      attributeKey = row.getString("attribute_key"),
+      option = row.getInteger("option"),
+      value = row.getInteger("value")
     )
   }
 
-  private fun makeMultiSelectAttributesMoneyJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "attribute_key" to row.getString("attribute_key"),
-      "option" to row.getInteger("option"),
-      "value" to row.getDouble("value")
+  private fun makeMultiSelectAttributesMoney(row: Row): MultiSelectMoney {
+    return MultiSelectMoney(
+      attributeKey = row.getString("attribute_key"),
+      option = row.getInteger("option"),
+      value = row.getDouble("value")
     )
   }
 
-  private fun makeMultiSelectAttributesInfoJsonFields(row: Row): List<Pair<String, Any?>> {
-    return listOf(
-      "product_id" to row.getInteger("product_id"),
-      "attribute_key" to row.getString("attribute_key"),
-      "multiSelectBool" to row.getBoolean("bool_value"),
-      "multiSelectFloat" to row.getDouble("float_value"),
-      "multiSelectString" to row.getString("string_value"),
-      "multiSelectInt" to row.getInteger("int_value"),
-      "multiSelectMoney" to row.getDouble("money_value"),
+  private fun makeMultiSelectAttributesInfo(row: Row): MultiSelectInfo {
+    return MultiSelectInfo(
+      makeMultiSelectAttributesBool(row),
+      makeMultiSelectAttributesFloat(row),
+      makeMultiSelectAttributesString(row),
+      makeMultiSelectAttributesInt(row),
+      makeMultiSelectAttributesMoney(row)
     )
   }
 
-  private fun makeMultiSelectAttributesBoolTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
+  private fun makeMultiSelectAttributesBoolTuple(body: MultiSelectBool, isPutRequest: Boolean): Tuple {
     val multiSelectBoolTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.getInteger("option"),
-        body.getString("value"),
-        body.getString("attribute_key"),
+        body.option,
+        body.value,
+        body.attributeKey,
       )
     } else {
       Tuple.of(
-        body.getString("attribute_key"),
-        body.getInteger("option"),
-        body.getString("value"),
+        body.attributeKey,
+        body.option,
+        body.value,
       )
     }
 
     return multiSelectBoolTuple
   }
 
-  private fun makeMultiSelectAttributesFloatTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
+  private fun makeMultiSelectAttributesFloatTuple(body: MultiSelectFloat, isPutRequest: Boolean): Tuple {
     val multiSelectFloatTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.getInteger("option"),
-        body.getDouble("value"),
-        body.getString("attribute_key"),
+        body.option,
+        body.value,
+        body.attributeKey,
       )
     } else {
       Tuple.of(
-        body.getString("attribute_key"),
-        body.getInteger("option"),
-        body.getDouble("value"),
+        body.attributeKey,
+        body.option,
+        body.value,
       )
     }
 
     return multiSelectFloatTuple
   }
 
-  private fun makeMultiSelectAttributesStringTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
-    return makeMultiSelectAttributesBoolTuple(body, isPutRequest)
-  }
-
-  private fun makeMultiSelectAttributesIntTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
-    val multiSelectIntTuple: Tuple = if (isPutRequest) {
+  private fun makeMultiSelectAttributesStringTuple(body: MultiSelectString, isPutRequest: Boolean): Tuple {
+    val multiSelectStringTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.getInteger("option"),
-        body.getInteger("value"),
-        body.getString("attribute_key"),
+        body.option,
+        body.value,
+        body.attributeKey,
       )
     } else {
       Tuple.of(
-        body.getString("attribute_key"),
-        body.getInteger("option"),
-        body.getInteger("value"),
+        body.attributeKey,
+        body.option,
+        body.value,
+      )
+    }
+
+    return multiSelectStringTuple
+  }
+
+  private fun makeMultiSelectAttributesIntTuple(body: MultiSelectInt, isPutRequest: Boolean): Tuple {
+    val multiSelectIntTuple: Tuple = if (isPutRequest) {
+      Tuple.of(
+        body.option,
+        body.value,
+        body.attributeKey,
+      )
+    } else {
+      Tuple.of(
+        body.attributeKey,
+        body.option,
+        body.value,
       )
     }
 
     return multiSelectIntTuple
   }
 
-  private fun makeMultiSelectAttributesMoneyTuple(body: JsonObject, isPutRequest: Boolean): Tuple {
-    return makeMultiSelectAttributesFloatTuple(body, isPutRequest)
+  private fun makeMultiSelectAttributesMoneyTuple(body: MultiSelectMoney, isPutRequest: Boolean): Tuple {
+    val multiSelectMoneyTuple: Tuple = if (isPutRequest) {
+      Tuple.of(
+        body.option,
+        body.value,
+        body.attributeKey,
+      )
+    } else {
+      Tuple.of(
+        body.attributeKey,
+        body.option,
+        body.value,
+      )
+    }
+
+    return multiSelectMoneyTuple
   }
 }
