@@ -473,7 +473,7 @@ class AccountJdbcVerticleTest {
                 testContext.failNow(it)
               }.onComplete { deletePermissionMsg ->
                 assert(deletePermissionMsg.succeeded())
-                assertEquals(deletePermissionMsg.result().body(), "Backend permissions deleted successfully")
+                assertEquals(deletePermissionMsg.result().body(), AccountJdbcVerticle.BACKEND_PERMISSION_DELETED)
 
                 processAccountDeleteBackendPermissionsCheckpoint.flag()
 
