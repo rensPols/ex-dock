@@ -384,6 +384,13 @@ class AccountJdbcVerticleTest {
 
   @Test
   fun testFullUser(vertx: Vertx, testContext: VertxTestContext) {
+    val processAccountCreateUserCheckpoint = testContext.checkpoint()
+    val processAccountCreateBackendPermissionsCheckpoint = testContext.checkpoint()
+    val processAccountGetAllFullUserInfoCheckpoint = testContext.checkpoint()
+    val processAccountGetFullUserByUserIdCheckpoint = testContext.checkpoint()
+    val processAccountDeleteBackendPermissionsCheckpoint = testContext.checkpoint()
+    val processAccountDeleteUserCheckpoint = testContext.checkpoint()
+
     var userId = -1
     val FullUserList: MutableList<FullUser> = emptyList<FullUser>().toMutableList()
 
@@ -402,6 +409,9 @@ class AccountJdbcVerticleTest {
         testContext.failNow(it)
       }.onComplete { createUserMsg ->
         assert(createUserMsg.succeeded())
+
+        processAccountCreateUserCheckpoint.flag()
+
         testUser = createUserMsg.result().body()
         userId = testUser.userId
 
@@ -439,12 +449,16 @@ class AccountJdbcVerticleTest {
           assert(createPermissionMsg.succeeded())
           assertEquals(testPermission, createPermissionMsg.result().body())
 
+          processAccountCreateBackendPermissionsCheckpoint.flag()
+
           eventBus.request<MutableList<FullUser>>("process.account.getAllFullUserInfo", "").onFailure {
             testContext.failNow(it)
           }.onComplete { getAllFullMsg ->
             val fullBody = getAllFullMsg.result().body()
             fullBody[0].user.password = ""
             assertEquals(fullBody, FullUserList)
+
+            processAccountGetAllFullUserInfoCheckpoint.flag()
 
             eventBus.request<FullUser>("process.account.getFullUserByUserId", userId).onFailure {
               testContext.failNow(it)
@@ -453,16 +467,20 @@ class AccountJdbcVerticleTest {
               fullBodyById.user.password = ""
               assertEquals(fullBodyById, allInfoResult)
 
+              processAccountGetFullUserByUserIdCheckpoint.flag()
+
               eventBus.request<String>("process.account.deleteBackendPermissions", userId).onFailure {
                 testContext.failNow(it)
               }.onComplete { deletePermissionMsg ->
                 assert(deletePermissionMsg.succeeded())
                 assertEquals(deletePermissionMsg.result().body(), "Backend permissions deleted successfully")
 
+                processAccountDeleteBackendPermissionsCheckpoint.flag()
+
                 eventBus.request<String>("process.account.deleteUser", userId).onFailure {
                   testContext.failNow(it)
                 }.onComplete {
-                  testContext.completeNow()
+                  processAccountDeleteUserCheckpoint.flag()
                 }
               }
             }
