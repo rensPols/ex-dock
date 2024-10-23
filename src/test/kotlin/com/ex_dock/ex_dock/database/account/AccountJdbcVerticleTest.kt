@@ -62,8 +62,9 @@ class AccountJdbcVerticleTest {
     request.onFailure { testContext.failNow(it) }
     request.onComplete { msg ->
       if (msg.failed()) testContext.failNow(msg.result().toString())
-      if (msg.result() != intArrayOf()) testContext.failNow(
-        "result is not equal to emptyList<User>()\nmsg.result().toString(): ${msg.result().body()}"
+      if (msg.result() != emptyList<User>()) testContext.failNow(
+        "result is not equal to emptyList<User>()\nmsg.result().toString(): ${msg.result().body()}\n" +
+            "msg.result()::class: ${msg.result()::class}"
       )
       testContext.completeNow()
     }
@@ -245,7 +246,7 @@ class AccountJdbcVerticleTest {
       AccountJdbcVerticle(),
       testContext.succeeding {
         eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
-          println("failure on: process.account.createUser")
+          println("failure in testBackendPermissions on: process.account.createUser")
           testContext.failNow(it)
         }.onComplete { createUserMsg ->
           assert(createUserMsg.succeeded())
@@ -272,7 +273,7 @@ class AccountJdbcVerticleTest {
             permissionResult,
             backendPermissionsDeliveryOptions
           ).onFailure {
-            println("failure on: process.account.createBackendPermissions")
+            println("failure in testBackendPermissions on: process.account.createBackendPermissions")
             testContext.failNow(it)
           }.onComplete { createMsg ->
             assert(createMsg.succeeded())
@@ -280,7 +281,7 @@ class AccountJdbcVerticleTest {
 
             eventBus.request<MutableList<BackendPermissions>>("process.account.getAllBackendPermissions", "")
               .onFailure {
-                println("failure on: process.account.getAllBackendPermissions")
+                println("failure in testBackendPermissions on: process.account.getAllBackendPermissions")
                 testContext.failNow(it)
               }.onComplete { getAllMsg ->
               assert(getAllMsg.succeeded())
@@ -291,7 +292,7 @@ class AccountJdbcVerticleTest {
                 permissionResult.userId
               )
                 .onFailure {
-                  println("failure on: process.account.getBackendPermissionsByUserId")
+                  println("failure in testBackendPermissions on: process.account.getBackendPermissionsByUserId")
                   testContext.failNow(it)
                 }.onComplete { getMsg ->
                   assert(getMsg.succeeded())
@@ -317,7 +318,7 @@ class AccountJdbcVerticleTest {
                     permissionResult,
                     backendPermissionsDeliveryOptions
                   ).onFailure {
-                    println("failure on: process.account.updateBackendPermissions")
+                    println("failure in testBackendPermissions on: process.account.updateBackendPermissions")
                     testContext.failNow(it)
                   }.onComplete { updateMsg ->
                     assert(updateMsg.succeeded())
@@ -328,7 +329,7 @@ class AccountJdbcVerticleTest {
                       permissionResult.userId
                     )
                       .onFailure {
-                        println("failure on: process.account.getBackendPermissionsByUserId")
+                        println("failure in testBackendPermissions on: process.account.getBackendPermissionsByUserId")
                         testContext.failNow(it)
                       }.onComplete { getUpdatedMsg ->
                         assert(getUpdatedMsg.succeeded())
@@ -340,7 +341,7 @@ class AccountJdbcVerticleTest {
                           permissionResult.userId
                         )
                           .onFailure {
-                            println("failure on: process.account.deleteBackendPermissions")
+                            println("failure in testBackendPermissions on: process.account.deleteBackendPermissions")
                             testContext.failNow(it)
                           }.onComplete { deleteMsg ->
                             assert(deleteMsg.succeeded())
@@ -353,14 +354,15 @@ class AccountJdbcVerticleTest {
                               "process.account.getAllBackendPermissions",
                               ""
                             ).onFailure {
-                              println("failure on: process.account.getAllBackendPermissions")
+                              println("failure in testBackendPermissions on: process.account.getAllBackendPermissions")
                               testContext.failNow(it)
                             }.onComplete { emptyMsg ->
                               assert(emptyMsg.succeeded())
                               assertEquals(emptyMsg.result().body(), emptyList<BackendPermissions>().toMutableList())
 
                               eventBus.request<String>("process.account.deleteUser", permissionId).onFailure {
-                                println("failure on: process.account.deleteUser")
+                                println("failure in testBackendPermissions on: process.account.deleteUser")
+                                // TODO: resolve error: User does not exist
                                 testContext.failNow(it)
                               }.onComplete {
                                 testContext.completeNow()
