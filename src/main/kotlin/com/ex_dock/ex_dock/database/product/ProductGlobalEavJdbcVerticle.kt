@@ -19,7 +19,6 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
   private val eavGlobalMoneyDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalMoneyCodec")
   private val eavGlobalMultiSelectDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalMultiSelectCodec")
   private val eavGlobalStringDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalStringCodec")
-  private val eavGlobalInfoDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalInfoCodec")
   private val eavDeliveryOptions = DeliveryOptions().setCodecName("EavCodec")
   private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
@@ -114,7 +113,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          message.reply(makeEavGlobal(rows.first()), eavGlobalBoolDeliveryOptions)
+          message.reply(makeEavGlobalBool(rows.first()), eavGlobalBoolDeliveryOptions)
         } else {
           message.reply("No global bool found")
         }
@@ -219,7 +218,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          message.reply(makeEavGlobalFloat(rows.first()))
+          message.reply(makeEavGlobalFloat(rows.first()), eavGlobalFloatDeliveryOptions)
         } else {
           message.reply("No global float found")
         }
@@ -603,7 +602,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
     allEavGlobalMultiSelectConsumer.handler { message ->
       val query = "SELECT * FROM eav_global_multi_select"
       val rowsFuture = client.preparedQuery(query).execute()
-      val eavGlobalMultiSelects: MutableList<EavGlobalMoney> = emptyList<EavGlobalMoney>().toMutableList()
+      val eavGlobalMultiSelects: MutableList<EavGlobalMultiSelect> = emptyList<EavGlobalMultiSelect>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -614,7 +613,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         val rows = res.result()
         if (rows.size() > 0) {
           rows.forEach { row ->
-            eavGlobalMultiSelects.add(makeEavGlobalMoney(row))
+            eavGlobalMultiSelects.add(makeEavGlobalMultiSelect(row))
           }
         }
 
@@ -860,6 +859,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
         "LEFT JOIN public.custom_product_attributes cpa on cpa.attribute_key = e.attribute_key " +
         "WHERE products.product_id =?"
 
+      val eavGlobalInfoList: MutableList<EavGlobalInfo> = emptyList<EavGlobalInfo>().toMutableList()
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body))
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -869,10 +869,12 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          message.reply(makeEavGlobal(rows.first()), eavGlobalInfoDeliveryOptions)
-        } else {
-          message.reply("No global info found for product ID: $body")
+          rows.forEach { row ->
+            eavGlobalInfoList.add(makeEavGlobalInfo(row))
+          }
         }
+
+        message.reply(eavGlobalInfoList, listDeliveryOptions)
       }
     }
   }
@@ -935,19 +937,19 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
   private fun makeEavGlobalInfo(row: Row): EavGlobalInfo {
     return EavGlobalInfo(
       eav = makeEavGlobal(row),
-      eavGlobalBool = makeEavGlobalBool(row),
-      eavGlobalFloat = makeEavGlobalFloat(row),
-      eavGlobalString = makeEavGlobalString(row),
-      eavGlobalInt = makeEavGlobalInt(row),
-      eavGlobalMoney = makeEavGlobalMoney(row),
-      eavGlobalMultiSelect = makeEavGlobalMultiSelect(row)
+      eavGlobalBool = row.getBoolean("bool_value"),
+      eavGlobalFloat = row.getFloat("float_value"),
+      eavGlobalString = row.getString("string_value"),
+      eavGlobalInt = row.getInteger("int_value"),
+      eavGlobalMoney = row.getDouble("money_value"),
+      eavGlobalMultiSelect = row.getInteger("multi_select_value")
     )
   }
 
   private fun makeEavGlobalBoolTuple(body: EavGlobalBool, isPutRequest: Boolean): Tuple {
     val eavGlobalBoolTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.value,
+        body.value.toInt(),
         body.productId,
         body.attributeKey,
       )
@@ -955,7 +957,7 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
       Tuple.of(
         body.productId,
         body.attributeKey,
-        body.value,
+        body.value.toInt(),
       )
     }
 
@@ -1069,4 +1071,6 @@ class ProductGlobalEavJdbcVerticle: AbstractVerticle() {
 
     return eavGlobalTuple
   }
+
+  private fun Boolean.toInt() = if (this) 1 else 0
 }

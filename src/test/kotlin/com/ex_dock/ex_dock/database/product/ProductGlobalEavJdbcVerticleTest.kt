@@ -1,14 +1,13 @@
 package com.ex_dock.ex_dock.database.product
 
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Future
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
-import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 
@@ -19,113 +18,128 @@ import org.junit.jupiter.api.extension.ExtendWith
 @ExtendWith(VertxExtension::class)
 class ProductGlobalEavJdbcVerticleTest {
   private lateinit var eventBus: EventBus
-
+  private val eavGlobalBoolDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalBoolCodec")
+  private val eavGlobalFloatDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalFloatCodec")
+  private val eavGlobalIntDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalIntCodec")
+  private val eavGlobalMoneyDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalMoneyCodec")
+  private val eavGlobalMultiSelectDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalMultiSelectCodec")
+  private val eavGlobalStringDeliveryOptions = DeliveryOptions().setCodecName("EavGlobalStringCodec")
+  private val eavDeliveryOptions = DeliveryOptions().setCodecName("EavCodec")
+  private val productDeliveryOptions = DeliveryOptions().setCodecName("ProductsCodec")
+  private val customProductAttributeDeliveryOptions = DeliveryOptions().setCodecName("CustomProductAttributesCodec")
   private var productId = -1
+  private val boolList = emptyList<EavGlobalBool>().toMutableList()
+  private val floatList = emptyList<EavGlobalFloat>().toMutableList()
+  private val intList = emptyList<EavGlobalInt>().toMutableList()
+  private val moneyList = emptyList<EavGlobalMoney>().toMutableList()
+  private val multiSelectList = emptyList<EavGlobalMultiSelect>().toMutableList()
+  private val stringList = emptyList<EavGlobalString>().toMutableList()
+  private val eavList = emptyList<Eav>().toMutableList()
+  private val eavGlobalInfoList = emptyList<EavGlobalInfo>().toMutableList()
 
-  private var productJson = json {
-    obj(
-      "product_id" to productId,
-      "name" to "test name",
-      "short_name" to "test short name",
-      "description" to "test description",
-      "short_description" to "test short description"
-    )
-  }
+  private var product = Products(
+    productId = productId,
+    name = "Test Product",
+    shortName = "TProduct",
+    description = "Test Product Description",
+    shortDescription = "TPDescription"
+  )
 
-  private var customProductAttributeJson = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "scope" to 2,
-      "name" to "test name",
-      "type" to "int",
-      "multiselect" to "0",
-      "required" to "1"
-    )
-  }
+  private var customProductAttribute = CustomProductAttributes(
+    attributeKey = "test attribute key",
+    scope = 1,
+    name = "Test Attribute",
+    type = Type.INT,
+    multiselect = false,
+    required = true
+  )
 
-  private lateinit var boolJson: JsonObject
-
-  private lateinit var expectedBoolJson: JsonObject
-
-  private lateinit var floatJson: JsonObject
-
-  private lateinit var stringJson: JsonObject
-
-  private lateinit var intJson: JsonObject
-
-  private lateinit var moneyJson: JsonObject
-
-  private lateinit var multiSelectJson: JsonObject
-
-  private lateinit var eavJson: JsonObject
-
-  private lateinit var expectedFullEavJson: JsonObject
+  private lateinit var bool: EavGlobalBool
+  private lateinit var float: EavGlobalFloat
+  private lateinit var string: EavGlobalString
+  private lateinit var int: EavGlobalInt
+  private lateinit var money: EavGlobalMoney
+  private lateinit var multiSelect: EavGlobalMultiSelect
+  private lateinit var eav: Eav
+  private lateinit var expectedFullEav: EavGlobalInfo
 
 
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
+      .registerCodec(GenericCodec(Products::class.java))
+      .registerCodec(GenericCodec(CustomProductAttributes::class.java))
+      .registerCodec(GenericCodec(EavGlobalBool::class.java))
+      .registerCodec(GenericCodec(EavGlobalFloat::class.java))
+      .registerCodec(GenericCodec(EavGlobalInt::class.java))
+      .registerCodec(GenericCodec(EavGlobalMoney::class.java))
+      .registerCodec(GenericCodec(EavGlobalMultiSelect::class.java))
+      .registerCodec(GenericCodec(EavGlobalString::class.java))
+      .registerCodec(GenericCodec(Eav::class.java))
+      .registerCodec(GenericCodec(EavGlobalInfo::class.java))
+      .registerCodec(GenericCodec(MutableList::class.java))
     Future.all(deployVerticles(vertx)).onFailure{
       testContext.failNow(it)
     }.onComplete {
-      eventBus.request<Int>("process.products.createProduct", productJson).onFailure {
+      eventBus.request<Products>("process.products.createProduct", product, productDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createProductMsg ->
-        productId = createProductMsg.result().body()
-        assertEquals("Int", createProductMsg.result().body()::class.simpleName)
+        product = createProductMsg.result().body()
+        productId = product.productId
+        assertEquals(product, createProductMsg.result().body())
 
-        eventBus.request<String>("process.attributes.createCustomAttribute", customProductAttributeJson).onFailure {
+        eventBus.request<CustomProductAttributes>("process.attributes.createCustomAttribute", customProductAttribute, customProductAttributeDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createAttributeMsg ->
           assert(createAttributeMsg.succeeded())
-          assertEquals("Custom attribute created successfully", createAttributeMsg.result().body())
           setAllJsonFields()
+          assertEquals(customProductAttribute, createAttributeMsg.result().body())
 
-          eventBus.request<String>("process.eavGlobal.createEavGlobalBool", boolJson).onFailure {
+          eventBus.request<EavGlobalBool>("process.eavGlobal.createEavGlobalBool", bool, eavGlobalBoolDeliveryOptions).onFailure {
             testContext.failNow(it)
           }.onComplete { createEavGlobalBoolMsg ->
             assert(createEavGlobalBoolMsg.succeeded())
-            assertEquals("EAV global bool created successfully", createEavGlobalBoolMsg.result().body())
+            assertEquals(bool, createEavGlobalBoolMsg.result().body())
 
-            eventBus.request<String>("process.eavGlobal.createEavGlobalFloat", floatJson).onFailure {
+            eventBus.request<EavGlobalFloat>("process.eavGlobal.createEavGlobalFloat", float, eavGlobalFloatDeliveryOptions).onFailure {
               testContext.failNow(it)
             }.onComplete { createEavGlobalFloatMsg ->
               assert(createEavGlobalFloatMsg.succeeded())
-              assertEquals("EAV global float created successfully", createEavGlobalFloatMsg.result().body())
+              assertEquals(float, createEavGlobalFloatMsg.result().body())
 
-              eventBus.request<String>("process.eavGlobal.createEavGlobalString", stringJson).onFailure {
+              eventBus.request<EavGlobalString>("process.eavGlobal.createEavGlobalString", string, eavGlobalStringDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { createEavGlobalStringMsg ->
                 assert(createEavGlobalStringMsg.succeeded())
-                assertEquals("EAV global string created successfully", createEavGlobalStringMsg.result().body())
+                assertEquals(string, createEavGlobalStringMsg.result().body())
 
-                eventBus.request<String>("process.eavGlobal.createEavGlobalInt", intJson).onFailure {
+                eventBus.request<EavGlobalInt>("process.eavGlobal.createEavGlobalInt", int, eavGlobalIntDeliveryOptions).onFailure {
                   testContext.failNow(it)
                 }.onComplete { createEavGlobalIntMsg ->
                   assert(createEavGlobalIntMsg.succeeded())
-                  assertEquals("EAV global int created successfully", createEavGlobalIntMsg.result().body())
+                  assertEquals(int, createEavGlobalIntMsg.result().body())
 
-                  eventBus.request<String>("process.eavGlobal.createEavGlobalMoney", moneyJson).onFailure {
+                  eventBus.request<EavGlobalMoney>("process.eavGlobal.createEavGlobalMoney", money, eavGlobalMoneyDeliveryOptions).onFailure {
                     testContext.failNow(it)
                   }.onComplete { createEavGlobalMoneyMsg ->
                     assert(createEavGlobalMoneyMsg.succeeded())
-                    assertEquals("EAV global money created successfully", createEavGlobalMoneyMsg.result().body())
+                    assertEquals(money, createEavGlobalMoneyMsg.result().body())
 
-                    eventBus.request<String>("process.eavGlobal.createEavGlobalMultiSelect", multiSelectJson)
+                    eventBus.request<EavGlobalMultiSelect>("process.eavGlobal.createEavGlobalMultiSelect", multiSelect, eavGlobalMultiSelectDeliveryOptions)
                       .onFailure {
                         testContext.failNow(it)
                       }.onComplete { createEavGlobalMultiSelectMsg ->
                         assert(createEavGlobalMultiSelectMsg.succeeded())
                         assertEquals(
-                          "EAV global multi-select created successfully",
+                          multiSelect,
                           createEavGlobalMultiSelectMsg.result().body()
                         )
 
-                        eventBus.request<String>("process.eavGlobal.createEavGlobal", eavJson).onFailure {
+                        eventBus.request<Eav>("process.eavGlobal.createEavGlobal", eav, eavDeliveryOptions).onFailure {
                           testContext.failNow(it)
                         }.onComplete { createEavGlobalMsg ->
                           assert(createEavGlobalMsg.succeeded())
-                          assertEquals("EAV global created successfully", createEavGlobalMsg.result().body())
+                          assertEquals(eav, createEavGlobalMsg.result().body())
 
                           testContext.completeNow()
                         }
@@ -142,15 +156,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavGlobalBool(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getAllEavGlobalBool", "").onFailure {
+    eventBus.request<MutableList<EavGlobalBool>>("process.eavGlobal.getAllEavGlobalBool", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavGlobalBoolMsg ->
       assert(getAllEavGlobalBoolMsg.succeeded())
-      assertEquals(
-        json {
-          obj("eavGlobalBool" to listOf(expectedBoolJson))
-        },
-        getAllEavGlobalBoolMsg.result().body())
+      assertEquals(boolList, getAllEavGlobalBoolMsg.result().body())
 
       testContext.completeNow()
     }
@@ -158,11 +168,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetEavGlobalBoolByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalBoolByKey", boolJson).onFailure {
+    eventBus.request<EavGlobalBool>("process.eavGlobal.getEavGlobalBoolByKey", bool, eavGlobalBoolDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavGlobalByKeyMsg ->
       assert(getEavGlobalByKeyMsg.succeeded())
-      assertEquals(expectedBoolJson, getEavGlobalByKeyMsg.result().body())
+      assertEquals(bool, getEavGlobalByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -170,33 +180,23 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavGlobalBool(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedBoolJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to boolJson.getString("attribute_key"),
-        "value" to "0"
-      )
-    }
+    val updatedBool = EavGlobalBool(
+      productId = productId,
+      attributeKey = bool.attributeKey,
+      value = false
+    )
 
-    val expectedUpdatedBoolJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to boolJson.getString("attribute_key"),
-        "value" to false
-      )
-    }
-
-    eventBus.request<String>("process.eavGlobal.updateEavGlobalBool", updatedBoolJson).onFailure {
+    eventBus.request<EavGlobalBool>("process.eavGlobal.updateEavGlobalBool", updatedBool, eavGlobalBoolDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavGlobalByKeyMsg ->
       assert(updateEavGlobalByKeyMsg.succeeded())
-      assertEquals("EAV global bool updated successfully", updateEavGlobalByKeyMsg.result().body())
+      assertEquals(updatedBool, updateEavGlobalByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalBoolByKey", updatedBoolJson).onFailure {
+      eventBus.request<EavGlobalBool>("process.eavGlobal.getEavGlobalBoolByKey", updatedBool, eavGlobalBoolDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavGlobalBoolMsg ->
         assert(getUpdatedEavGlobalBoolMsg.succeeded())
-        assertEquals(expectedUpdatedBoolJson, getUpdatedEavGlobalBoolMsg.result().body())
+        assertEquals(updatedBool, getUpdatedEavGlobalBoolMsg.result().body())
 
         testContext.completeNow()
       }
@@ -204,16 +204,12 @@ class ProductGlobalEavJdbcVerticleTest {
   }
 
   @Test
-  fun testgetAllEavGlobalFloat(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getAllEavGlobalFloat", "").onFailure {
+  fun testGetAllEavGlobalFloat(vertx: Vertx, testContext: VertxTestContext) {
+    eventBus.request<MutableList<EavGlobalFloat>>("process.eavGlobal.getAllEavGlobalFloat", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavGlobalFloatMsg ->
       assert(getAllEavGlobalFloatMsg.succeeded())
-      assertEquals(
-        json {
-          obj("eavGlobalFloat" to listOf(floatJson))
-        },
-        getAllEavGlobalFloatMsg.result().body())
+      assertEquals(floatList, getAllEavGlobalFloatMsg.result().body())
 
       testContext.completeNow()
     }
@@ -221,11 +217,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetEavGlobalFloatByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalFloatByKey", floatJson).onFailure {
+    eventBus.request<EavGlobalFloat>("process.eavGlobal.getEavGlobalFloatByKey", float, eavGlobalFloatDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavGlobalByKeyMsg ->
       assert(getEavGlobalByKeyMsg.succeeded())
-      assertEquals(floatJson, getEavGlobalByKeyMsg.result().body())
+      assertEquals(float, getEavGlobalByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -233,25 +229,23 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavGlobalFloat(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedFloatJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to floatJson.getString("attribute_key"),
-        "value" to 10.5
-      )
-    }
+    val updatedFloat = EavGlobalFloat(
+      productId = productId,
+      attributeKey = float.attributeKey,
+      value = 0.0f
+    )
 
-    eventBus.request<String>("process.eavGlobal.updateEavGlobalFloat", updatedFloatJson).onFailure {
+    eventBus.request<EavGlobalFloat>("process.eavGlobal.updateEavGlobalFloat", updatedFloat, eavGlobalFloatDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavGlobalByKeyMsg ->
       assert(updateEavGlobalByKeyMsg.succeeded())
-      assertEquals("EAV global float updated successfully", updateEavGlobalByKeyMsg.result().body())
+      assertEquals(updatedFloat, updateEavGlobalByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalFloatByKey", updatedFloatJson).onFailure {
+      eventBus.request<EavGlobalFloat>("process.eavGlobal.getEavGlobalFloatByKey", updatedFloat, eavGlobalFloatDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavGlobalFloatMsg ->
         assert(getUpdatedEavGlobalFloatMsg.succeeded())
-        assertEquals(updatedFloatJson, getUpdatedEavGlobalFloatMsg.result().body())
+        assertEquals(updatedFloat, getUpdatedEavGlobalFloatMsg.result().body())
 
         testContext.completeNow()
       }
@@ -260,15 +254,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavGlobalString(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getAllEavGlobalString", "").onFailure {
+    eventBus.request<MutableList<EavGlobalString>>("process.eavGlobal.getAllEavGlobalString", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavGlobalStringMsg ->
       assert(getAllEavGlobalStringMsg.succeeded())
-      assertEquals(
-        json {
-          obj("eavGlobalString" to listOf(stringJson))
-        },
-        getAllEavGlobalStringMsg.result().body())
+      assertEquals(stringList, getAllEavGlobalStringMsg.result().body())
 
       testContext.completeNow()
     }
@@ -276,11 +266,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetEavGlobalStringByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalStringByKey", stringJson).onFailure {
+    eventBus.request<EavGlobalString>("process.eavGlobal.getEavGlobalStringByKey", string, eavGlobalStringDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavGlobalByKeyMsg ->
       assert(getEavGlobalByKeyMsg.succeeded())
-      assertEquals(stringJson, getEavGlobalByKeyMsg.result().body())
+      assertEquals(string, getEavGlobalByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -288,25 +278,23 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavGlobalString(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedStringJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to stringJson.getString("attribute_key"),
-        "value" to "New Value"
-      )
-    }
+    val updatedString = EavGlobalString(
+      productId = productId,
+      attributeKey = string.attributeKey,
+      value = "EAV global string updated"
+    )
 
-    eventBus.request<String>("process.eavGlobal.updateEavGlobalString", updatedStringJson).onFailure {
+    eventBus.request<EavGlobalString>("process.eavGlobal.updateEavGlobalString", updatedString, eavGlobalStringDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavGlobalByKeyMsg ->
       assert(updateEavGlobalByKeyMsg.succeeded())
-      assertEquals("EAV global string updated successfully", updateEavGlobalByKeyMsg.result().body())
+      assertEquals(updatedString, updateEavGlobalByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalStringByKey", updatedStringJson).onFailure {
+      eventBus.request<EavGlobalString>("process.eavGlobal.getEavGlobalStringByKey", updatedString, eavGlobalStringDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavGlobalStringMsg ->
         assert(getUpdatedEavGlobalStringMsg.succeeded())
-        assertEquals(updatedStringJson, getUpdatedEavGlobalStringMsg.result().body())
+        assertEquals(updatedString, getUpdatedEavGlobalStringMsg.result().body())
 
         testContext.completeNow()
       }
@@ -315,16 +303,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavGlobalInt(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getAllEavGlobalInt", "").onFailure {
+    eventBus.request<MutableList<EavGlobalInt>>("process.eavGlobal.getAllEavGlobalInt", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavGlobalIntMsg ->
       assert(getAllEavGlobalIntMsg.succeeded())
-      assertEquals(
-        json {
-          obj("eavGlobalInt" to listOf(intJson))
-        },
-        getAllEavGlobalIntMsg.result().body()
-      )
+      assertEquals(intList, getAllEavGlobalIntMsg.result().body())
 
       testContext.completeNow()
     }
@@ -332,11 +315,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetEavGlobalIntByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalIntByKey", intJson).onFailure {
+    eventBus.request<EavGlobalInt>("process.eavGlobal.getEavGlobalIntByKey", int, eavGlobalIntDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavGlobalByKeyMsg ->
       assert(getEavGlobalByKeyMsg.succeeded())
-      assertEquals(intJson, getEavGlobalByKeyMsg.result().body())
+      assertEquals(int, getEavGlobalByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -344,25 +327,23 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavGlobalInt(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedIntJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to intJson.getString("attribute_key"),
-        "value" to 20
-      )
-    }
+    val updatedInt = EavGlobalInt(
+      productId = productId,
+      attributeKey = int.attributeKey,
+      value = 100
+    )
 
-    eventBus.request<String>("process.eavGlobal.updateEavGlobalInt", updatedIntJson).onFailure {
+    eventBus.request<EavGlobalInt>("process.eavGlobal.updateEavGlobalInt", updatedInt, eavGlobalIntDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavGlobalByKeyMsg ->
       assert(updateEavGlobalByKeyMsg.succeeded())
-      assertEquals("EAV global int updated successfully", updateEavGlobalByKeyMsg.result().body())
+      assertEquals(updatedInt, updateEavGlobalByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalIntByKey", updatedIntJson).onFailure {
+      eventBus.request<EavGlobalInt>("process.eavGlobal.getEavGlobalIntByKey", updatedInt, eavGlobalIntDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavGlobalIntMsg ->
         assert(getUpdatedEavGlobalIntMsg.succeeded())
-        assertEquals(updatedIntJson, getUpdatedEavGlobalIntMsg.result().body())
+        assertEquals(updatedInt, getUpdatedEavGlobalIntMsg.result().body())
 
         testContext.completeNow()
       }
@@ -371,16 +352,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavGlobalMoney(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getAllEavGlobalMoney", "").onFailure {
+    eventBus.request<MutableList<EavGlobalMoney>>("process.eavGlobal.getAllEavGlobalMoney", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavGlobalMoneyMsg ->
       assert(getAllEavGlobalMoneyMsg.succeeded())
-      assertEquals(
-        json {
-          obj("eavGlobalMoney" to listOf(moneyJson))
-        },
-        getAllEavGlobalMoneyMsg.result().body()
-      )
+      assertEquals(moneyList, getAllEavGlobalMoneyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -388,11 +364,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetEavGlobalMoneyByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalMoneyByKey", moneyJson).onFailure {
+    eventBus.request<EavGlobalMoney>("process.eavGlobal.getEavGlobalMoneyByKey", money, eavGlobalMoneyDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavGlobalByKeyMsg ->
       assert(getEavGlobalByKeyMsg.succeeded())
-      assertEquals(moneyJson, getEavGlobalByKeyMsg.result().body())
+      assertEquals(money, getEavGlobalByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -400,25 +376,23 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavGlobalMoney(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMoneyJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to moneyJson.getString("attribute_key"),
-        "value" to 100.50
-      )
-    }
+    val updatedMoney = EavGlobalMoney(
+      productId = productId,
+      attributeKey = money.attributeKey,
+      value = 100.00
+    )
 
-    eventBus.request<String>("process.eavGlobal.updateEavGlobalMoney", updatedMoneyJson).onFailure {
+    eventBus.request<EavGlobalMoney>("process.eavGlobal.updateEavGlobalMoney", updatedMoney, eavGlobalMoneyDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavGlobalByKeyMsg ->
       assert(updateEavGlobalByKeyMsg.succeeded())
-      assertEquals("EAV global money updated successfully", updateEavGlobalByKeyMsg.result().body())
+      assertEquals(updatedMoney, updateEavGlobalByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalMoneyByKey", updatedMoneyJson).onFailure {
+      eventBus.request<EavGlobalMoney>("process.eavGlobal.getEavGlobalMoneyByKey", updatedMoney, eavGlobalMoneyDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavGlobalMoneyMsg ->
         assert(getUpdatedEavGlobalMoneyMsg.succeeded())
-        assertEquals(updatedMoneyJson, getUpdatedEavGlobalMoneyMsg.result().body())
+        assertEquals(updatedMoney, getUpdatedEavGlobalMoneyMsg.result().body())
 
         testContext.completeNow()
       }
@@ -427,16 +401,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavGlobalMultiSelect(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getAllEavGlobalMultiSelect", "").onFailure {
+    eventBus.request<MutableList<EavGlobalMultiSelect>>("process.eavGlobal.getAllEavGlobalMultiSelect", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavGlobalMultiSelectMsg ->
       assert(getAllEavGlobalMultiSelectMsg.succeeded())
-      assertEquals(
-        json {
-          obj("eavGlobalMultiSelect" to listOf(multiSelectJson))
-        },
-        getAllEavGlobalMultiSelectMsg.result().body()
-      )
+      assertEquals(multiSelectList, getAllEavGlobalMultiSelectMsg.result().body())
 
       testContext.completeNow()
     }
@@ -444,11 +413,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetEavGlobalMultiSelectByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalMultiSelectByKey", multiSelectJson).onFailure {
+    eventBus.request<EavGlobalMultiSelect>("process.eavGlobal.getEavGlobalMultiSelectByKey", multiSelect, eavGlobalMultiSelectDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavGlobalByKeyMsg ->
       assert(getEavGlobalByKeyMsg.succeeded())
-      assertEquals(multiSelectJson, getEavGlobalByKeyMsg.result().body())
+      assertEquals(multiSelect, getEavGlobalByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -456,25 +425,23 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavGlobalMultiSelect(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMultiSelectJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to multiSelectJson.getString("attribute_key"),
-        "value" to 0
-      )
-    }
+    val updatedMultiSelect= EavGlobalMultiSelect(
+      productId = productId,
+      attributeKey = multiSelect.attributeKey,
+      value = 5
+    )
 
-    eventBus.request<String>("process.eavGlobal.updateEavGlobalMultiSelect", updatedMultiSelectJson).onFailure {
+    eventBus.request<EavGlobalMultiSelect>("process.eavGlobal.updateEavGlobalMultiSelect", updatedMultiSelect, eavGlobalMultiSelectDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavGlobalByKeyMsg ->
       assert(updateEavGlobalByKeyMsg.succeeded())
-      assertEquals("EAV global multi-select updated successfully", updateEavGlobalByKeyMsg.result().body())
+      assertEquals(updatedMultiSelect, updateEavGlobalByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalMultiSelectByKey", updatedMultiSelectJson).onFailure {
+      eventBus.request<EavGlobalMultiSelect>("process.eavGlobal.getEavGlobalMultiSelectByKey", updatedMultiSelect, eavGlobalMultiSelectDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavGlobalMultiSelectMsg ->
         assert(getUpdatedEavGlobalMultiSelectMsg.succeeded())
-        assertEquals(updatedMultiSelectJson, getUpdatedEavGlobalMultiSelectMsg.result().body())
+        assertEquals(updatedMultiSelect, getUpdatedEavGlobalMultiSelectMsg.result().body())
 
         testContext.completeNow()
       }
@@ -483,16 +450,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavGlobal(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getAllEavGlobal", "").onFailure {
+    eventBus.request<MutableList<Eav>>("process.eavGlobal.getAllEavGlobal", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavGlobalMsg ->
       assert(getAllEavGlobalMsg.succeeded())
-      assertEquals(
-        json {
-          obj("eavGlobal" to listOf(eavJson))
-        },
-        getAllEavGlobalMsg.result().body()
-      )
+      assertEquals(eavList, getAllEavGlobalMsg.result().body())
 
       testContext.completeNow()
     }
@@ -500,11 +462,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetEavGlobalByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalByKey", eavJson).onFailure {
+    eventBus.request<Eav>("process.eavGlobal.getEavGlobalByKey", eav, eavDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavGlobalByKeyMsg ->
       assert(getEavGlobalByKeyMsg.succeeded())
-      assertEquals(eavJson, getEavGlobalByKeyMsg.result().body())
+      assertEquals(eav, getEavGlobalByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -512,24 +474,22 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavGlobal(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedEavJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to eavJson.getString("attribute_key"),
-      )
-    }
+    val updatedEav = Eav(
+      productId = productId,
+      attributeKey = eav.attributeKey,
+    )
 
-    eventBus.request<String>("process.eavGlobal.updateEavGlobal", updatedEavJson).onFailure {
+    eventBus.request<Eav>("process.eavGlobal.updateEavGlobal", updatedEav, eavDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavGlobalByKeyMsg ->
       assert(updateEavGlobalByKeyMsg.succeeded())
-      assertEquals("EAV global updated successfully", updateEavGlobalByKeyMsg.result().body())
+      assertEquals(updatedEav, updateEavGlobalByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalByKey", updatedEavJson).onFailure {
+      eventBus.request<Eav>("process.eavGlobal.getEavGlobalByKey", updatedEav, eavDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavGlobalMsg ->
         assert(getUpdatedEavGlobalMsg.succeeded())
-        assertEquals(updatedEavJson, getUpdatedEavGlobalMsg.result().body())
+        assertEquals(updatedEav, getUpdatedEavGlobalMsg.result().body())
 
         testContext.completeNow()
       }
@@ -538,15 +498,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavGlobalInfo(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getAllEavGlobalInfo", "").onFailure {
+    eventBus.request<MutableList<EavGlobalInfo>>("process.eavGlobal.getAllEavGlobalInfo", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavGlobalInfoMsg ->
       assert(getAllEavGlobalInfoMsg.succeeded())
-      assertEquals(
-        json {
-          obj("eavGlobalInfo" to listOf(expectedFullEavJson))
-        }, getAllEavGlobalInfoMsg.result().body()
-      )
+      assertEquals(eavGlobalInfoList, getAllEavGlobalInfoMsg.result().body())
 
       testContext.completeNow()
     }
@@ -554,15 +510,11 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @Test
   fun testGetEavGlobalInfoByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavGlobal.getEavGlobalInfoByKey", productId).onFailure {
+    eventBus.request<MutableList<EavGlobalInfo>>("process.eavGlobal.getEavGlobalInfoByKey", productId).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavGlobalInfoByKeyMsg ->
       assert(getEavGlobalInfoByKeyMsg.succeeded())
-      assertEquals(
-        json {
-          obj("eavGlobalInfo" to listOf(expectedFullEavJson))
-        }, getEavGlobalInfoByKeyMsg.result().body()
-      )
+      assertEquals(eavGlobalInfoList, getEavGlobalInfoByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -570,13 +522,13 @@ class ProductGlobalEavJdbcVerticleTest {
 
   @AfterEach
   fun tearDown(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<String>("process.eavGlobal.deleteEavGlobal", eavJson).onFailure {
+    eventBus.request<String>("process.eavGlobal.deleteEavGlobal", eav, eavDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete {deleteEavGlobalMsg ->
       assert(deleteEavGlobalMsg.succeeded())
       assertEquals("EAV global deleted successfully", deleteEavGlobalMsg.result().body())
 
-      eventBus.request<String>("process.eavGlobal.deleteEavGlobalMultiSelect", multiSelectJson).onFailure {
+      eventBus.request<String>("process.eavGlobal.deleteEavGlobalMultiSelect", multiSelect, eavGlobalMultiSelectDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { deleteEavGlobalMultiSelectMsg ->
         assert(deleteEavGlobalMultiSelectMsg.succeeded())
@@ -585,31 +537,31 @@ class ProductGlobalEavJdbcVerticleTest {
           deleteEavGlobalMultiSelectMsg.result().body()
         )
 
-        eventBus.request<String>("process.eavGlobal.deleteEavGlobalMoney", moneyJson).onFailure {
+        eventBus.request<String>("process.eavGlobal.deleteEavGlobalMoney", money, eavGlobalMoneyDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { deleteEavGlobalMoneyMsg ->
           assert(deleteEavGlobalMoneyMsg.succeeded())
           assertEquals("EAV global money deleted successfully", deleteEavGlobalMoneyMsg.result().body())
 
-          eventBus.request<String>("process.eavGlobal.deleteEavGlobalInt", intJson).onFailure {
+          eventBus.request<String>("process.eavGlobal.deleteEavGlobalInt", int, eavGlobalIntDeliveryOptions).onFailure {
             testContext.failNow(it)
           }.onComplete { deleteEavGlobalIntMsg ->
             assert(deleteEavGlobalIntMsg.succeeded())
             assertEquals("EAV global int deleted successfully", deleteEavGlobalIntMsg.result().body())
 
-            eventBus.request<String>("process.eavGlobal.deleteEavGlobalString", stringJson).onFailure {
+            eventBus.request<String>("process.eavGlobal.deleteEavGlobalString", string, eavGlobalStringDeliveryOptions).onFailure {
               testContext.failNow(it)
             }.onComplete { deleteEavGlobalStringMsg ->
               assert(deleteEavGlobalStringMsg.succeeded())
               assertEquals("EAV global string deleted successfully", deleteEavGlobalStringMsg.result().body())
 
-              eventBus.request<String>("process.eavGlobal.deleteEavGlobalFloat", floatJson).onFailure {
+              eventBus.request<String>("process.eavGlobal.deleteEavGlobalFloat", float, eavGlobalFloatDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { deleteEavGlobalFloatMsg ->
                 assert(deleteEavGlobalFloatMsg.succeeded())
                 assertEquals("EAV global float deleted successfully", deleteEavGlobalFloatMsg.result().body())
 
-                eventBus.request<String>("process.eavGlobal.deleteEavGlobalBool", boolJson).onFailure {
+                eventBus.request<String>("process.eavGlobal.deleteEavGlobalBool", bool, eavGlobalBoolDeliveryOptions).onFailure {
                   testContext.failNow(it)
                 }.onComplete { deleteEavGlobalBoolMsg ->
                   assert(deleteEavGlobalBoolMsg.succeeded())
@@ -617,7 +569,7 @@ class ProductGlobalEavJdbcVerticleTest {
 
                   eventBus.request<String>(
                     "process.attributes.deleteCustomAttribute",
-                    customProductAttributeJson.getString("attribute_key")
+                    customProductAttribute.attributeKey
                   ).onFailure {
                     testContext.failNow(it)
                   }.onComplete { deleteAttributeMsg ->
@@ -643,91 +595,67 @@ class ProductGlobalEavJdbcVerticleTest {
   }
 
   private fun setAllJsonFields() {
-    productJson = json {
-      obj(
-        "product_id" to productId,
-        "name" to "test name",
-        "short_name" to "test short name",
-        "description" to "test description",
-        "short_description" to "test short description"
-      )
-    }
+    product.productId = productId
 
-    boolJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-        "value" to "1"
-      )
-    }
+    bool = EavGlobalBool(
+      productId = productId,
+      attributeKey = "test attribute key",
+      value = true
+    )
 
-    expectedBoolJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-        "value" to true
-      )
-    }
+    float = EavGlobalFloat(
+      productId = productId,
+      attributeKey = "test attribute key",
+      value = 1.0f
+    )
 
-    floatJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-        "value" to 1.0
-      )
-    }
+    string = EavGlobalString(
+      productId = productId,
+      attributeKey = "test attribute key",
+      value = "test value"
+    )
 
-    stringJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-        "value" to "test value"
-      )
-    }
+    int = EavGlobalInt(
+      productId = productId,
+      attributeKey = "test attribute key",
+      value = 1
+    )
 
-    intJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-        "value" to 1
-      )
-    }
+    money = EavGlobalMoney(
+      productId = productId,
+      attributeKey = "test attribute key",
+      value = 10.0
+    )
 
-    moneyJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-        "value" to 10.0
-      )
-    }
+    multiSelect = EavGlobalMultiSelect(
+      productId = productId,
+      attributeKey = "test attribute key",
+      value = 1
+    )
 
-    multiSelectJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-        "value" to 1
-      )
-    }
+    eav = Eav(
+      productId = productId,
+      attributeKey = "test attribute key",
+    )
 
-    eavJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-      )
-    }
+    expectedFullEav = EavGlobalInfo(
+      eav = eav,
+      eavGlobalBool = bool.value,
+      eavGlobalFloat = float.value,
+      eavGlobalString = string.value,
+      eavGlobalInt = int.value,
+      eavGlobalMoney = money.value,
+      eavGlobalMultiSelect = multiSelect.value
+    )
 
-    expectedFullEavJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-        "globalBool" to true,
-        "globalFloat" to 1.0,
-        "globalString" to "test value",
-        "globalInt" to 1,
-        "globalMoney" to 10.0,
-        "globalMultiSelect" to 1
-      )
-    }
+    boolList.add(bool)
+    floatList.add(float)
+    stringList.add(string)
+    intList.add(int)
+    moneyList.add(money)
+    multiSelectList.add(multiSelect)
+    eavList.add(eav)
+    eavGlobalInfoList.add(expectedFullEav)
   }
 
   private fun deployVerticles(vertx: Vertx): MutableList<Future<Void>> {

@@ -1,6 +1,7 @@
 package com.ex_dock.ex_dock.database.product
 
 import com.ex_dock.ex_dock.database.category.PageIndex
+import com.sun.org.apache.xpath.internal.operations.Bool
 
 data class Products(
   var productId: Int,
@@ -225,12 +226,12 @@ data class FullProduct(
 
 data class EavGlobalInfo(
   val eav: Eav,
-  val eavGlobalBool: EavGlobalBool,
-  val eavGlobalFloat: EavGlobalFloat,
-  val eavGlobalString: EavGlobalString,
-  val eavGlobalInt: EavGlobalInt,
-  val eavGlobalMoney: EavGlobalMoney,
-  val eavGlobalMultiSelect: EavGlobalMultiSelect
+  val eavGlobalBool: Boolean,
+  val eavGlobalFloat: Float,
+  val eavGlobalString: String,
+  val eavGlobalInt: Int,
+  val eavGlobalMoney: Double,
+  val eavGlobalMultiSelect: Int
 )
 
 enum class Type(name: String) {
