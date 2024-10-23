@@ -49,8 +49,6 @@ class AccountJdbcVerticleTest {
       AccountJdbcVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
       testContext.completeNow()
     }
-
-
   }
 
   @Test
