@@ -58,7 +58,7 @@ class AccountJdbcVerticleTest {
     request.onFailure { testContext.failNow(it) }
     request.onComplete { msg ->
       if (msg.failed()) testContext.failNow(msg.result().toString())
-      if (msg.result() != emptyList<User>()) testContext.failNow(
+      if (msg.result() != intArrayOf()) testContext.failNow(
         "result is not equal to emptyList<User>()\nmsg.result().toString(): ${msg.result().body()}"
       )
       testContext.completeNow()
