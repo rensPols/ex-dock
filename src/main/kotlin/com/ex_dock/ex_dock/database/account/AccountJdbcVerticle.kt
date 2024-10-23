@@ -324,7 +324,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
   private fun getFullUserByUserId() {
     val getFullUserInformationByUserIdConsumer =
-      eventBus.consumer<Int>("process.account.getFullUserInformationByUserId")
+      eventBus.consumer<Int>("process.account.getFullUserByUserId")
     getFullUserInformationByUserIdConsumer.handler { message ->
       val userId = message.body()
       val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
