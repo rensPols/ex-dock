@@ -64,7 +64,8 @@ class AccountJdbcVerticleTest {
       if (msg.failed()) testContext.failNow(msg.result().toString())
       if (msg.result() != emptyList<User>()) testContext.failNow(
         "result is not equal to emptyList<User>()\nmsg.result().toString(): ${msg.result().body()}\n" +
-            "msg.result()::class: ${msg.result()::class}"
+            "msg.result()::class: ${msg.result()::class}\n" +
+            "msg.result().body()::class: ${msg.result().body()::class}"
       )
       testContext.completeNow()
     }
