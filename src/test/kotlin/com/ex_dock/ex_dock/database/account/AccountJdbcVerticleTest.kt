@@ -18,10 +18,12 @@ import org.mindrot.jbcrypt.BCrypt
 @ExtendWith(VertxExtension::class)
 class AccountJdbcVerticleTest {
   private val userCodec: MessageCodec<User, User> = GenericCodec(User::class.java)
-  private val backendPermissionsCodec: MessageCodec<BackendPermissions, BackendPermissions> = GenericCodec(BackendPermissions::class.java)
+  private val backendPermissionsCodec: MessageCodec<BackendPermissions, BackendPermissions> =
+    GenericCodec(BackendPermissions::class.java)
   private val fullUserCodec: MessageCodec<FullUser, FullUser> = GenericCodec(FullUser::class.java)
   private val userListCodec: MessageCodec<List<User>, List<User>> = GenericListCodec(User::class)
-  private val backendPermissionsListCodec: MessageCodec<List<BackendPermissions>, List<BackendPermissions>> = GenericListCodec(BackendPermissions::class)
+  private val backendPermissionsListCodec: MessageCodec<List<BackendPermissions>, List<BackendPermissions>> =
+    GenericListCodec(BackendPermissions::class)
   private val fullUserListCodec: MessageCodec<List<FullUser>, List<FullUser>> = GenericListCodec(FullUser::class)
 
   private val userDeliveryOptions = DeliveryOptions().setCodecName(userCodec.name())
@@ -45,8 +47,10 @@ class AccountJdbcVerticleTest {
       .registerCodec(fullUserCodec)
       .registerCodec(fullUserListCodec)
 
-    deployWorkerVerticleHelper(vertx,
-      AccountJdbcVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
+    deployWorkerVerticleHelper(
+      vertx,
+      AccountJdbcVerticle::class.qualifiedName.toString(), 5, 5
+    ).onComplete {
       testContext.completeNow()
     }
   }
@@ -84,143 +88,143 @@ class AccountJdbcVerticleTest {
     var updateUser: User
 
     vertx.deployVerticle(AccountJdbcVerticle(), testContext.succeeding {
-        eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
+      eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
+        testContext.failNow(it)
+      }.onComplete { createMsg ->
+        try {
+          assert(createMsg.succeeded())
+        } catch (e: Exception) {
+          testContext.failNow(e)
+        }
+
+        testUser.userId = createMsg.result().body().userId
+        newUserId = testUser.userId
+        updateUser = User(
+          userId = newUserId,
+          email = "test@example.com",
+          password = "updatedPassword"
+        )
+
+        try {
+          assertEquals(createMsg.result().body(), testUser)
+        } catch (e: Exception) {
+          testContext.failNow(e)
+        }
+
+        processAccountCreateUserCheckpoint.flag()
+
+        eventBus.request<List<User>>("process.account.getAllUsers", "").onFailure {
           testContext.failNow(it)
-        }.onComplete { createMsg ->
+        }.onComplete { getAllMsg ->
           try {
-            assert(createMsg.succeeded())
+            assert(getAllMsg.succeeded())
+            assertNotEquals(emptyList<User>(), getAllMsg.result().body())
+            assertTrue(
+              BCrypt.checkpw(
+                "password",
+                getAllMsg.result().body()[0].password
+              )
+            )
           } catch (e: Exception) {
             testContext.failNow(e)
           }
 
-          testUser.userId = createMsg.result().body().userId
-          newUserId = testUser.userId
-          updateUser= User(
-            userId = newUserId,
-            email = "test@example.com",
-            password = "updatedPassword"
-          )
+          processAccountGetAllUsersCheckpoint.flag()
 
-          try {
-            assertEquals(createMsg.result().body(), testUser)
-          } catch (e: Exception) {
-            testContext.failNow(e)
-          }
-
-          processAccountCreateUserCheckpoint.flag()
-
-          eventBus.request<List<User>>("process.account.getAllUsers", "").onFailure {
+          eventBus.request<User>("process.account.getUserById", newUserId).onFailure {
             testContext.failNow(it)
-          }.onComplete { getAllMsg ->
+          }.onComplete { getMsg ->
             try {
-              assert(getAllMsg.succeeded())
-              assertNotEquals(emptyList<User>(), getAllMsg.result().body())
+              assert(getMsg.succeeded())
+            } catch (e: Exception) {
+              testContext.failNow(e)
+            }
+
+            val user: User = getMsg.result().body()
+
+            try {
+              assertEquals(testUser.userId, user.userId)
+              assertEquals(testUser.email, user.email)
               assertTrue(
                 BCrypt.checkpw(
                   "password",
-                  getAllMsg.result().body()[0].password
+                  user.password
                 )
               )
             } catch (e: Exception) {
               testContext.failNow(e)
             }
 
-            processAccountGetAllUsersCheckpoint.flag()
+            processAccountGetUserByIdCheckpoint.flag()
 
-            eventBus.request<User>("process.account.getUserById", newUserId).onFailure {
+            eventBus.request<User>("process.account.updateUser", updateUser, userDeliveryOptions).onFailure {
               testContext.failNow(it)
-            }.onComplete { getMsg ->
+            }.onComplete { updateMsg ->
               try {
-                assert(getMsg.succeeded())
+                assert(updateMsg.succeeded())
+                assertEquals(updateMsg.result().body(), updateUser)
               } catch (e: Exception) {
                 testContext.failNow(e)
               }
 
-              val user: User = getMsg.result().body()
+              processAccountUpdateUserCheckpoint.flag()
 
-              try {
-                assertEquals(testUser.userId, user.userId)
-                assertEquals(testUser.email, user.email)
-                assertTrue(
-                  BCrypt.checkpw(
-                    "password",
-                    user.password
-                  )
-                )
-              } catch (e: Exception) {
-                testContext.failNow(e)
-              }
-
-              processAccountGetUserByIdCheckpoint.flag()
-
-              eventBus.request<User>("process.account.updateUser", updateUser, userDeliveryOptions).onFailure {
+              eventBus.request<User>("process.account.getUserById", newUserId).onFailure {
                 testContext.failNow(it)
-              }.onComplete { updateMsg ->
+              }.onComplete { getUpdatedUserMsg ->
                 try {
-                  assert(updateMsg.succeeded())
-                  assertEquals(updateMsg.result().body(), updateUser)
+                  assert(getUpdatedUserMsg.succeeded())
                 } catch (e: Exception) {
                   testContext.failNow(e)
                 }
 
-                processAccountUpdateUserCheckpoint.flag()
+                val updatedUser: User = getUpdatedUserMsg.result().body()
 
-                eventBus.request<User>("process.account.getUserById", newUserId).onFailure {
-                  testContext.failNow(it)
-                }.onComplete { getUpdatedUserMsg ->
-                  try {
-                    assert(getUpdatedUserMsg.succeeded())
-                  } catch (e: Exception) {
-                    testContext.failNow(e)
-                  }
-
-                  val updatedUser: User = getUpdatedUserMsg.result().body()
-
-                  try {
-                    assertEquals(updateUser.userId, updatedUser.userId)
-                    assertEquals(updateUser.email, updatedUser.email)
-                    assertTrue(
-                      BCrypt.checkpw(
-                        "updatedPassword",
-                        updatedUser.password
-                      )
+                try {
+                  assertEquals(updateUser.userId, updatedUser.userId)
+                  assertEquals(updateUser.email, updatedUser.email)
+                  assertTrue(
+                    BCrypt.checkpw(
+                      "updatedPassword",
+                      updatedUser.password
                     )
+                  )
+                } catch (e: Exception) {
+                  testContext.failNow(e)
+                }
+
+                processAccountGetUserByIdCheckpoint.flag()
+
+                eventBus.request<String>("process.account.deleteUser", newUserId).onFailure {
+                  testContext.failNow(it)
+                }.onComplete { deleteMsg ->
+                  try {
+                    assert(deleteMsg.succeeded())
+                    assertEquals(deleteMsg.result().body(), "User deleted successfully")
                   } catch (e: Exception) {
                     testContext.failNow(e)
                   }
 
-                  processAccountGetUserByIdCheckpoint.flag()
+                  processAccountDeleteUserCheckpoint.flag()
 
-                  eventBus.request<String>("process.account.deleteUser", newUserId).onFailure {
+                  eventBus.request<MutableList<User>>("process.account.getAllUsers", "").onFailure {
                     testContext.failNow(it)
-                  }.onComplete { deleteMsg ->
+                  }.onComplete { emptyMsg ->
                     try {
-                      assert(deleteMsg.succeeded())
-                      assertEquals(deleteMsg.result().body(), "User deleted successfully")
+                      assert(emptyMsg.succeeded())
+                      assertEquals(emptyMsg.result().body(), emptyList<User>().toMutableList())
                     } catch (e: Exception) {
                       testContext.failNow(e)
                     }
 
-                    processAccountDeleteUserCheckpoint.flag()
-
-                    eventBus.request<MutableList<User>>("process.account.getAllUsers", "").onFailure {
-                      testContext.failNow(it)
-                    }.onComplete { emptyMsg ->
-                      try {
-                        assert(emptyMsg.succeeded())
-                        assertEquals(emptyMsg.result().body(), emptyList<User>().toMutableList())
-                      } catch (e: Exception) {
-                        testContext.failNow(e)
-                      }
-
-                      processAccountGetAllUsersCheckpoint.flag()
-                    }
+                    processAccountGetAllUsersCheckpoint.flag()
                   }
                 }
               }
             }
           }
         }
+      }
     })
   }
 
@@ -237,122 +241,140 @@ class AccountJdbcVerticleTest {
       password = BCrypt.hashpw("password", BCrypt.gensalt())
     )
 
-    vertx.deployVerticle(AccountJdbcVerticle(), testContext.succeeding {
-      eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
-        println("failure on: process.account.createUser")
-        testContext.failNow(it)
-      }.onComplete { createUserMsg ->
-        assert(createUserMsg.succeeded())
-        testUser = createUserMsg.result().body()
-
-        permissionResult = BackendPermissions(
-          userId = testUser.userId,
-          userPermission = Permission.fromString("none"),
-          serverSettings = Permission.fromString("none"),
-          template = Permission.fromString("none"),
-          categoryContent = Permission.fromString("none"),
-          categoryProducts = Permission.fromString("none"),
-          productContent = Permission.fromString("none"),
-          productPrice = Permission.fromString("none"),
-          productWarehouse = Permission.fromString("none"),
-          textPages = Permission.fromString("none"),
-          apiKey = null
-        )
-        backendPermissionsList.add(permissionResult)
-
-        assertEquals(createUserMsg.result().body(), testUser)
-        eventBus.request<BackendPermissions>("process.account.createBackendPermissions", permissionResult, backendPermissionsDeliveryOptions).onFailure {
-          println("failure on: process.account.createBackendPermissions")
+    vertx.deployVerticle(
+      AccountJdbcVerticle(),
+      testContext.succeeding {
+        eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
+          println("failure on: process.account.createUser")
           testContext.failNow(it)
-        }.onComplete { createMsg ->
-          assert(createMsg.succeeded())
-          assertEquals(permissionResult, createMsg.result().body())
+        }.onComplete { createUserMsg ->
+          assert(createUserMsg.succeeded())
+          testUser = createUserMsg.result().body()
 
-          eventBus.request<MutableList<BackendPermissions>>("process.account.getAllBackendPermissions", "").onFailure {
-            println("failure on: process.account.getAllBackendPermissions")
+          permissionResult = BackendPermissions(
+            userId = testUser.userId,
+            userPermission = Permission.fromString("none"),
+            serverSettings = Permission.fromString("none"),
+            template = Permission.fromString("none"),
+            categoryContent = Permission.fromString("none"),
+            categoryProducts = Permission.fromString("none"),
+            productContent = Permission.fromString("none"),
+            productPrice = Permission.fromString("none"),
+            productWarehouse = Permission.fromString("none"),
+            textPages = Permission.fromString("none"),
+            apiKey = null
+          )
+          backendPermissionsList.add(permissionResult)
+
+          assertEquals(createUserMsg.result().body(), testUser)
+          eventBus.request<BackendPermissions>(
+            "process.account.createBackendPermissions",
+            permissionResult,
+            backendPermissionsDeliveryOptions
+          ).onFailure {
+            println("failure on: process.account.createBackendPermissions")
             testContext.failNow(it)
-          }.onComplete { getAllMsg ->
-            assert(getAllMsg.succeeded())
-            assertEquals(backendPermissionsList, getAllMsg.result().body())
+          }.onComplete { createMsg ->
+            assert(createMsg.succeeded())
+            assertEquals(permissionResult, createMsg.result().body())
 
-            eventBus.request<BackendPermissions>(
-              "process.account.getBackendPermissionsByUserId",
-              permissionResult.userId
-            )
+            eventBus.request<MutableList<BackendPermissions>>("process.account.getAllBackendPermissions", "")
               .onFailure {
-                println("failure on: process.account.getBackendPermissionsByUserId")
+                println("failure on: process.account.getAllBackendPermissions")
                 testContext.failNow(it)
-              }.onComplete { getMsg ->
-                assert(getMsg.succeeded())
-                val permission: BackendPermissions = getMsg.result().body()
-                assertEquals(permissionResult, permission)
+              }.onComplete { getAllMsg ->
+              assert(getAllMsg.succeeded())
+              assertEquals(backendPermissionsList, getAllMsg.result().body())
 
-                permissionResult = BackendPermissions(
-                  userId = permissionResult.userId,
-                  userPermission = Permission.fromString("read"),
-                  serverSettings = Permission.fromString("read"),
-                  template = Permission.fromString("read"),
-                  categoryContent = Permission.fromString("read"),
-                  categoryProducts = Permission.fromString("read"),
-                  productContent = Permission.fromString("read"),
-                  productPrice = Permission.fromString("read"),
-                  productWarehouse = Permission.fromString("read"),
-                  textPages = Permission.fromString("read"),
-                  apiKey = null
-                )
-
-                eventBus.request<BackendPermissions>("process.account.updateBackendPermissions", permissionResult, backendPermissionsDeliveryOptions).onFailure {
-                  println("failure on: process.account.updateBackendPermissions")
+              eventBus.request<BackendPermissions>(
+                "process.account.getBackendPermissionsByUserId",
+                permissionResult.userId
+              )
+                .onFailure {
+                  println("failure on: process.account.getBackendPermissionsByUserId")
                   testContext.failNow(it)
-                }.onComplete { updateMsg ->
-                  assert(updateMsg.succeeded())
-                  assertEquals(updateMsg.result().body(), permissionResult)
+                }.onComplete { getMsg ->
+                  assert(getMsg.succeeded())
+                  val permission: BackendPermissions = getMsg.result().body()
+                  assertEquals(permissionResult, permission)
+
+                  permissionResult = BackendPermissions(
+                    userId = permissionResult.userId,
+                    userPermission = Permission.fromString("read"),
+                    serverSettings = Permission.fromString("read"),
+                    template = Permission.fromString("read"),
+                    categoryContent = Permission.fromString("read"),
+                    categoryProducts = Permission.fromString("read"),
+                    productContent = Permission.fromString("read"),
+                    productPrice = Permission.fromString("read"),
+                    productWarehouse = Permission.fromString("read"),
+                    textPages = Permission.fromString("read"),
+                    apiKey = null
+                  )
 
                   eventBus.request<BackendPermissions>(
-                    "process.account.getBackendPermissionsByUserId",
-                    permissionResult.userId
-                  )
-                    .onFailure {
-                      println("failure on: process.account.getBackendPermissionsByUserId")
-                      testContext.failNow(it)
-                    }.onComplete { getUpdatedMsg ->
-                      assert(getUpdatedMsg.succeeded())
-                      val updatedPermission: BackendPermissions = getUpdatedMsg.result().body()
-                      assertEquals(permissionResult, updatedPermission)
+                    "process.account.updateBackendPermissions",
+                    permissionResult,
+                    backendPermissionsDeliveryOptions
+                  ).onFailure {
+                    println("failure on: process.account.updateBackendPermissions")
+                    testContext.failNow(it)
+                  }.onComplete { updateMsg ->
+                    assert(updateMsg.succeeded())
+                    assertEquals(updateMsg.result().body(), permissionResult)
 
-                      eventBus.request<String>(
-                        "process.account.deleteBackendPermissions",
-                        permissionResult.userId
-                      )
-                        .onFailure {
-                          println("failure on: process.account.deleteBackendPermissions")
-                          testContext.failNow(it)
-                        }.onComplete { deleteMsg ->
-                          assert(deleteMsg.succeeded())
-                          assertEquals(deleteMsg.result().body(), "Backend Permissions were successfully deleted!")
+                    eventBus.request<BackendPermissions>(
+                      "process.account.getBackendPermissionsByUserId",
+                      permissionResult.userId
+                    )
+                      .onFailure {
+                        println("failure on: process.account.getBackendPermissionsByUserId")
+                        testContext.failNow(it)
+                      }.onComplete { getUpdatedMsg ->
+                        assert(getUpdatedMsg.succeeded())
+                        val updatedPermission: BackendPermissions = getUpdatedMsg.result().body()
+                        assertEquals(permissionResult, updatedPermission)
 
-                          eventBus.request<MutableList<BackendPermissions>>("process.account.getAllBackendPermissions", "").onFailure {
-                            println("failure on: process.account.getAllBackendPermissions")
+                        eventBus.request<String>(
+                          "process.account.deleteBackendPermissions",
+                          permissionResult.userId
+                        )
+                          .onFailure {
+                            println("failure on: process.account.deleteBackendPermissions")
                             testContext.failNow(it)
-                          }.onComplete { emptyMsg ->
-                            assert(emptyMsg.succeeded())
-                            assertEquals(emptyMsg.result().body(), emptyList<BackendPermissions>().toMutableList())
+                          }.onComplete { deleteMsg ->
+                            assert(deleteMsg.succeeded())
+                            assertEquals(
+                              deleteMsg.result().body(),
+                              AccountJdbcVerticle.BACKEND_PERMISSION_DELETED
+                            )
 
-                            eventBus.request<String>("process.account.deleteUser", permissionId).onFailure {
-                              println("failure on: process.account.deleteUser")
+                            eventBus.request<MutableList<BackendPermissions>>(
+                              "process.account.getAllBackendPermissions",
+                              ""
+                            ).onFailure {
+                              println("failure on: process.account.getAllBackendPermissions")
                               testContext.failNow(it)
-                            }.onComplete {
-                              testContext.completeNow()
+                            }.onComplete { emptyMsg ->
+                              assert(emptyMsg.succeeded())
+                              assertEquals(emptyMsg.result().body(), emptyList<BackendPermissions>().toMutableList())
+
+                              eventBus.request<String>("process.account.deleteUser", permissionId).onFailure {
+                                println("failure on: process.account.deleteUser")
+                                testContext.failNow(it)
+                              }.onComplete {
+                                testContext.completeNow()
+                              }
                             }
                           }
-                        }
-                    }
+                      }
+                  }
                 }
-              }
+            }
           }
         }
       }
-    })
+    )
   }
 
   @Test
@@ -373,7 +395,7 @@ class AccountJdbcVerticleTest {
     vertx.deployVerticle(AccountJdbcVerticle(), testContext.succeeding {
       eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
         testContext.failNow(it)
-      }.onComplete{ createUserMsg ->
+      }.onComplete { createUserMsg ->
         assert(createUserMsg.succeeded())
         testUser = createUserMsg.result().body()
         userId = testUser.userId
@@ -402,7 +424,11 @@ class AccountJdbcVerticleTest {
 
         assertEquals(createUserMsg.result().body(), testUser)
 
-        eventBus.request<BackendPermissions>("process.account.createBackendPermissions", testPermission, backendPermissionsDeliveryOptions).onFailure {
+        eventBus.request<BackendPermissions>(
+          "process.account.createBackendPermissions",
+          testPermission,
+          backendPermissionsDeliveryOptions
+        ).onFailure {
           testContext.failNow(it)
         }.onComplete { createPermissionMsg ->
           assert(createPermissionMsg.succeeded())
