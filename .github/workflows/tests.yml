@@ -16,7 +16,7 @@ jobs:
 
           # Database
           ## Account
-#          - "com.ex_dock.ex_dock.database.account.AccountJdbcVerticleTest"
+          - "com.ex_dock.ex_dock.database.account.AccountJdbcVerticleTest"
           ## Category
           - "com.ex_dock.ex_dock.database.category.CategoryJdbcVerticleTest"
           ## Product
