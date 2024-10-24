@@ -2,6 +2,8 @@ package com.ex_dock.ex_dock.database.account
 
 data class User(var userId: Int, var email: String, var password: String)
 
+data class UserCreation(var email: String, var password: String)
+
 data class BackendPermissions(
     val userId: Int,
     var userPermission: Permission,

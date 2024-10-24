@@ -18,6 +18,7 @@ import org.mindrot.jbcrypt.BCrypt
 @ExtendWith(VertxExtension::class)
 class AccountJdbcVerticleTest {
   private val userCodec: MessageCodec<User, User> = GenericCodec(User::class.java)
+  private val userCreationCodec: MessageCodec<UserCreation, UserCreation> = GenericCodec(UserCreation::class.java)
   private val backendPermissionsCodec: MessageCodec<BackendPermissions, BackendPermissions> =
     GenericCodec(BackendPermissions::class.java)
   private val fullUserCodec: MessageCodec<FullUser, FullUser> = GenericCodec(FullUser::class.java)
@@ -27,6 +28,7 @@ class AccountJdbcVerticleTest {
   private val fullUserListCodec: MessageCodec<List<FullUser>, List<FullUser>> = GenericListCodec(FullUser::class)
 
   private val userDeliveryOptions = DeliveryOptions().setCodecName(userCodec.name())
+  private val userCreationDeliveryOptions = DeliveryOptions().setCodecName(userCreationCodec.name())
   private val backendPermissionsDeliveryOptions = DeliveryOptions().setCodecName(backendPermissionsCodec.name())
   private val fullUserDeliveryOptions = DeliveryOptions().setCodecName(fullUserCodec.name())
   private val userListDeliveryOptions = DeliveryOptions().setCodecName(userListCodec.name())
@@ -234,26 +236,27 @@ class AccountJdbcVerticleTest {
 
   @Test
   fun testBackendPermissions(vertx: Vertx, testContext: VertxTestContext) {
-    val permissionId = -1
+    var permissionId: Int?
 
     var permissionResult: BackendPermissions
     backendPermissionsList = emptyList<BackendPermissions>().toMutableList()
 
-    var testUser = User(
-      userId = permissionId,
+    var testUserCreation = UserCreation(
       email = "test@example.com",
       password = BCrypt.hashpw("password", BCrypt.gensalt())
     )
+    lateinit var testUser: User
 
     vertx.deployVerticle(
       AccountJdbcVerticle(),
       testContext.succeeding {
-        eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
+        eventBus.request<User>("process.account.createUser", testUserCreation, userDeliveryOptions).onFailure {
           println("failure in testBackendPermissions on: process.account.createUser")
           testContext.failNow(it)
         }.onComplete { createUserMsg ->
           assert(createUserMsg.succeeded())
           testUser = createUserMsg.result().body()
+          permissionId = testUser.userId
 
           permissionResult = BackendPermissions(
             userId = testUser.userId,

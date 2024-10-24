@@ -1,7 +1,6 @@
 package com.ex_dock.ex_dock.database.account
 
 import com.ex_dock.ex_dock.database.connection.Connection
-import com.mchange.v2.collection.MapEntry
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.eventbus.DeliveryOptions
@@ -109,12 +108,12 @@ class AccountJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createUser() {
-    val createUserConsumer = eventBus.consumer<User>("process.account.createUser")
+    val createUserConsumer = eventBus.consumer<UserCreation>("process.account.createUser")
     createUserConsumer.handler { message ->
       val query = "INSERT INTO users (email, password) VALUES (?,?) RETURNING user_id AS UID"
       val rowsFuture = client
         .preparedQuery(query)
-        .execute(makeUserTuple(message.body(), false))
+        .execute(makeUserCreationTuple(message.body()))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -122,9 +121,13 @@ class AccountJdbcVerticle: AbstractVerticle() {
       }
 
       rowsFuture.onSuccess { res ->
-        val user: User = message.body()
+        val userCreation: UserCreation = message.body()
         val lastInsertID: Row = res.property(JDBCPool.GENERATED_KEYS)
-        user.userId = lastInsertID.getInteger(0)
+        val user: User = User(
+          userId = lastInsertID.getInteger(0),
+          email = userCreation.email,
+          password = userCreation.password
+        )
 
         message.reply(user, userDeliveryOptions)
       }
@@ -136,7 +139,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
     updateUserConsumer.handler { message ->
       val body = message.body()
       val query = "UPDATE users SET email = ?, password = ? WHERE user_id = ?"
-      val userTuple = makeUserTuple(body, true)
+      val userTuple = makeUserTuple(body)
       val rowsFuture = client.preparedQuery(query).execute(userTuple)
 
       rowsFuture.onFailure { res ->
@@ -409,19 +412,15 @@ class AccountJdbcVerticle: AbstractVerticle() {
   }
 
 
-  private fun makeUserTuple(body: User, isPutRequest: Boolean): Tuple {
-    val userTuple: Tuple = if (isPutRequest) {
-      Tuple.of(
-        body.email,
-        hashPassword(body.password),
-        body.userId
-      )
-    } else {
-      Tuple.of(
-        body.email,
-        hashPassword(body.password),
-      )
-    }
+  private fun makeUserTuple(body: User): Tuple {
+    val userTuple: Tuple = Tuple.of(body.email, hashPassword(body.password), body.userId)
+
+    return userTuple
+  }
+
+
+  private fun makeUserCreationTuple(body: UserCreation): Tuple {
+    val userTuple: Tuple = Tuple.of(body.email, hashPassword(body.password))
 
     return userTuple
   }
