@@ -165,10 +165,10 @@ class AccountJdbcVerticle: AbstractVerticle() {
       client.withTransaction { transactionClient ->
         // For testing:
         transactionClient.preparedQuery(userTestQuery).execute().onSuccess { res ->
-          println("userTestQuery: ${res.toString()}")
+          println("userTestQuery: ${res.toList()}")
         }.onFailure { e -> println("userTestQuery failure: ${e.message}") }
         transactionClient.preparedQuery(permissionsTestQuery).execute().onSuccess { res ->
-          println("permissionsTestQuery: ${res.toString()}")
+          println("permissionsTestQuery: ${res.toList()}")
         }.onFailure { e -> println("permissionsTestQuery failure: ${e.message}")}
 
         userRowsFuture = transactionClient.preparedQuery(userQuery).execute(Tuple.of(userId))
