@@ -396,8 +396,7 @@ class AccountJdbcVerticleTest {
     var userId = -1
     val FullUserList: MutableList<FullUser> = emptyList<FullUser>().toMutableList()
 
-    var testUser = User(
-      userId = userId,
+    var testUserCreation = UserCreation(
       email = "test@example.com",
       password = BCrypt.hashpw("password", BCrypt.gensalt())
     )
@@ -407,14 +406,14 @@ class AccountJdbcVerticleTest {
     var testPermission: BackendPermissions
 
     vertx.deployVerticle(AccountJdbcVerticle(), testContext.succeeding {
-      eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
+      eventBus.request<User>("process.account.createUser", testUserCreation, userDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createUserMsg ->
         assert(createUserMsg.succeeded())
 
         processAccountCreateUserCheckpoint.flag()
 
-        testUser = createUserMsg.result().body()
+        val testUser: User = createUserMsg.result().body()
         userId = testUser.userId
 
         testPermission = BackendPermissions(
