@@ -1,10 +1,12 @@
 package com.ex_dock.ex_dock.database.account
 
 import com.ex_dock.ex_dock.database.connection.Connection
+import com.mchange.v2.collection.MapEntry
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
+import io.vertx.core.json.JsonObject
 import io.vertx.jdbcclient.JDBCPool
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
@@ -165,7 +167,11 @@ class AccountJdbcVerticle: AbstractVerticle() {
       client.withTransaction { transactionClient ->
         // For testing:
         transactionClient.preparedQuery(userTestQuery).execute().onSuccess { res ->
-          println("userTestQuery: ${res.toList().map { row -> row.toString()}}")
+          println("userTestQuery: ${res.toList().map { row: Row ->
+            val rowJson: JsonObject = row.toJson()
+            return@map rowJson.map.values
+//            return@map rowJson.map.values.toList().toTypedArray()
+          }}")
         }.onFailure { e -> println("userTestQuery failure: ${e.message}") }
         transactionClient.preparedQuery(permissionsTestQuery).execute().onSuccess { res ->
           println("permissionsTestQuery: ${res.toList()}")
@@ -476,3 +482,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
     }
   }
 }
+
+//fun rowToArray(row: Row): Array<Any?> {
+//  return row.toJson().values
+//}
