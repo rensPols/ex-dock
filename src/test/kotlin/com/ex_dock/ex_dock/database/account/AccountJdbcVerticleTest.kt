@@ -43,6 +43,7 @@ class AccountJdbcVerticleTest {
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
       .registerCodec(userCodec)
+      .registerCodec(userCreationCodec)
       .registerCodec(userListCodec)
       .registerCodec(backendPermissionsCodec)
       .registerCodec(backendPermissionsListCodec)
