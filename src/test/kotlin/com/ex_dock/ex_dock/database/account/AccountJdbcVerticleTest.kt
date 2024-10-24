@@ -85,8 +85,7 @@ class AccountJdbcVerticleTest {
 
     var newUserId: Int = -1
 
-    val testUser = User(
-      userId = newUserId,
+    val testUserCreation = UserCreation(
       email = "test@example.com",
       password = "password"
     )
@@ -94,7 +93,7 @@ class AccountJdbcVerticleTest {
     var updateUser: User
 
     vertx.deployVerticle(AccountJdbcVerticle(), testContext.succeeding {
-      eventBus.request<User>("process.account.createUser", testUser, userDeliveryOptions).onFailure {
+      eventBus.request<User>("process.account.createUser", testUserCreation, userCreationDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createMsg ->
         try {
@@ -103,7 +102,7 @@ class AccountJdbcVerticleTest {
           testContext.failNow(e)
         }
 
-        testUser.userId = createMsg.result().body().userId
+        val testUser: User = createMsg.result().body()
         newUserId = testUser.userId
         updateUser = User(
           userId = newUserId,
