@@ -164,8 +164,12 @@ class AccountJdbcVerticle: AbstractVerticle() {
       lateinit var userRowsFuture: Future<RowSet<Row>>
       client.withTransaction { transactionClient ->
         // For testing:
-        println(transactionClient.preparedQuery(userTestQuery).execute().toString())
-        println(transactionClient.preparedQuery(permissionsTestQuery).execute().toString())
+        transactionClient.preparedQuery(userTestQuery).execute().onComplete { res ->
+          println(res.toString())
+        }
+        transactionClient.preparedQuery(permissionsTestQuery).execute().onComplete { res ->
+          println(res.toString())
+        }
 
         userRowsFuture = transactionClient.preparedQuery(userQuery).execute(Tuple.of(userId))
         transactionClient.preparedQuery(permissionsQuery).execute(Tuple.of(userId))
