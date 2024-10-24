@@ -23,9 +23,9 @@ jobs:
           - "com.ex_dock.ex_dock.database.product.ProductCustomAttributesJdbcVerticleTest"
           - "com.ex_dock.ex_dock.database.product.ProductGlobalEavJdbcVerticleTest"
           - "com.ex_dock.ex_dock.database.product.ProductJdbcVerticleTest"
-#          - "com.ex_dock.ex_dock.database.product.ProductMultiSelectJdbcVerticleTest"
-#          - "com.ex_dock.ex_dock.database.product.ProductStoreViewEavJdbcVerticleTest"
-#          - "com.ex_dock.ex_dock.database.product.ProductWebsiteEavJdbcVerticleTest"
+          - "com.ex_dock.ex_dock.database.product.ProductMultiSelectJdbcVerticleTest"
+          - "com.ex_dock.ex_dock.database.product.ProductStoreViewEavJdbcVerticleTest"
+          - "com.ex_dock.ex_dock.database.product.ProductWebsiteEavJdbcVerticleTest"
           ## Scope
           - "com.ex_dock.ex_dock.database.scope.ScopeJdbcVerticleTest"
           ## Server

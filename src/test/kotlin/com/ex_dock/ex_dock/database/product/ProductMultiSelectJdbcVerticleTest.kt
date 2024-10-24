@@ -1,8 +1,10 @@
 package com.ex_dock.ex_dock.database.product
 
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Future
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -18,175 +20,160 @@ import org.junit.jupiter.api.extension.ExtendWith
 @ExtendWith(VertxExtension::class)
 class ProductMultiSelectJdbcVerticleTest {
   private lateinit var eventBus: EventBus
+  private val multiSelectBoolDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectBoolCodec")
+  private val multiSelectFloatDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectFloatCodec")
+  private val multiSelectIntDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectIntCodec")
+  private val multiSelectMoneyDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectMoneyCodec")
+  private val multiSelectStringDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectStringCodec")
+  private val productDeliveryOptions = DeliveryOptions().setCodecName("ProductsCodec")
+  private val customProductAttributeDeliveryOptions = DeliveryOptions().setCodecName("CustomProductAttributesCodec")
+  private val eavDeliveryOptions = DeliveryOptions().setCodecName("EavCodec")
+  private val msaBoolList: MutableList<MultiSelectBool> = emptyList<MultiSelectBool>().toMutableList()
+  private val msaFloatList: MutableList<MultiSelectFloat> = emptyList<MultiSelectFloat>().toMutableList()
+  private val msaIntList: MutableList<MultiSelectInt> = emptyList<MultiSelectInt>().toMutableList()
+  private val msaMoneyList: MutableList<MultiSelectMoney> = emptyList<MultiSelectMoney>().toMutableList()
+  private val msaStringList: MutableList<MultiSelectString> = emptyList<MultiSelectString>().toMutableList()
+  private val msaInfoList: MutableList<MultiSelectInfo> = emptyList<MultiSelectInfo>().toMutableList()
 
   private var productId = -1
 
-  private var productJson = json {
-    obj(
-      "product_id" to productId,
-      "name" to "test name",
-      "short_name" to "test short name",
-      "description" to "test description",
-      "short_description" to "test short description"
-    )
-  }
+  private var product = Products(
+    productId = productId,
+    name = "Test Product",
+    shortName = "TProduct",
+    description = "Test Product Description",
+    shortDescription = "TPDescription"
+  )
 
-  private var customProductAttributeJson = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "scope" to 2,
-      "name" to "test name",
-      "type" to "int",
-      "multiselect" to "0",
-      "required" to "1"
-    )
-  }
+  private var customProductAttribute = CustomProductAttributes(
+    attributeKey = "test attribute key",
+    scope = 1,
+    name = "Test Attribute",
+    type = Type.INT,
+    multiselect = false,
+    required = true
+  )
 
-  private val msaBool = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "option" to 1,
-      "value" to "1"
-    )
-  }
+  private val msaBool = MultiSelectBool(
+    attributeKey = "test attribute key",
+    option = 1,
+    value = true
+  )
 
-  private val expectedMsaBool = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "option" to 1,
-      "value" to true
-    )
-  }
+  private val msaFloat = MultiSelectFloat(
+    attributeKey = "test attribute key",
+    option = 1,
+    value = 1.0f
+  )
 
-  private val msaFloat = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "option" to 1,
-      "value" to 1.0
-    )
-  }
+  private val msaString = MultiSelectString(
+    attributeKey = "test attribute key",
+    option = 1,
+    value = "test value"
+  )
 
-  private val msaString = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "option" to 1,
-      "value" to "test value"
-    )
-  }
+  private val msaInt = MultiSelectInt(
+    attributeKey = "test attribute key",
+    option = 1,
+    value = 1
+  )
 
-  private val msaInt = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "option" to 1,
-      "value" to 1
-    )
-  }
+  private val msaMoney = MultiSelectMoney(
+    attributeKey = "test attribute key",
+    option = 1,
+    value = 10.0
+  )
 
-  private val msaMoney = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "option" to 1,
-      "value" to 1.0
-    )
-  }
+  private var msaInfo = MultiSelectInfo(
+    product = product,
+    attributeKey = "test attribute key",
+    multiSelectBool = msaBool.value,
+    multiSelectFloat = msaFloat.value,
+    multiSelectString = msaString.value,
+    multiSelectInt = msaInt.value,
+    multiSelectMoney = msaMoney.value
+  )
 
-  private var msaInfoJson = json {
-    obj(
-      "product_id" to productId,
-      "attribute_key" to "test attribute key",
-      "multiSelectBool" to true,
-      "multiSelectFloat" to 1.0,
-      "multiSelectString" to "test value",
-      "multiSelectInt" to 1,
-      "multiSelectMoney" to 1.0
-    )
-  }
+  private var eav = Eav(
+    productId = productId,
+    attributeKey = "test attribute key",
+  )
 
-  private var eavJson = json {
-    obj(
-      "product_id" to productId,
-      "attribute_key" to "test attribute key",
-    )
-  }
 
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
+      .registerCodec(GenericCodec(MutableList::class.java))
+      .registerCodec(GenericCodec(Products::class.java))
+      .registerCodec(GenericCodec(CustomProductAttributes::class.java))
+      .registerCodec(GenericCodec(Eav::class.java))
+      .registerCodec(GenericCodec(MultiSelectBool::class.java))
+      .registerCodec(GenericCodec(MultiSelectFloat::class.java))
+      .registerCodec(GenericCodec(MultiSelectString::class.java))
+      .registerCodec(GenericCodec(MultiSelectInt::class.java))
+      .registerCodec(GenericCodec(MultiSelectMoney::class.java))
+      .registerCodec(GenericCodec(MultiSelectInfo::class.java))
     Future.all(deployVerticles(vertx)).onFailure {
       testContext.failNow(it)
     }.onComplete {
-      eventBus.request<Int>("process.products.createProduct", productJson).onFailure {
+      eventBus.request<Products>("process.products.createProduct", product, productDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createProductMsg ->
-        productId = createProductMsg.result().body()
-        assertEquals(createProductMsg.result().body()::class.simpleName, "Int")
+        product = createProductMsg.result().body()
+        productId = product.productId
+        assertEquals(createProductMsg.result().body(), product)
 
-        eventBus.request<String>("process.attributes.createCustomAttribute", customProductAttributeJson)
+        eventBus.request<CustomProductAttributes>("process.attributes.createCustomAttribute", customProductAttribute, customProductAttributeDeliveryOptions)
           .onFailure {
             testContext.failNow(it)
           }.onComplete { createCustomAttributeMsg ->
             assert(createCustomAttributeMsg.succeeded())
-            assertEquals(createCustomAttributeMsg.result().body(), "Custom attribute created successfully")
+            assertEquals(createCustomAttributeMsg.result().body(), customProductAttribute)
 
-            eventBus.request<Int>("process.multiSelect.createMultiSelectAttributesBool", msaBool).onFailure {
+            eventBus.request<MultiSelectBool>("process.multiSelect.createMultiSelectAttributesBool", msaBool, multiSelectBoolDeliveryOptions).onFailure {
               testContext.failNow(it)
             }.onComplete { createMsaBoolMsg ->
               assert(createMsaBoolMsg.succeeded())
+              assertEquals(msaBool, createMsaBoolMsg.result().body())
 
-              eventBus.request<Int>("process.multiSelect.createMultiSelectAttributesFloat", msaFloat).onFailure {
+              eventBus.request<MultiSelectFloat>("process.multiSelect.createMultiSelectAttributesFloat", msaFloat, multiSelectFloatDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { createMsaFloatMsg ->
                 assert(createMsaFloatMsg.succeeded())
+                assertEquals(msaFloat, createMsaFloatMsg.result().body())
 
-                eventBus.request<Int>("process.multiSelect.createMultiSelectAttributesString", msaString).onFailure {
+                eventBus.request<MultiSelectString>("process.multiSelect.createMultiSelectAttributesString", msaString, multiSelectStringDeliveryOptions).onFailure {
                   testContext.failNow(it)
                 }.onComplete { createMsaStringMsg ->
                   assert(createMsaStringMsg.succeeded())
+                  assertEquals(msaString, createMsaStringMsg.result().body())
 
-                  eventBus.request<Int>("process.multiSelect.createMultiSelectAttributesInt", msaInt).onFailure {
+                  eventBus.request<MultiSelectInt>("process.multiSelect.createMultiSelectAttributesInt", msaInt, multiSelectIntDeliveryOptions).onFailure {
                     testContext.failNow(it)
                   }.onComplete { createMsaIntMsg ->
                     assert(createMsaIntMsg.succeeded())
+                    assertEquals(msaInt, createMsaIntMsg.result().body())
 
-                    eventBus.request<Int>("process.multiSelect.createMultiSelectAttributesMoney", msaMoney).onFailure {
+                    eventBus.request<MultiSelectMoney>("process.multiSelect.createMultiSelectAttributesMoney", msaMoney, multiSelectMoneyDeliveryOptions).onFailure {
                       testContext.failNow(it)
                     }.onComplete { createMsaMoneyMsg ->
                       assert(createMsaMoneyMsg.succeeded())
+                      assertEquals(msaMoney, createMsaMoneyMsg.result().body())
 
-                      productJson = json {
-                        obj(
-                          "product_id" to productId,
-                          "name" to "test name",
-                          "short_name" to "test short name",
-                          "description" to "test description",
-                          "short_description" to "test short description"
-                        )
-                      }
+                      msaInfo.product.productId = product.productId
+                      eav.productId = product.productId
+                      msaBoolList.add(msaBool)
+                      msaFloatList.add(msaFloat)
+                      msaStringList.add(msaString)
+                      msaIntList.add(msaInt)
+                      msaMoneyList.add(msaMoney)
+                      msaInfoList.add(msaInfo)
 
-                      msaInfoJson  = json {
-                        obj(
-                          "product_id" to productId,
-                          "attribute_key" to "test attribute key",
-                          "multiSelectBool" to true,
-                          "multiSelectFloat" to 1.0,
-                          "multiSelectString" to "test value",
-                          "multiSelectInt" to 1,
-                          "multiSelectMoney" to 1.0
-                        )
-                      }
-
-                      eavJson = json {
-                        obj(
-                          "product_id" to productId,
-                          "attribute_key" to "test attribute key",
-                        )
-                      }
-
-                      eventBus.request<String>("process.eavGlobal.createEavGlobal", eavJson).onFailure {
+                      eventBus.request<String>("process.eavGlobal.createEavGlobal", eav, eavDeliveryOptions).onFailure {
                         testContext.failNow(it)
                       }.onComplete { createEavGlobalMsg ->
                         assert(createEavGlobalMsg.succeeded())
-                        assertEquals("EAV global created successfully", createEavGlobalMsg.result().body())
+                        assertEquals(eav, createEavGlobalMsg.result().body())
 
                         testContext.completeNow()
                       }
@@ -202,13 +189,11 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetAllMsaBool(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getAllMultiSelectAttributesBool", "").onFailure {
+    eventBus.request<MutableList<MultiSelectBool>>("process.multiSelect.getAllMultiSelectAttributesBool", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllMsaBoolMsg ->
       assert(getAllMsaBoolMsg.succeeded())
-      assertEquals(
-        json { obj("multiSelectBool" to listOf(expectedMsaBool)) }, getAllMsaBoolMsg.result().body()
-      )
+      assertEquals(msaBoolList, getAllMsaBoolMsg.result().body())
 
       testContext.completeNow()
     }
@@ -216,11 +201,11 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetMsaBoolByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesBoolByKey", msaBool).onFailure {
+    eventBus.request<MultiSelectBool>("process.multiSelect.getMultiSelectAttributesBoolByKey", msaBool, multiSelectBoolDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getMsaByKeyMsg ->
       assert(getMsaByKeyMsg.succeeded())
-      assertEquals(expectedMsaBool, getMsaByKeyMsg.result().body())
+      assertEquals(msaBool, getMsaByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -228,34 +213,24 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testUpdateMultiSelectBool(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMsaBoolJson = json {
-      obj(
-        "attribute_key" to "test attribute key",
-        "option" to 1,
-        "value" to "0"
-      )
-    }
+    val updatedMsaBool= MultiSelectBool(
+      attributeKey = msaBool.attributeKey,
+      option = msaBool.option,
+      value = false
+    )
 
-    val expectedUpdatedMsaBoolJson = json {
-      obj(
-        "attribute_key" to "test attribute key",
-        "option" to 1,
-        "value" to false
-      )
-    }
-
-    eventBus.request<String>("process.multiSelect.updateMultiSelectAttributesBool", updatedMsaBoolJson).onFailure {
+    eventBus.request<MultiSelectBool>("process.multiSelect.updateMultiSelectAttributesBool", updatedMsaBool, multiSelectBoolDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateMsaBoolMsg ->
       assert(updateMsaBoolMsg.succeeded())
-      assertEquals("Multi-select attribute bool updated successfully", updateMsaBoolMsg.result().body())
+      assertEquals(updatedMsaBool, updateMsaBoolMsg.result().body())
 
-      eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesBoolByKey", updatedMsaBoolJson)
+      eventBus.request<MultiSelectBool>("process.multiSelect.getMultiSelectAttributesBoolByKey", updatedMsaBool, multiSelectBoolDeliveryOptions)
         .onFailure {
           testContext.failNow(it)
         }.onComplete { getMsaByKeyMsg ->
           assert(getMsaByKeyMsg.succeeded())
-          assertEquals(expectedUpdatedMsaBoolJson, getMsaByKeyMsg.result().body())
+          assertEquals(updatedMsaBool, getMsaByKeyMsg.result().body())
 
           testContext.completeNow()
         }
@@ -264,11 +239,11 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetAllMultiSelectAttributesFloat(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getAllMultiSelectAttributesFloat", "").onFailure {
+    eventBus.request<MutableList<MultiSelectFloat>>("process.multiSelect.getAllMultiSelectAttributesFloat", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllMsaFloatMsg ->
       assert(getAllMsaFloatMsg.succeeded())
-      assertEquals(json { obj("multiSelectFloat" to listOf(msaFloat)) }, getAllMsaFloatMsg.result().body())
+      assertEquals(msaFloatList, getAllMsaFloatMsg.result().body())
 
       testContext.completeNow()
     }
@@ -276,7 +251,7 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetMsaFloatByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesFloatByKey", msaFloat).onFailure {
+    eventBus.request<MultiSelectFloat>("process.multiSelect.getMultiSelectAttributesFloatByKey", msaFloat, multiSelectFloatDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getMsaByKeyMsg ->
       assert(getMsaByKeyMsg.succeeded())
@@ -288,26 +263,24 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testUpdateMultiSelectFloat(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMsaFloatJson = json {
-      obj(
-        "attribute_key" to "test attribute key",
-        "option" to 1,
-        "value" to 2.5
-      )
-    }
+    val updatedMsaFloat = MultiSelectFloat(
+      attributeKey = msaFloat.attributeKey,
+      option = msaFloat.option,
+      value = 100.5f
+    )
 
-    eventBus.request<String>("process.multiSelect.updateMultiSelectAttributesFloat", updatedMsaFloatJson).onFailure {
+    eventBus.request<MultiSelectFloat>("process.multiSelect.updateMultiSelectAttributesFloat", updatedMsaFloat, multiSelectFloatDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateMsaFloatMsg ->
       assert(updateMsaFloatMsg.succeeded())
-      assertEquals("Multi-select attribute float updated successfully", updateMsaFloatMsg.result().body())
+      assertEquals(updatedMsaFloat, updateMsaFloatMsg.result().body())
 
-      eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesFloatByKey", updatedMsaFloatJson)
+      eventBus.request<MultiSelectFloat>("process.multiSelect.getMultiSelectAttributesFloatByKey", updatedMsaFloat, multiSelectFloatDeliveryOptions)
         .onFailure {
           testContext.failNow(it)
         }.onComplete { getUpdatedMsaFloatMsg ->
           assert(getUpdatedMsaFloatMsg.succeeded())
-          assertEquals(updatedMsaFloatJson, getUpdatedMsaFloatMsg.result().body())
+          assertEquals(updatedMsaFloat, getUpdatedMsaFloatMsg.result().body())
 
           testContext.completeNow()
         }
@@ -316,11 +289,11 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetAllMultiSelectAttributesString(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getAllMultiSelectAttributesString", "").onFailure {
+    eventBus.request<MutableList<MultiSelectString>>("process.multiSelect.getAllMultiSelectAttributesString", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllMsaStringMsg ->
       assert(getAllMsaStringMsg.succeeded())
-      assertEquals(json { obj("multiSelectString" to listOf(msaString)) }, getAllMsaStringMsg.result().body())
+      assertEquals(msaStringList, getAllMsaStringMsg.result().body())
 
       testContext.completeNow()
     }
@@ -328,7 +301,7 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetMsaStringByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesStringByKey", msaString).onFailure {
+    eventBus.request<MultiSelectString>("process.multiSelect.getMultiSelectAttributesStringByKey", msaString, multiSelectStringDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getMsaByKeyMsg ->
       assert(getMsaByKeyMsg.succeeded())
@@ -340,26 +313,24 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testUpdateMultiSelectString(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMsaStringJson = json {
-      obj(
-        "attribute_key" to "test attribute key",
-        "option" to 1,
-        "value" to "test updated value"
-      )
-    }
+    val updatedMsaString = MultiSelectString(
+      attributeKey = msaString.attributeKey,
+      option = msaString.option,
+      value = "Updated String"
+    )
 
-    eventBus.request<String>("process.multiSelect.updateMultiSelectAttributesString", updatedMsaStringJson).onFailure {
+    eventBus.request<MultiSelectString>("process.multiSelect.updateMultiSelectAttributesString", updatedMsaString, multiSelectStringDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateMsaStringMsg ->
       assert(updateMsaStringMsg.succeeded())
-      assertEquals("Multi-select attribute string updated successfully", updateMsaStringMsg.result().body())
+      assertEquals(updatedMsaString, updateMsaStringMsg.result().body())
 
-      eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesStringByKey", updatedMsaStringJson)
+      eventBus.request<MultiSelectString>("process.multiSelect.getMultiSelectAttributesStringByKey", updatedMsaString, multiSelectStringDeliveryOptions)
         .onFailure {
           testContext.failNow(it)
         }.onComplete { getUpdatedMsaStringMsg ->
           assert(getUpdatedMsaStringMsg.succeeded())
-          assertEquals(updatedMsaStringJson, getUpdatedMsaStringMsg.result().body())
+          assertEquals(updatedMsaString, getUpdatedMsaStringMsg.result().body())
 
           testContext.completeNow()
         }
@@ -368,11 +339,11 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetAllMultiSelectAttributesInt(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getAllMultiSelectAttributesInt", "").onFailure {
+    eventBus.request<MutableList<MultiSelectInt>>("process.multiSelect.getAllMultiSelectAttributesInt", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllMsaIntMsg ->
       assert(getAllMsaIntMsg.succeeded())
-      assertEquals(json { obj("multiSelectInt" to listOf(msaInt)) }, getAllMsaIntMsg.result().body())
+      assertEquals(msaIntList, getAllMsaIntMsg.result().body())
 
       testContext.completeNow()
     }
@@ -380,7 +351,7 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetMsaIntByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesIntByKey", msaInt).onFailure {
+    eventBus.request<MultiSelectInt>("process.multiSelect.getMultiSelectAttributesIntByKey", msaInt, multiSelectIntDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getMsaByKeyMsg ->
       assert(getMsaByKeyMsg.succeeded())
@@ -392,26 +363,24 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testUpdateMultiSelectInt(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMsaIntJson = json {
-      obj(
-        "attribute_key" to "test attribute key",
-        "option" to 1,
-        "value" to 3
-      )
-    }
+    val updatedMsaInt = MultiSelectInt(
+      attributeKey = msaInt.attributeKey,
+      option = msaInt.option,
+      value = 100
+    )
 
-    eventBus.request<String>("process.multiSelect.updateMultiSelectAttributesInt", updatedMsaIntJson).onFailure {
+    eventBus.request<MultiSelectInt>("process.multiSelect.updateMultiSelectAttributesInt", updatedMsaInt, multiSelectIntDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateMsaIntMsg ->
       assert(updateMsaIntMsg.succeeded())
-      assertEquals("Multi-select attribute int updated successfully", updateMsaIntMsg.result().body())
+      assertEquals(updatedMsaInt, updateMsaIntMsg.result().body())
 
-      eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesIntByKey", updatedMsaIntJson)
+      eventBus.request<MultiSelectInt>("process.multiSelect.getMultiSelectAttributesIntByKey", updatedMsaInt, multiSelectIntDeliveryOptions)
         .onFailure {
           testContext.failNow(it)
         }.onComplete { getUpdatedMsaIntMsg ->
           assert(getUpdatedMsaIntMsg.succeeded())
-          assertEquals(updatedMsaIntJson, getUpdatedMsaIntMsg.result().body())
+          assertEquals(updatedMsaInt, getUpdatedMsaIntMsg.result().body())
 
           testContext.completeNow()
         }
@@ -420,11 +389,11 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetAllMultiSelectMoney(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getAllMultiSelectAttributesMoney", "").onFailure {
+    eventBus.request<MutableList<MultiSelectMoney>>("process.multiSelect.getAllMultiSelectAttributesMoney", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllMsaMoneyMsg ->
       assert(getAllMsaMoneyMsg.succeeded())
-      assertEquals(json { obj("multiSelectMoney" to listOf(msaMoney)) }, getAllMsaMoneyMsg.result().body())
+      assertEquals(msaMoneyList, getAllMsaMoneyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -432,7 +401,7 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetMsaMoneyByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesMoneyByKey", msaMoney).onFailure {
+    eventBus.request<MultiSelectMoney>("process.multiSelect.getMultiSelectAttributesMoneyByKey", msaMoney, multiSelectMoneyDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getMsaByKeyMsg ->
       assert(getMsaByKeyMsg.succeeded())
@@ -444,26 +413,24 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testUpdateMultiSelectMoney(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMsaMoneyJson = json {
-      obj(
-        "attribute_key" to "test attribute key",
-        "option" to 1,
-        "value" to 3.5
-      )
-    }
+    val updatedMsaMoney = MultiSelectMoney(
+      attributeKey = msaMoney.attributeKey,
+      option = msaMoney.option,
+      value = 100.50
+    )
 
-    eventBus.request<String>("process.multiSelect.updateMultiSelectAttributesMoney", updatedMsaMoneyJson).onFailure {
+    eventBus.request<MultiSelectMoney>("process.multiSelect.updateMultiSelectAttributesMoney", updatedMsaMoney, multiSelectMoneyDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateMsaMoneyMsg ->
       assert(updateMsaMoneyMsg.succeeded())
-      assertEquals("Multi-select attribute money updated successfully", updateMsaMoneyMsg.result().body())
+      assertEquals(updatedMsaMoney, updateMsaMoneyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesMoneyByKey", updatedMsaMoneyJson)
+      eventBus.request<MultiSelectMoney>("process.multiSelect.getMultiSelectAttributesMoneyByKey", updatedMsaMoney, multiSelectMoneyDeliveryOptions)
         .onFailure {
           testContext.failNow(it)
         }.onComplete { getUpdatedMsaMoneyMsg ->
           assert(getUpdatedMsaMoneyMsg.succeeded())
-          assertEquals(updatedMsaMoneyJson, getUpdatedMsaMoneyMsg.result().body())
+          assertEquals(updatedMsaMoney, getUpdatedMsaMoneyMsg.result().body())
 
           testContext.completeNow()
         }
@@ -472,11 +439,11 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetAllMultiSelectAttributesInfo(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getAllMultiSelectAttributesInfo", "").onFailure {
+    eventBus.request<MutableList<MultiSelectInfo>>("process.multiSelect.getAllMultiSelectAttributesInfo", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllMsaInfoMsg ->
       assert(getAllMsaInfoMsg.succeeded())
-      assertEquals(json { obj("multiSelectInfo" to listOf(msaInfoJson)) }, getAllMsaInfoMsg.result().body())
+      assertEquals(msaInfoList, getAllMsaInfoMsg.result().body())
 
       testContext.completeNow()
     }
@@ -484,11 +451,11 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @Test
   fun testGetMsaInfoByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.multiSelect.getMultiSelectAttributesInfoByKey", productId).onFailure {
+    eventBus.request<MutableList<MultiSelectInfo>>("process.multiSelect.getMultiSelectAttributesInfoByKey", productId).onFailure {
       testContext.failNow(it)
     }.onComplete { getMsaByKeyMsg ->
       assert(getMsaByKeyMsg.succeeded())
-      assertEquals(json { obj("multiSelectInfo" to listOf(msaInfoJson)) }, getMsaByKeyMsg.result().body())
+      assertEquals(msaInfoList, getMsaByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -496,14 +463,15 @@ class ProductMultiSelectJdbcVerticleTest {
 
   @AfterEach
   fun tearDown(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<String>("process.eavGlobal.deleteEavGlobal", eavJson).onFailure {
+    eventBus.request<String>("process.eavGlobal.deleteEavGlobal", eav, eavDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { deleteEavGlobalMsg ->
       assert(deleteEavGlobalMsg.succeeded())
       assertEquals("EAV global deleted successfully", deleteEavGlobalMsg.result().body())
       eventBus.request<String>(
         "process.multiSelect.deleteMultiSelectAttributesBool",
-        msaBool
+        msaBool,
+        multiSelectBoolDeliveryOptions
       ).onFailure {
         testContext.failNow(it)
       }.onComplete { deleteMsaBoolMsg ->
@@ -512,7 +480,8 @@ class ProductMultiSelectJdbcVerticleTest {
 
         eventBus.request<String>(
           "process.multiSelect.deleteMultiSelectAttributesFloat",
-          msaFloat
+          msaFloat,
+          multiSelectFloatDeliveryOptions
         ).onFailure {
           testContext.failNow(it)
         }.onComplete { deleteMsaFloatMsg ->
@@ -521,7 +490,8 @@ class ProductMultiSelectJdbcVerticleTest {
 
           eventBus.request<String>(
             "process.multiSelect.deleteMultiSelectAttributesString",
-            msaString
+            msaString,
+            multiSelectStringDeliveryOptions
           ).onFailure {
             testContext.failNow(it)
           }.onComplete { deleteMsaStringMsg ->
@@ -530,7 +500,8 @@ class ProductMultiSelectJdbcVerticleTest {
 
             eventBus.request<String>(
               "process.multiSelect.deleteMultiSelectAttributesInt",
-              msaInt
+              msaInt,
+              multiSelectIntDeliveryOptions
             ).onFailure {
               testContext.failNow(it)
             }.onComplete { deleteMsaIntMsg ->
@@ -539,7 +510,8 @@ class ProductMultiSelectJdbcVerticleTest {
 
               eventBus.request<String>(
                 "process.multiSelect.deleteMultiSelectAttributesMoney",
-                msaMoney
+                msaMoney,
+                multiSelectMoneyDeliveryOptions
               ).onFailure {
                 testContext.failNow(it)
               }.onComplete { deleteMsaMoneyMsg ->
@@ -548,7 +520,7 @@ class ProductMultiSelectJdbcVerticleTest {
 
                 eventBus.request<String>(
                   "process.attributes.deleteCustomAttribute",
-                  customProductAttributeJson.getString("attribute_key")
+                  customProductAttribute.attributeKey,
                 ).onFailure {
                   testContext.failNow(it)
                 }.onComplete { deleteCustomAttributeMsg ->

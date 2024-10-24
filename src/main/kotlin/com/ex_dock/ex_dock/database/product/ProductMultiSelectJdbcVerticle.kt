@@ -18,7 +18,6 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
   private val multiSelectIntDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectIntCodec")
   private val multiSelectMoneyDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectMoneyCodec")
   private val multiSelectStringDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectStringCodec")
-  private val multiSelectInfoDeliveryOptions = DeliveryOptions().setCodecName("MultiSelectInfoCodec")
   private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
@@ -588,7 +587,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
     val allMultiSelectAttributesInfoConsumer = eventBus.consumer<String>("process.multiSelect.getAllMultiSelectAttributesInfo")
     allMultiSelectAttributesInfoConsumer.handler { message ->
       val query = "SELECT products.product_id, products.name, products.short_name, " +
-        "products.description, products.short_name, msab.value AS bool_value, " +
+        "products.description, products.short_name, products.short_description, msab.value AS bool_value, " +
         "msaf.value AS float_value, msas.value AS string_value, " +
         "msai.value AS int_value, msam.value AS money_value, " +
         "cpa.attribute_key FROM products " +
@@ -625,7 +624,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
     getMultiSelectAttributesInfoByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT products.product_id, products.name, products.short_name, " +
-        "products.description, products.short_name, msab.value AS bool_value, " +
+        "products.description, products.short_name, products.short_description, msab.value AS bool_value, " +
         "msaf.value AS float_value, msas.value AS string_value, " +
         "msai.value AS int_value, msam.value AS money_value, " +
         "cpa.attribute_key FROM products " +
@@ -638,6 +637,7 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
         "LEFT JOIN public.multi_select_attributes_money msam on cpa.attribute_key = msam.attribute_key " +
         "WHERE products.product_id =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body))
+      val multiSelectInfoList: MutableList<MultiSelectInfo> = emptyList<MultiSelectInfo>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -647,10 +647,12 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          message.reply(makeMultiSelectAttributesInfo(rows.first()), multiSelectInfoDeliveryOptions)
-        } else {
-          message.reply("No website info found for product ID: $body")
+          rows.forEach { row ->
+            multiSelectInfoList.add(makeMultiSelectAttributesInfo(row))
+          }
         }
+
+        message.reply(multiSelectInfoList, listDeliveryOptions)
       }
     }
   }
@@ -697,11 +699,19 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
 
   private fun makeMultiSelectAttributesInfo(row: Row): MultiSelectInfo {
     return MultiSelectInfo(
-      makeMultiSelectAttributesBool(row),
-      makeMultiSelectAttributesFloat(row),
-      makeMultiSelectAttributesString(row),
-      makeMultiSelectAttributesInt(row),
-      makeMultiSelectAttributesMoney(row)
+      Products(
+        productId = row.getInteger("product_id"),
+        name = row.getString("name"),
+        shortName = row.getString("short_name"),
+        description = row.getString("description"),
+        shortDescription = row.getString("short_description"),
+      ),
+      row.getString("attribute_key"),
+      row.getBoolean("bool_value"),
+      row.getFloat("float_value"),
+      row.getString("string_value"),
+      row.getInteger("int_value"),
+      row.getDouble("money_value")
     )
   }
 
@@ -709,14 +719,14 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
     val multiSelectBoolTuple: Tuple = if (isPutRequest) {
       Tuple.of(
         body.option,
-        body.value,
+        body.value.toInt(),
         body.attributeKey,
       )
     } else {
       Tuple.of(
         body.attributeKey,
         body.option,
-        body.value,
+        body.value.toInt(),
       )
     }
 
@@ -794,4 +804,6 @@ class ProductMultiSelectJdbcVerticle: AbstractVerticle() {
 
     return multiSelectMoneyTuple
   }
+
+  private fun Boolean.toInt() = if (this) 1 else 0
 }

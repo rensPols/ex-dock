@@ -119,13 +119,14 @@ data class EavWebsiteMultiSelect(
 )
 
 data class EavWebsiteInfo(
-  val eav: Eav,
-  val eavWebsiteBool: EavWebsiteBool,
-  val eavWebsiteFloat: EavWebsiteFloat,
-  val eavWebsiteString: EavWebsiteString,
-  val eavWebsiteInt: EavWebsiteInt,
-  val eavWebsiteMoney: EavWebsiteMoney,
-  val eavWebsiteMultiSelect: EavWebsiteMultiSelect
+  val products: Products,
+  val attributeKey: String,
+  val eavWebsiteBool: Boolean,
+  val eavWebsiteFloat: Float,
+  val eavWebsiteString: String,
+  val eavWebsiteInt: Int,
+  val eavWebsiteMoney: Double,
+  val eavWebsiteMultiSelect: Int
 )
 
 data class EavStoreViewBool(
@@ -171,13 +172,14 @@ data class EavStoreViewMoney(
 )
 
 data class EavStoreViewInfo(
-  val eav: Eav,
-  val eavStoreViewBool: EavStoreViewBool,
-  val eavStoreViewFloat: EavStoreViewFloat,
-  val eavStoreViewInt: EavStoreViewInt,
-  val eavStoreViewString: EavStoreViewString,
-  val eavStoreViewMultiSelect: EavStoreViewMultiSelect,
-  val eavStoreViewMoney: EavStoreViewMoney
+  val product: Products,
+  val attributeKey: String,
+  val eavStoreViewBool: Boolean,
+  val eavStoreViewFloat: Float,
+  val eavStoreViewInt: Int,
+  val eavStoreViewString: String,
+  val eavStoreViewMultiSelect: Int,
+  val eavStoreViewMoney: Double
 )
 
 data class MultiSelectString(
@@ -211,11 +213,13 @@ data class MultiSelectFloat(
 )
 
 data class MultiSelectInfo(
-  val multiSelectBool: MultiSelectBool,
-  val multiSelectFloat: MultiSelectFloat,
-  val multiSelectString: MultiSelectString,
-  val multiSelectInt: MultiSelectInt,
-  val multiSelectMoney: MultiSelectMoney,
+  val product: Products,
+  val attributeKey: String,
+  val multiSelectBool: Boolean,
+  val multiSelectFloat: Float,
+  val multiSelectString: String,
+  val multiSelectInt: Int,
+  val multiSelectMoney: Double,
 )
 
 data class FullProduct(
