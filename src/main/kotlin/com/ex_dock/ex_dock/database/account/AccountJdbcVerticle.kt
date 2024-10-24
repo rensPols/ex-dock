@@ -160,27 +160,11 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private fun deleteUser() {
     val deleteUserConsumer = eventBus.consumer<Int>("process.account.deleteUser")
     deleteUserConsumer.handler { message ->
-      val userTestQuery = "SELECT * FROM users"
-      val permissionsTestQuery = "SELECT * FROM backend_permissions"
-
       val userId = message.body()
       val userQuery = "DELETE FROM users WHERE user_id =?"
       val permissionsQuery = "DELETE FROM backend_permissions WHERE user_id =?"
       lateinit var userRowsFuture: Future<RowSet<Row>>
       client.withTransaction { transactionClient ->
-        // For testing:
-        println("userId: $userId")
-        transactionClient.preparedQuery(userTestQuery).execute().onSuccess { res ->
-          println("userTestQuery: ${res.toList().map { row: Row ->
-            val rowJson: JsonObject = row.toJson()
-            return@map rowJson.map.values
-//            return@map rowJson.map.values.toList().toTypedArray()
-          }}")
-        }.onFailure { e -> println("userTestQuery failure: ${e.message}") }
-        transactionClient.preparedQuery(permissionsTestQuery).execute().onSuccess { res ->
-          println("permissionsTestQuery: ${res.toList()}")
-        }.onFailure { e -> println("permissionsTestQuery failure: ${e.message}")}
-
         userRowsFuture = transactionClient.preparedQuery(userQuery).execute(Tuple.of(userId))
         transactionClient.preparedQuery(permissionsQuery).execute(Tuple.of(userId))
       }.onFailure { res ->
