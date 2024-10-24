@@ -13,7 +13,7 @@ import java.util.Properties
 
 class MainVerticle : AbstractVerticle() {
 
-  val props : Properties = javaClass.classLoader.getResourceAsStream("secret.properties").use {
+  private val props : Properties = javaClass.classLoader.getResourceAsStream("secret.properties").use {
     Properties().apply { load(it) }
   }
 
