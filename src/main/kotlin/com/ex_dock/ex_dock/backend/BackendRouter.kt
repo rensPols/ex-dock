@@ -13,5 +13,5 @@ fun Router.enableBackendRouter(vertx: Vertx) {
 
   backendRouter.enableBackendV1Router(vertx)
 
-  this.route("/api*").subRouter(backendRouter)
+  this.route("$apiMountingPath*").subRouter(backendRouter)
 }
