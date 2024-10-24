@@ -3,6 +3,7 @@ package com.ex_dock.ex_dock
 import com.ex_dock.ex_dock.database.JDBCStarter
 import com.ex_dock.ex_dock.frontend.FrontendVerticle
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
+import com.ex_dock.ex_dock.helper.deployVerticleHelper
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.Promise
@@ -31,7 +32,7 @@ override  fun start(startPromise: Promise<Void>) {
     checkExtensions()
 
     // Wait for JDBC Verticle to start first
-    VerticleDeployHelper.deployHelper(vertx, JDBCStarter::class.qualifiedName.toString())
+    deployVerticleHelper(vertx, JDBCStarter::class.qualifiedName.toString())
       .onComplete{ _ ->
         // Wait for all extensions to be started
         Future.all(extension)
@@ -50,6 +51,6 @@ override  fun start(startPromise: Promise<Void>) {
     val client = WebClient.create(vertx)
 
     // ADD frontend Verticles
-    extension.add(VerticleDeployHelper.deployHelper(vertx, FrontendVerticle::class.qualifiedName.toString()))
+    extension.add(deployVerticleHelper(vertx, FrontendVerticle::class.qualifiedName.toString()))
   }
 }
