@@ -2,11 +2,13 @@ package com.ex_dock.ex_dock.database.account
 
 import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.Future
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.jdbcclient.JDBCPool
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.Tuple
 import org.mindrot.jbcrypt.BCrypt
 
@@ -153,20 +155,35 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private fun deleteUser() {
     val deleteUserConsumer = eventBus.consumer<Int>("process.account.deleteUser")
     deleteUserConsumer.handler { message ->
-      val userId = message.body()
-      val query = "DELETE FROM users WHERE user_id =?"
-      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(userId))
+      val userTestQuery = "SELECT * FROM users"
+      val permissionsTestQuery = "SELECT * FROM backend_permissions"
 
-      rowsFuture.onFailure { res ->
+      val userId = message.body()
+      val userQuery = "DELETE FROM users WHERE user_id =?"
+      val permissionsQuery = "DELETE FROM backend_permissions WHERE user_id =?"
+      lateinit var userRowsFuture: Future<RowSet<Row>>
+      client.withTransaction { transactionClient ->
+        // For testing:
+        println(transactionClient.preparedQuery(userTestQuery).execute().toString())
+        println(transactionClient.preparedQuery(permissionsTestQuery).execute().toString())
+
+        userRowsFuture = transactionClient.preparedQuery(userQuery).execute(Tuple.of(userId))
+        transactionClient.preparedQuery(permissionsQuery).execute(Tuple.of(userId))
+      }.onFailure { res ->
         println("Failed to execute query: $res")
         message.fail(500, FAILED)
-      }
+      }.onComplete {
+        userRowsFuture.onFailure { res ->
+          println("Failed to execute query: $res")
+          message.fail(500, FAILED)
+        }
 
-      rowsFuture.onSuccess { res ->
-        if (res.value().rowCount() > 0) {
-          message.reply(USER_DELETED_SUCCESS)
-        } else {
-          message.fail(404, NO_USER)
+        userRowsFuture.onSuccess { res ->
+          if (res.value().rowCount() > 0) {
+            message.reply(USER_DELETED_SUCCESS)
+          } else {
+            message.fail(404, NO_USER)
+          }
         }
       }
     }
