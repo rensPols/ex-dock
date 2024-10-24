@@ -3,7 +3,26 @@ name: Run the tests
 on: [pull_request]
 
 jobs:
+  install_dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: actions/setup-java@v4.4.0
+        with:
+          java-version: 21
+          distribution: oracle
+
+      - name: Install dependencies
+        run: mvn clean install -DskipTests=true --no-transfer-progress
+
+      - name: Install test dependencies
+        run: mvn test -DskipTests=true --no-transfer-progress
+
   tests:
+    needs: install_dependencies
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -23,9 +42,9 @@ jobs:
           - "com.ex_dock.ex_dock.database.product.ProductCustomAttributesJdbcVerticleTest"
           - "com.ex_dock.ex_dock.database.product.ProductGlobalEavJdbcVerticleTest"
           - "com.ex_dock.ex_dock.database.product.ProductJdbcVerticleTest"
-#          - "com.ex_dock.ex_dock.database.product.ProductMultiSelectJdbcVerticleTest"
-#          - "com.ex_dock.ex_dock.database.product.ProductStoreViewEavJdbcVerticleTest"
-#          - "com.ex_dock.ex_dock.database.product.ProductWebsiteEavJdbcVerticleTest"
+          #          - "com.ex_dock.ex_dock.database.product.ProductMultiSelectJdbcVerticleTest"
+          #          - "com.ex_dock.ex_dock.database.product.ProductStoreViewEavJdbcVerticleTest"
+          #          - "com.ex_dock.ex_dock.database.product.ProductWebsiteEavJdbcVerticleTest"
           ## Scope
           - "com.ex_dock.ex_dock.database.scope.ScopeJdbcVerticleTest"
           ## Server
@@ -33,7 +52,7 @@ jobs:
           ## TextPages
           - "com.ex_dock.ex_dock.database.text_pages.TextPagesJdbcVerticleTest"
           ## Url
-#          - "com.ex_dock.ex_dock.database.url.UrlJdbcVerticleTest"
+          #          - "com.ex_dock.ex_dock.database.url.UrlJdbcVerticleTest"
           ## Utils
           - "com.ex_dock.ex_dock.database.utils.JdbcSetupTest"
     steps:
@@ -45,12 +64,6 @@ jobs:
         with:
           java-version: 21
           distribution: oracle
-
-      - name: Install dependencies
-        run: mvn clean install -DskipTests=true --no-transfer-progress
-
-      - name: Install test dependencies
-        run: mvn test -DskipTests=true --no-transfer-progress
 
       - name: Run Tests
         run: |
