@@ -2,11 +2,14 @@ package com.ex_dock.ex_dock.database.account
 
 import com.ex_dock.ex_dock.database.connection.Connection
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.Future
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
+import io.vertx.core.json.JsonObject
 import io.vertx.jdbcclient.JDBCPool
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.Tuple
 import org.mindrot.jbcrypt.BCrypt
 
@@ -105,12 +108,12 @@ class AccountJdbcVerticle: AbstractVerticle() {
   }
 
   private fun createUser() {
-    val createUserConsumer = eventBus.consumer<User>("process.account.createUser")
+    val createUserConsumer = eventBus.consumer<UserCreation>("process.account.createUser")
     createUserConsumer.handler { message ->
       val query = "INSERT INTO users (email, password) VALUES (?,?) RETURNING user_id AS UID"
       val rowsFuture = client
         .preparedQuery(query)
-        .execute(makeUserTuple(message.body(), false))
+        .execute(makeUserCreationTuple(message.body()))
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -118,9 +121,13 @@ class AccountJdbcVerticle: AbstractVerticle() {
       }
 
       rowsFuture.onSuccess { res ->
-        val user: User = message.body()
+        val userCreation: UserCreation = message.body()
         val lastInsertID: Row = res.property(JDBCPool.GENERATED_KEYS)
-        user.userId = lastInsertID.getInteger(0)
+        val user: User = User(
+          userId = lastInsertID.getInteger(0),
+          email = userCreation.email,
+          password = userCreation.password
+        )
 
         message.reply(user, userDeliveryOptions)
       }
@@ -132,7 +139,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
     updateUserConsumer.handler { message ->
       val body = message.body()
       val query = "UPDATE users SET email = ?, password = ? WHERE user_id = ?"
-      val userTuple = makeUserTuple(body, true)
+      val userTuple = makeUserTuple(body)
       val rowsFuture = client.preparedQuery(query).execute(userTuple)
 
       rowsFuture.onFailure { res ->
@@ -154,19 +161,27 @@ class AccountJdbcVerticle: AbstractVerticle() {
     val deleteUserConsumer = eventBus.consumer<Int>("process.account.deleteUser")
     deleteUserConsumer.handler { message ->
       val userId = message.body()
-      val query = "DELETE FROM users WHERE user_id =?"
-      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(userId))
-
-      rowsFuture.onFailure { res ->
+      val userQuery = "DELETE FROM users WHERE user_id =?"
+      val permissionsQuery = "DELETE FROM backend_permissions WHERE user_id =?"
+      lateinit var userRowsFuture: Future<RowSet<Row>>
+      client.withTransaction { transactionClient ->
+        userRowsFuture = transactionClient.preparedQuery(userQuery).execute(Tuple.of(userId))
+        transactionClient.preparedQuery(permissionsQuery).execute(Tuple.of(userId))
+      }.onFailure { res ->
         println("Failed to execute query: $res")
         message.fail(500, FAILED)
-      }
+      }.onComplete {
+        userRowsFuture.onFailure { res ->
+          println("Failed to execute query: $res")
+          message.fail(500, FAILED)
+        }
 
-      rowsFuture.onSuccess { res ->
-        if (res.value().rowCount() > 0) {
-          message.reply(USER_DELETED_SUCCESS)
-        } else {
-          message.fail(404, NO_USER)
+        userRowsFuture.onSuccess { res ->
+          if (res.value().rowCount() > 0) {
+            message.reply(USER_DELETED_SUCCESS)
+          } else {
+            message.fail(404, NO_USER)
+          }
         }
       }
     }
@@ -324,7 +339,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
   private fun getFullUserByUserId() {
     val getFullUserInformationByUserIdConsumer =
-      eventBus.consumer<Int>("process.account.getFullUserInformationByUserId")
+      eventBus.consumer<Int>("process.account.getFullUserByUserId")
     getFullUserInformationByUserIdConsumer.handler { message ->
       val userId = message.body()
       val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
@@ -381,19 +396,15 @@ class AccountJdbcVerticle: AbstractVerticle() {
   }
 
 
-  private fun makeUserTuple(body: User, isPutRequest: Boolean): Tuple {
-    val userTuple: Tuple = if (isPutRequest) {
-      Tuple.of(
-        body.email,
-        hashPassword(body.password),
-        body.userId
-      )
-    } else {
-      Tuple.of(
-        body.email,
-        hashPassword(body.password),
-      )
-    }
+  private fun makeUserTuple(body: User): Tuple {
+    val userTuple: Tuple = Tuple.of(body.email, hashPassword(body.password), body.userId)
+
+    return userTuple
+  }
+
+
+  private fun makeUserCreationTuple(body: UserCreation): Tuple {
+    val userTuple: Tuple = Tuple.of(body.email, hashPassword(body.password))
 
     return userTuple
   }
@@ -455,3 +466,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
     }
   }
 }
+
+//fun rowToArray(row: Row): Array<Any?> {
+//  return row.toJson().values
+//}
