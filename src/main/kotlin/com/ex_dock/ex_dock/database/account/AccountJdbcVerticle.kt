@@ -165,7 +165,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       client.withTransaction { transactionClient ->
         // For testing:
         transactionClient.preparedQuery(userTestQuery).execute().onSuccess { res ->
-          println("userTestQuery: ${res.toList()}")
+          println("userTestQuery: ${res.toList().map { row -> row.toString()}}")
         }.onFailure { e -> println("userTestQuery failure: ${e.message}") }
         transactionClient.preparedQuery(permissionsTestQuery).execute().onSuccess { res ->
           println("permissionsTestQuery: ${res.toList()}")
