@@ -250,7 +250,7 @@ class AccountJdbcVerticleTest {
     vertx.deployVerticle(
       AccountJdbcVerticle(),
       testContext.succeeding {
-        eventBus.request<User>("process.account.createUser", testUserCreation, userDeliveryOptions).onFailure {
+        eventBus.request<User>("process.account.createUser", testUserCreation, userCreationDeliveryOptions).onFailure {
           println("failure in testBackendPermissions on: process.account.createUser")
           testContext.failNow(it)
         }.onComplete { createUserMsg ->
