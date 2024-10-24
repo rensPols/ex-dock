@@ -166,6 +166,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       lateinit var userRowsFuture: Future<RowSet<Row>>
       client.withTransaction { transactionClient ->
         // For testing:
+        println("userId: $userId")
         transactionClient.preparedQuery(userTestQuery).execute().onSuccess { res ->
           println("userTestQuery: ${res.toList().map { row: Row ->
             val rowJson: JsonObject = row.toJson()
