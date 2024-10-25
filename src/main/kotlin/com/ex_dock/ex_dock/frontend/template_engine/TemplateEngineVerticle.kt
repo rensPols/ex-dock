@@ -15,7 +15,6 @@ class TemplateEngineVerticle: AbstractVerticle() {
 //  private lateinit var client: Pool
   private lateinit var eventBus: EventBus
   private val engine = PebbleEngine.Builder().loader(StringLoader()).build()
-  private val failedMessage: String = "Template engine failure"
 
   override fun start() {
 //    client = Connection().getConnection(vertx)
