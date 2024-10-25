@@ -1,10 +1,13 @@
 package com.ex_dock.ex_dock.database.product
 
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.database.scope.ScopeJdbcVerticle
+import com.ex_dock.ex_dock.database.scope.Websites
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Future
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -27,126 +30,151 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   private var websiteId = -1
 
-  private var productJson = json {
-    obj(
-      "product_id" to productId,
-      "name" to "test name",
-      "short_name" to "test short name",
-      "description" to "test description",
-      "short_description" to "test short description"
-    )
-  }
+  private val websiteBoolDeliveryOptions = DeliveryOptions().setCodecName("EavWebsiteBoolCodec")
+  private val websiteFloatDeliveryOptions = DeliveryOptions().setCodecName("EavWebsiteFloatCodec")
+  private val websiteIntDeliveryOptions = DeliveryOptions().setCodecName("EavWebsiteIntCodec")
+  private val websiteMoneyDeliveryOptions = DeliveryOptions().setCodecName("EavWebsiteMoneyCodec")
+  private val websiteStringDeliveryOptions = DeliveryOptions().setCodecName("EavWebsiteStringCodec")
+  private val websiteMultiSelectDeliveryOptions = DeliveryOptions().setCodecName("EavWebsiteMultiSelectCodec")
+  private val productDeliveryOptions = DeliveryOptions().setCodecName("ProductsCodec")
+  private val customProductAttributeDeliveryOptions = DeliveryOptions().setCodecName("CustomProductAttributesCodec")
+  private val eavDeliveryOptions = DeliveryOptions().setCodecName("EavCodec")
+  private val websitesDeliveryOptions = DeliveryOptions().setCodecName("WebsitesCodec")
+  private val ewBoolList: MutableList<EavWebsiteBool> = emptyList<EavWebsiteBool>().toMutableList()
+  private val ewFloatList: MutableList<EavWebsiteFloat> = emptyList<EavWebsiteFloat>().toMutableList()
+  private val ewIntList: MutableList<EavWebsiteInt> = emptyList<EavWebsiteInt>().toMutableList()
+  private val ewMoneyList: MutableList<EavWebsiteMoney> = emptyList<EavWebsiteMoney>().toMutableList()
+  private val ewStringList: MutableList<EavWebsiteString> = emptyList<EavWebsiteString>().toMutableList()
+  private val ewMultiSelectList: MutableList<EavWebsiteMultiSelect> = emptyList<EavWebsiteMultiSelect>().toMutableList()
+  private val ewInfoList: MutableList<EavWebsiteInfo> = emptyList<EavWebsiteInfo>().toMutableList()
+  private val eavList: MutableList<Eav> = emptyList<Eav>().toMutableList()
 
-  private var websiteJson = json {
-    obj(
-      "website_id" to websiteId,
-      "website_name" to "test website name"
-    )
-  }
+  private var product = Products(
+    productId = productId,
+    name = "Test Product",
+    shortName = "TProduct",
+    description = "Test Product Description",
+    shortDescription = "TPDescription"
+  )
 
-  private var customProductAttributeJson = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "scope" to 2,
-      "name" to "test name",
-      "type" to "int",
-      "multiselect" to "0",
-      "required" to "1"
-    )
-  }
+  private var customProductAttribute = CustomProductAttributes(
+    attributeKey = "test attribute key",
+    scope = 1,
+    name = "Test Attribute",
+    type = Type.INT,
+    multiselect = false,
+    required = true
+  )
 
-  private lateinit var boolJson: JsonObject
+  private var website = Websites(
+    websiteId = websiteId,
+    websiteName = "Test Website",
+  )
 
-  private lateinit var expectedBoolJson: JsonObject
+  private lateinit var bool: EavWebsiteBool
 
-  private lateinit var floatJson: JsonObject
+  private lateinit var float: EavWebsiteFloat
 
-  private lateinit var stringJson: JsonObject
+  private lateinit var string: EavWebsiteString
 
-  private lateinit var intJson: JsonObject
+  private lateinit var int: EavWebsiteInt
 
-  private lateinit var moneyJson: JsonObject
+  private lateinit var money: EavWebsiteMoney
 
-  private lateinit var multiSelectJson: JsonObject
+  private lateinit var multiSelect: EavWebsiteMultiSelect
 
-  private lateinit var eavJson: JsonObject
+  private lateinit var eav: Eav
 
-  private lateinit var expectedFullEavJson: JsonObject
+  private lateinit var expectedFullEav: EavWebsiteInfo
 
 
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
+      .registerCodec(GenericCodec(MutableList::class.java))
+      .registerCodec(GenericCodec(Products::class.java))
+      .registerCodec(GenericCodec(Websites::class.java))
+      .registerCodec(GenericCodec(CustomProductAttributes::class.java))
+      .registerCodec(GenericCodec(Eav::class.java))
+      .registerCodec(GenericCodec(EavWebsiteBool::class.java))
+      .registerCodec(GenericCodec(EavWebsiteFloat::class.java))
+      .registerCodec(GenericCodec(EavWebsiteString::class.java))
+      .registerCodec(GenericCodec(EavWebsiteInt::class.java))
+      .registerCodec(GenericCodec(EavWebsiteMoney::class.java))
+      .registerCodec(GenericCodec(EavWebsiteInfo::class.java))
+      .registerCodec(GenericCodec(EavWebsiteMultiSelect::class.java))
     Future.all(deployVerticles(vertx)).onFailure {
       testContext.failNow(it)
     }.onComplete {
-      eventBus.request<Int>("process.products.createProduct", productJson).onFailure {
+      eventBus.request<Products>("process.products.createProduct", product, productDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createProductMsg ->
-        productId = createProductMsg.result().body()
-        assertEquals("Int", createProductMsg.result().body()::class.simpleName)
+        product = createProductMsg.result().body()
+        productId = product.productId
+        assertEquals(product, createProductMsg.result().body())
 
-        eventBus.request<Int>("process.scope.createWebsite", websiteJson).onFailure {
+        eventBus.request<Websites>("process.scope.createWebsite", website, websitesDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createWebsiteMsg ->
-          websiteId = createWebsiteMsg.result().body()
-          assertEquals("Int", createWebsiteMsg.result().body()::class.simpleName)
+          website = createWebsiteMsg.result().body()
+          websiteId = website.websiteId!!
+          assertEquals(website, createWebsiteMsg.result().body())
 
-            eventBus.request<String>("process.attributes.createCustomAttribute", customProductAttributeJson).onFailure {
+            eventBus.request<CustomProductAttributes>("process.attributes.createCustomAttribute", customProductAttribute, customProductAttributeDeliveryOptions).onFailure {
               testContext.failNow(it)
             }.onComplete { createAttributeMsg ->
               assert(createAttributeMsg.succeeded())
-              assertEquals("Custom attribute created successfully", createAttributeMsg.result().body())
+              assertEquals(customProductAttribute, createAttributeMsg.result().body())
               setAllJsonFields()
 
-              eventBus.request<String>("process.eavWebsite.createEavWebsiteBool", boolJson).onFailure {
+              eventBus.request<EavWebsiteBool>("process.eavWebsite.createEavWebsiteBool", bool, websiteBoolDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { createEavWebsiteBoolMsg ->
                 assert(createEavWebsiteBoolMsg.succeeded())
-                assertEquals("EAV website bool created successfully", createEavWebsiteBoolMsg.result().body())
+                assertEquals(bool, createEavWebsiteBoolMsg.result().body())
 
-                eventBus.request<String>("process.eavWebsite.createEavWebsiteFloat", floatJson).onFailure {
+                eventBus.request<EavWebsiteFloat>("process.eavWebsite.createEavWebsiteFloat", float, websiteFloatDeliveryOptions).onFailure {
                   testContext.failNow(it)
                 }.onComplete { createEavWebsiteFloatMsg ->
                   assert(createEavWebsiteFloatMsg.succeeded())
-                  assertEquals("EAV website float created successfully", createEavWebsiteFloatMsg.result().body())
+                  assertEquals(float, createEavWebsiteFloatMsg.result().body())
 
-                  eventBus.request<String>("process.eavWebsite.createEavWebsiteString", stringJson).onFailure {
+                  eventBus.request<EavWebsiteString>("process.eavWebsite.createEavWebsiteString", string, websiteStringDeliveryOptions).onFailure {
                     testContext.failNow(it)
                   }.onComplete { createEavWebsiteStringMsg ->
                     assert(createEavWebsiteStringMsg.succeeded())
-                    assertEquals("EAV website string created successfully", createEavWebsiteStringMsg.result().body())
+                    assertEquals(string, createEavWebsiteStringMsg.result().body())
 
-                    eventBus.request<String>("process.eavWebsite.createEavWebsiteInt", intJson).onFailure {
+                    eventBus.request<EavWebsiteInt>("process.eavWebsite.createEavWebsiteInt", int, websiteIntDeliveryOptions).onFailure {
                       testContext.failNow(it)
                     }.onComplete { createEavWebsiteIntMsg ->
                       assert(createEavWebsiteIntMsg.succeeded())
-                      assertEquals("EAV website int created successfully", createEavWebsiteIntMsg.result().body())
+                      assertEquals(int, createEavWebsiteIntMsg.result().body())
 
-                      eventBus.request<String>("process.eavWebsite.createEavWebsiteMoney", moneyJson).onFailure {
+                      eventBus.request<EavWebsiteMoney>("process.eavWebsite.createEavWebsiteMoney", money, websiteMoneyDeliveryOptions).onFailure {
                         testContext.failNow(it)
                       }.onComplete { createEavWebsiteMoneyMsg ->
                         assert(createEavWebsiteMoneyMsg.succeeded())
                         assertEquals(
-                          "EAV website money created successfully",
+                          money,
                           createEavWebsiteMoneyMsg.result().body()
                         )
 
-                        eventBus.request<String>("process.eavWebsite.createEavWebsiteMultiSelect", multiSelectJson)
+                        eventBus.request<EavWebsiteMultiSelect>("process.eavWebsite.createEavWebsiteMultiSelect", multiSelect, websiteMultiSelectDeliveryOptions)
                           .onFailure {
                             testContext.failNow(it)
                           }.onComplete { createEavWebsiteMultiSelectMsg ->
                             assert(createEavWebsiteMultiSelectMsg.succeeded())
                             assertEquals(
-                              "EAV website multi-select created successfully",
+                              multiSelect,
                               createEavWebsiteMultiSelectMsg.result().body()
                             )
 
-                            eventBus.request<String>("process.eavWebsite.createEavWebsite", eavJson).onFailure {
+                            eventBus.request<Eav>("process.eavWebsite.createEavWebsite", eav, eavDeliveryOptions).onFailure {
                               testContext.failNow(it)
                             }.onComplete { createEavWebsiteMsg ->
                               assert(createEavWebsiteMsg.succeeded())
-                              assertEquals("EAV website created successfully", createEavWebsiteMsg.result().body())
+                              assertEquals(eav, createEavWebsiteMsg.result().body())
 
                               testContext.completeNow()
                             }
@@ -164,14 +192,12 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavWebsiteBool(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getAllEavWebsiteBool", "").onFailure {
+    eventBus.request<MutableList<EavWebsiteBool>>("process.eavWebsite.getAllEavWebsiteBool", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavWebsiteBoolMsg ->
       assert(getAllEavWebsiteBoolMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavWebsiteBool" to listOf(expectedBoolJson))
-        },
+        ewBoolList,
         getAllEavWebsiteBoolMsg.result().body()
       )
 
@@ -181,11 +207,11 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetEavWebsiteBoolByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteBoolByKey", boolJson).onFailure {
+    eventBus.request<EavWebsiteBool>("process.eavWebsite.getEavWebsiteBoolByKey", bool, websiteBoolDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavWebsiteByKeyMsg ->
       assert(getEavWebsiteByKeyMsg.succeeded())
-      assertEquals(expectedBoolJson, getEavWebsiteByKeyMsg.result().body())
+      assertEquals(bool, getEavWebsiteByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -193,35 +219,24 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavWebsiteBool(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedBoolJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to boolJson.getString("attribute_key"),
-        "value" to "0"
-      )
-    }
+    val updatedBool = EavWebsiteBool(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = customProductAttribute.attributeKey,
+      value = false
+    )
 
-    val expectedUpdatedBoolJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to boolJson.getString("attribute_key"),
-        "value" to false
-      )
-    }
-
-    eventBus.request<String>("process.eavWebsite.updateEavWebsiteBool", updatedBoolJson).onFailure {
+    eventBus.request<EavWebsiteBool>("process.eavWebsite.updateEavWebsiteBool", updatedBool, websiteBoolDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavWebsiteByKeyMsg ->
       assert(updateEavWebsiteByKeyMsg.succeeded())
-      assertEquals("EAV website bool updated successfully", updateEavWebsiteByKeyMsg.result().body())
+      assertEquals(updatedBool, updateEavWebsiteByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteBoolByKey", updatedBoolJson).onFailure {
+      eventBus.request<EavWebsiteBool>("process.eavWebsite.getEavWebsiteBoolByKey", updatedBool, websiteBoolDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavWebsiteBoolMsg ->
         assert(getUpdatedEavWebsiteBoolMsg.succeeded())
-        assertEquals(expectedUpdatedBoolJson, getUpdatedEavWebsiteBoolMsg.result().body())
+        assertEquals(updatedBool, getUpdatedEavWebsiteBoolMsg.result().body())
 
         testContext.completeNow()
       }
@@ -230,14 +245,12 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavWebsiteFloat(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getAllEavWebsiteFloat", "").onFailure {
+    eventBus.request<MutableList<EavWebsiteFloat>>("process.eavWebsite.getAllEavWebsiteFloat", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavWebsiteFloatMsg ->
       assert(getAllEavWebsiteFloatMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavWebsiteFloat" to listOf(floatJson))
-        },
+        ewFloatList,
         getAllEavWebsiteFloatMsg.result().body()
       )
 
@@ -247,11 +260,11 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetEavWebsiteFloatByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteFloatByKey", floatJson).onFailure {
+    eventBus.request<EavWebsiteFloat>("process.eavWebsite.getEavWebsiteFloatByKey", float, websiteFloatDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavWebsiteByKeyMsg ->
       assert(getEavWebsiteByKeyMsg.succeeded())
-      assertEquals(floatJson, getEavWebsiteByKeyMsg.result().body())
+      assertEquals(float, getEavWebsiteByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -259,26 +272,24 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavWebsiteFloat(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedFloatJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to floatJson.getString("attribute_key"),
-        "value" to 10.5
-      )
-    }
+    val updatedFloat = EavWebsiteFloat(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = customProductAttribute.attributeKey,
+      value = 100.0f
+    )
 
-    eventBus.request<String>("process.eavWebsite.updateEavWebsiteFloat", updatedFloatJson).onFailure {
+    eventBus.request<EavWebsiteFloat>("process.eavWebsite.updateEavWebsiteFloat", updatedFloat, websiteFloatDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavWebsiteByKeyMsg ->
       assert(updateEavWebsiteByKeyMsg.succeeded())
-      assertEquals("EAV website float updated successfully", updateEavWebsiteByKeyMsg.result().body())
+      assertEquals(updatedFloat, updateEavWebsiteByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteFloatByKey", updatedFloatJson).onFailure {
+      eventBus.request<EavWebsiteFloat>("process.eavWebsite.getEavWebsiteFloatByKey", updatedFloat, websiteFloatDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavWebsiteFloatMsg ->
         assert(getUpdatedEavWebsiteFloatMsg.succeeded())
-        assertEquals(updatedFloatJson, getUpdatedEavWebsiteFloatMsg.result().body())
+        assertEquals(updatedFloat, getUpdatedEavWebsiteFloatMsg.result().body())
 
         testContext.completeNow()
       }
@@ -287,14 +298,12 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavWebsiteString(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getAllEavWebsiteString", "").onFailure {
+    eventBus.request<MutableList<EavWebsiteString>>("process.eavWebsite.getAllEavWebsiteString", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavWebsiteStringMsg ->
       assert(getAllEavWebsiteStringMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavWebsiteString" to listOf(stringJson))
-        },
+        ewStringList,
         getAllEavWebsiteStringMsg.result().body()
       )
 
@@ -304,11 +313,11 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetEavWebsiteStringByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteStringByKey", stringJson).onFailure {
+    eventBus.request<EavWebsiteString>("process.eavWebsite.getEavWebsiteStringByKey", string, websiteStringDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavWebsiteByKeyMsg ->
       assert(getEavWebsiteByKeyMsg.succeeded())
-      assertEquals(stringJson, getEavWebsiteByKeyMsg.result().body())
+      assertEquals(string, getEavWebsiteByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -316,26 +325,24 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavWebsiteString(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedStringJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to stringJson.getString("attribute_key"),
-        "value" to "New Value"
-      )
-    }
+    val updatedString = EavWebsiteString(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = customProductAttribute.attributeKey,
+      value = "updated string"
+    )
 
-    eventBus.request<String>("process.eavWebsite.updateEavWebsiteString", updatedStringJson).onFailure {
+    eventBus.request<EavWebsiteString>("process.eavWebsite.updateEavWebsiteString", updatedString, websiteStringDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavWebsiteByKeyMsg ->
       assert(updateEavWebsiteByKeyMsg.succeeded())
-      assertEquals("EAV website string updated successfully", updateEavWebsiteByKeyMsg.result().body())
+      assertEquals(updatedString, updateEavWebsiteByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteStringByKey", updatedStringJson).onFailure {
+      eventBus.request<EavWebsiteString>("process.eavWebsite.getEavWebsiteStringByKey", updatedString, websiteStringDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavWebsiteStringMsg ->
         assert(getUpdatedEavWebsiteStringMsg.succeeded())
-        assertEquals(updatedStringJson, getUpdatedEavWebsiteStringMsg.result().body())
+        assertEquals(updatedString, getUpdatedEavWebsiteStringMsg.result().body())
 
         testContext.completeNow()
       }
@@ -344,14 +351,12 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavWebsiteInt(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getAllEavWebsiteInt", "").onFailure {
+    eventBus.request<MutableList<EavWebsiteInt>>("process.eavWebsite.getAllEavWebsiteInt", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavWebsiteIntMsg ->
       assert(getAllEavWebsiteIntMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavWebsiteInt" to listOf(intJson))
-        },
+        ewIntList,
         getAllEavWebsiteIntMsg.result().body()
       )
 
@@ -361,11 +366,11 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetEavWebsiteIntByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteIntByKey", intJson).onFailure {
+    eventBus.request<EavWebsiteInt>("process.eavWebsite.getEavWebsiteIntByKey", int, websiteIntDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavWebsiteByKeyMsg ->
       assert(getEavWebsiteByKeyMsg.succeeded())
-      assertEquals(intJson, getEavWebsiteByKeyMsg.result().body())
+      assertEquals(int, getEavWebsiteByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -373,26 +378,24 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavWebsiteInt(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedIntJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to intJson.getString("attribute_key"),
-        "value" to 20
-      )
-    }
+    val updatedInt = EavWebsiteInt(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = customProductAttribute.attributeKey,
+      value = 100
+    )
 
-    eventBus.request<String>("process.eavWebsite.updateEavWebsiteInt", updatedIntJson).onFailure {
+    eventBus.request<EavWebsiteInt>("process.eavWebsite.updateEavWebsiteInt", updatedInt, websiteIntDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavWebsiteByKeyMsg ->
       assert(updateEavWebsiteByKeyMsg.succeeded())
-      assertEquals("EAV website int updated successfully", updateEavWebsiteByKeyMsg.result().body())
+      assertEquals(updatedInt, updateEavWebsiteByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteIntByKey", updatedIntJson).onFailure {
+      eventBus.request<EavWebsiteInt>("process.eavWebsite.getEavWebsiteIntByKey", updatedInt, websiteIntDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavWebsiteIntMsg ->
         assert(getUpdatedEavWebsiteIntMsg.succeeded())
-        assertEquals(updatedIntJson, getUpdatedEavWebsiteIntMsg.result().body())
+        assertEquals(updatedInt, getUpdatedEavWebsiteIntMsg.result().body())
 
         testContext.completeNow()
       }
@@ -401,14 +404,12 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavWebsiteMoney(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getAllEavWebsiteMoney", "").onFailure {
+    eventBus.request<MutableList<EavWebsiteMoney>>("process.eavWebsite.getAllEavWebsiteMoney", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavWebsiteMoneyMsg ->
       assert(getAllEavWebsiteMoneyMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavWebsiteMoney" to listOf(moneyJson))
-        },
+        ewMoneyList,
         getAllEavWebsiteMoneyMsg.result().body()
       )
 
@@ -418,11 +419,11 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetEavWebsiteMoneyByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteMoneyByKey", moneyJson).onFailure {
+    eventBus.request<EavWebsiteMoney>("process.eavWebsite.getEavWebsiteMoneyByKey", money, websiteMoneyDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavWebsiteByKeyMsg ->
       assert(getEavWebsiteByKeyMsg.succeeded())
-      assertEquals(moneyJson, getEavWebsiteByKeyMsg.result().body())
+      assertEquals(money, getEavWebsiteByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -430,26 +431,24 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavWebsiteMoney(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMoneyJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to moneyJson.getString("attribute_key"),
-        "value" to 100.50
-      )
-    }
+    val updatedMoney = EavWebsiteMoney(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = customProductAttribute.attributeKey,
+      value = 100.00
+    )
 
-    eventBus.request<String>("process.eavWebsite.updateEavWebsiteMoney", updatedMoneyJson).onFailure {
+    eventBus.request<EavWebsiteMoney>("process.eavWebsite.updateEavWebsiteMoney", updatedMoney, websiteMoneyDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavWebsiteByKeyMsg ->
       assert(updateEavWebsiteByKeyMsg.succeeded())
-      assertEquals("EAV website money updated successfully", updateEavWebsiteByKeyMsg.result().body())
+      assertEquals(updatedMoney, updateEavWebsiteByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteMoneyByKey", updatedMoneyJson).onFailure {
+      eventBus.request<EavWebsiteMoney>("process.eavWebsite.getEavWebsiteMoneyByKey", updatedMoney, websiteMoneyDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavWebsiteMoneyMsg ->
         assert(getUpdatedEavWebsiteMoneyMsg.succeeded())
-        assertEquals(updatedMoneyJson, getUpdatedEavWebsiteMoneyMsg.result().body())
+        assertEquals(updatedMoney, getUpdatedEavWebsiteMoneyMsg.result().body())
 
         testContext.completeNow()
       }
@@ -458,14 +457,12 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavWebsiteMultiSelect(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getAllEavWebsiteMultiSelect", "").onFailure {
+    eventBus.request<MutableList<EavWebsiteMultiSelect>>("process.eavWebsite.getAllEavWebsiteMultiSelect", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavWebsiteMultiSelectMsg ->
       assert(getAllEavWebsiteMultiSelectMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavWebsiteMultiSelect" to listOf(multiSelectJson))
-        },
+        ewMultiSelectList,
         getAllEavWebsiteMultiSelectMsg.result().body()
       )
 
@@ -475,11 +472,11 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetEavWebsiteMultiSelectByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteMultiSelectByKey", multiSelectJson).onFailure {
+    eventBus.request<EavWebsiteMultiSelect>("process.eavWebsite.getEavWebsiteMultiSelectByKey", multiSelect, websiteMultiSelectDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavWebsiteByKeyMsg ->
       assert(getEavWebsiteByKeyMsg.succeeded())
-      assertEquals(multiSelectJson, getEavWebsiteByKeyMsg.result().body())
+      assertEquals(multiSelect, getEavWebsiteByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -487,27 +484,25 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavWebsiteMultiSelect(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMultiSelectJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to multiSelectJson.getString("attribute_key"),
-        "value" to 0
-      )
-    }
+    val updatedMultiSelect = EavWebsiteMultiSelect(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = customProductAttribute.attributeKey,
+      value = 2
+    )
 
-    eventBus.request<String>("process.eavWebsite.updateEavWebsiteMultiSelect", updatedMultiSelectJson).onFailure {
+    eventBus.request<EavWebsiteMultiSelect>("process.eavWebsite.updateEavWebsiteMultiSelect", updatedMultiSelect, websiteMultiSelectDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavWebsiteByKeyMsg ->
       assert(updateEavWebsiteByKeyMsg.succeeded())
-      assertEquals("EAV website multi-select updated successfully", updateEavWebsiteByKeyMsg.result().body())
+      assertEquals(updatedMultiSelect, updateEavWebsiteByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteMultiSelectByKey", updatedMultiSelectJson)
+      eventBus.request<EavWebsiteMultiSelect>("process.eavWebsite.getEavWebsiteMultiSelectByKey", updatedMultiSelect, websiteMultiSelectDeliveryOptions)
         .onFailure {
           testContext.failNow(it)
         }.onComplete { getUpdatedEavWebsiteMultiSelectMsg ->
           assert(getUpdatedEavWebsiteMultiSelectMsg.succeeded())
-          assertEquals(updatedMultiSelectJson, getUpdatedEavWebsiteMultiSelectMsg.result().body())
+          assertEquals(updatedMultiSelect, getUpdatedEavWebsiteMultiSelectMsg.result().body())
 
           testContext.completeNow()
         }
@@ -516,14 +511,12 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavWebsite(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getAllEavWebsite", "").onFailure {
+    eventBus.request<MutableList<Eav>>("process.eavWebsite.getAllEavWebsite", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavWebsiteMsg ->
       assert(getAllEavWebsiteMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavWebsite" to listOf(eavJson))
-        },
+        eavList,
         getAllEavWebsiteMsg.result().body()
       )
 
@@ -533,11 +526,11 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetEavWebsiteByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteByKey", eavJson).onFailure {
+    eventBus.request<Eav>("process.eavWebsite.getEavWebsiteByKey", eav, eavDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavWebsiteByKeyMsg ->
       assert(getEavWebsiteByKeyMsg.succeeded())
-      assertEquals(eavJson, getEavWebsiteByKeyMsg.result().body())
+      assertEquals(eav, getEavWebsiteByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -545,24 +538,22 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavWebsite(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedEavJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to eavJson.getString("attribute_key"),
-      )
-    }
+    val updatedEav = Eav(
+      productId = productId,
+      attributeKey = customProductAttribute.attributeKey,
+    )
 
-    eventBus.request<String>("process.eavWebsite.updateEavWebsite", updatedEavJson).onFailure {
+    eventBus.request<Eav>("process.eavWebsite.updateEavWebsite", updatedEav, eavDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavWebsiteByKeyMsg ->
       assert(updateEavWebsiteByKeyMsg.succeeded())
-      assertEquals("EAV website updated successfully", updateEavWebsiteByKeyMsg.result().body())
+      assertEquals(updatedEav, updateEavWebsiteByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteByKey", updatedEavJson).onFailure {
+      eventBus.request<Eav>("process.eavWebsite.getEavWebsiteByKey", updatedEav, eavDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavWebsiteMsg ->
         assert(getUpdatedEavWebsiteMsg.succeeded())
-        assertEquals(updatedEavJson, getUpdatedEavWebsiteMsg.result().body())
+        assertEquals(updatedEav, getUpdatedEavWebsiteMsg.result().body())
 
         testContext.completeNow()
       }
@@ -571,14 +562,12 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavWebsiteInfo(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getAllEavWebsiteInfo", "").onFailure {
+    eventBus.request<MutableList<EavWebsiteInfo>>("process.eavWebsite.getAllEavWebsiteInfo", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavWebsiteInfoMsg ->
       assert(getAllEavWebsiteInfoMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavWebsiteInfo" to listOf(expectedFullEavJson))
-        }, getAllEavWebsiteInfoMsg.result().body()
+        ewInfoList, getAllEavWebsiteInfoMsg.result().body()
       )
 
       testContext.completeNow()
@@ -587,14 +576,12 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @Test
   fun testGetEavWebsiteInfoByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavWebsite.getEavWebsiteInfoByKey", productId).onFailure {
+    eventBus.request<MutableList<EavWebsiteInfo>>("process.eavWebsite.getEavWebsiteInfoByKey", productId).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavWebsiteInfoByKeyMsg ->
       assert(getEavWebsiteInfoByKeyMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavWebsiteInfo" to listOf(expectedFullEavJson))
-        }, getEavWebsiteInfoByKeyMsg.result().body()
+        ewInfoList, getEavWebsiteInfoByKeyMsg.result().body()
       )
 
       testContext.completeNow()
@@ -603,13 +590,13 @@ class ProductWebsiteEavJdbcVerticleTest {
 
   @AfterEach
   fun tearDown(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<String>("process.eavWebsite.deleteEavWebsite", eavJson).onFailure {
+    eventBus.request<String>("process.eavWebsite.deleteEavWebsite", eav, eavDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { deleteEavWebsiteMsg ->
       assert(deleteEavWebsiteMsg.succeeded())
       assertEquals("EAV website deleted successfully", deleteEavWebsiteMsg.result().body())
 
-      eventBus.request<String>("process.eavWebsite.deleteEavWebsiteMultiSelect", multiSelectJson).onFailure {
+      eventBus.request<String>("process.eavWebsite.deleteEavWebsiteMultiSelect", multiSelect, websiteMultiSelectDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { deleteEavWebsiteMultiSelectMsg ->
         assert(deleteEavWebsiteMultiSelectMsg.succeeded())
@@ -618,31 +605,31 @@ class ProductWebsiteEavJdbcVerticleTest {
           deleteEavWebsiteMultiSelectMsg.result().body()
         )
 
-        eventBus.request<String>("process.eavWebsite.deleteEavWebsiteMoney", moneyJson).onFailure {
+        eventBus.request<String>("process.eavWebsite.deleteEavWebsiteMoney", money, websiteMoneyDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { deleteEavWebsiteMoneyMsg ->
           assert(deleteEavWebsiteMoneyMsg.succeeded())
           assertEquals("EAV website money deleted successfully", deleteEavWebsiteMoneyMsg.result().body())
 
-          eventBus.request<String>("process.eavWebsite.deleteEavWebsiteInt", intJson).onFailure {
+          eventBus.request<String>("process.eavWebsite.deleteEavWebsiteInt", int, websiteIntDeliveryOptions).onFailure {
             testContext.failNow(it)
           }.onComplete { deleteEavWebsiteIntMsg ->
             assert(deleteEavWebsiteIntMsg.succeeded())
             assertEquals("EAV website int deleted successfully", deleteEavWebsiteIntMsg.result().body())
 
-            eventBus.request<String>("process.eavWebsite.deleteEavWebsiteString", stringJson).onFailure {
+            eventBus.request<String>("process.eavWebsite.deleteEavWebsiteString", string, websiteStringDeliveryOptions).onFailure {
               testContext.failNow(it)
             }.onComplete { deleteEavWebsiteStringMsg ->
               assert(deleteEavWebsiteStringMsg.succeeded())
               assertEquals("EAV website string deleted successfully", deleteEavWebsiteStringMsg.result().body())
 
-              eventBus.request<String>("process.eavWebsite.deleteEavWebsiteFloat", floatJson).onFailure {
+              eventBus.request<String>("process.eavWebsite.deleteEavWebsiteFloat", float, websiteFloatDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { deleteEavWebsiteFloatMsg ->
                 assert(deleteEavWebsiteFloatMsg.succeeded())
                 assertEquals("EAV website float deleted successfully", deleteEavWebsiteFloatMsg.result().body())
 
-                eventBus.request<String>("process.eavWebsite.deleteEavWebsiteBool", boolJson).onFailure {
+                eventBus.request<String>("process.eavWebsite.deleteEavWebsiteBool", bool, websiteBoolDeliveryOptions).onFailure {
                   testContext.failNow(it)
                 }.onComplete { deleteEavWebsiteBoolMsg ->
                   assert(deleteEavWebsiteBoolMsg.succeeded())
@@ -650,7 +637,7 @@ class ProductWebsiteEavJdbcVerticleTest {
 
                   eventBus.request<String>(
                     "process.attributes.deleteCustomAttribute",
-                    customProductAttributeJson.getString("attribute_key")
+                    customProductAttribute.attributeKey
                   ).onFailure {
                     testContext.failNow(it)
                   }.onComplete { deleteAttributeMsg ->
@@ -683,107 +670,72 @@ class ProductWebsiteEavJdbcVerticleTest {
   }
 
   private fun setAllJsonFields() {
-    productJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "name" to "test name",
-        "short_name" to "test short name",
-        "description" to "test description",
-        "short_description" to "test short description"
-      )
-    }
+    bool = EavWebsiteBool(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = "test attribute key",
+      value = true
+    )
 
-    websiteJson = json {
-      obj(
-        "website_id" to websiteId,
-        "website_name" to "test website name"
-      )
-    }
+    float = EavWebsiteFloat(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = "test attribute key",
+      value = 10.0f
+    )
 
-    boolJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to "test attribute key",
-        "value" to "1"
-      )
-    }
+    string = EavWebsiteString(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = "test attribute key",
+      value = "test string"
+    )
 
-    expectedBoolJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to "test attribute key",
-        "value" to true
-      )
-    }
+    int = EavWebsiteInt(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = "test attribute key",
+      value = 10
+    )
 
-    floatJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to "test attribute key",
-        "value" to 1.0
-      )
-    }
+    money = EavWebsiteMoney(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = "test attribute key",
+      value = 10.0
+    )
 
-    stringJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to "test attribute key",
-        "value" to "test value"
-      )
-    }
+    multiSelect = EavWebsiteMultiSelect(
+      productId = productId,
+      websiteId = websiteId,
+      attributeKey = "test attribute key",
+      value = 1
+    )
 
-    intJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to "test attribute key",
-        "value" to 1
-      )
-    }
+    eav = Eav(
+      productId = productId,
+      attributeKey = "test attribute key",
+    )
 
-    moneyJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to "test attribute key",
-        "value" to 10.0
-      )
-    }
+    expectedFullEav = EavWebsiteInfo(
+      products = product,
+      attributeKey = eav.attributeKey,
+      eavWebsiteBool = bool.value,
+      eavWebsiteFloat = float.value,
+      eavWebsiteInt = int.value,
+      eavWebsiteMoney = money.value,
+      eavWebsiteMultiSelect = multiSelect.value,
+      eavWebsiteString = string.value,
+    )
 
-    multiSelectJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to "test attribute key",
-        "value" to 1
-      )
-    }
-
-    eavJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-      )
-    }
-
-    expectedFullEavJson = json {
-      obj(
-        "product_id" to productId,
-        "website_id" to websiteId,
-        "attribute_key" to "test attribute key",
-        "websiteBool" to true,
-        "websiteFloat" to 1.0,
-        "websiteString" to "test value",
-        "websiteInt" to 1,
-        "websiteMoney" to 10.0,
-        "websiteMultiSelect" to 1
-      )
-    }
+    ewBoolList.add(bool)
+    ewFloatList.add(float)
+    ewIntList.add(int)
+    ewMoneyList.add(money)
+    ewMultiSelectList.add(multiSelect)
+    ewStringList.add(string)
+    ewInfoList.add(expectedFullEav)
+    eavList.add(eav)
   }
 
   private fun deployVerticles(vertx: Vertx): MutableList<Future<Void>> {

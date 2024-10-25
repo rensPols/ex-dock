@@ -813,7 +813,7 @@ class ProductStoreViewEavJdbcVerticle: AbstractVerticle() {
     val allEavStoreViewInfoConsumer = eventBus.consumer<String>("process.eavStoreView.getAllEavStoreViewInfo")
     allEavStoreViewInfoConsumer.handler { message ->
       val query = "SELECT products.product_id, products.name, products.short_name, " +
-        "products.description, products.short_name, egb.value AS bool_value, " +
+        "products.description, products.short_name, products.short_description, egb.value AS bool_value, " +
         "egf.value AS float_value, egs.value AS string_value, " +
         "egi.value AS int_value, egm.value AS money_value, " +
         "egms.value AS multi_select_value, cpa.attribute_key, sv.store_view_id AS store_view_id FROM products " +
@@ -852,7 +852,7 @@ class ProductStoreViewEavJdbcVerticle: AbstractVerticle() {
     getEavStoreViewInfoByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT products.product_id, products.name, products.short_name, " +
-        "products.description, products.short_name, egb.value AS bool_value, " +
+        "products.description, products.short_name, products.short_description, egb.value AS bool_value, " +
         "egf.value AS float_value, egs.value AS string_value, " +
         "egi.value AS int_value, egm.value AS money_value, " +
         "egms.value AS multi_select_value, cpa.attribute_key, sv.store_view_id AS store_view_id FROM products " +
@@ -866,6 +866,7 @@ class ProductStoreViewEavJdbcVerticle: AbstractVerticle() {
         "LEFT JOIN public.custom_product_attributes cpa on cpa.attribute_key = e.attribute_key " +
         "LEFT JOIN public.store_view sv on egb.store_view_id = sv.store_view_id " +
         "WHERE products.product_id =?"
+      val eavStoreViewInfoList: MutableList<EavStoreViewInfo> = emptyList<EavStoreViewInfo>().toMutableList()
 
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body))
       rowsFuture.onFailure { res ->
@@ -876,10 +877,12 @@ class ProductStoreViewEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          message.reply(makeEavStoreViewInfo(rows.first()), eavStoreViewInfoDeliveryOptions)
-        } else {
-          message.reply("No storeView info found for product ID: $body")
+          rows.forEach { row ->
+            eavStoreViewInfoList.add(makeEavStoreViewInfo(row))
+          }
         }
+
+        message.reply(eavStoreViewInfoList, listDeliveryOptions)
       }
     }
   }
@@ -947,20 +950,27 @@ class ProductStoreViewEavJdbcVerticle: AbstractVerticle() {
 
   private fun makeEavStoreViewInfo(row: Row): EavStoreViewInfo {
     return EavStoreViewInfo(
-      makeEavStoreView(row),
-      makeEavStoreViewBool(row),
-      makeEavStoreViewFloat(row),
-      makeEavStoreViewInt(row),
-      makeEavStoreViewString(row),
-      makeEavStoreViewMultiSelect(row),
-      makeEavStoreViewMoney(row),
+      Products(
+        row.getInteger("product_id"),
+        row.getString("name"),
+        row.getString("short_name"),
+        row.getString("description"),
+        row.getString("short_description"),
+      ),
+      row.getString("attribute_key"),
+      row.getBoolean("bool_value"),
+      row.getFloat("float_value"),
+      row.getInteger("int_value"),
+      row.getString("string_value"),
+      row.getInteger("multi_select_value"),
+      row.getDouble("money_value"),
     )
   }
 
   private fun makeEavStoreViewBoolTuple(body: EavStoreViewBool, isPutRequest: Boolean): Tuple {
     val eavStoreViewBoolTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.value,
+        body.value.toInt(),
         body.productId,
         body.storeViewId,
         body.attributeKey,
@@ -970,7 +980,7 @@ class ProductStoreViewEavJdbcVerticle: AbstractVerticle() {
         body.productId,
         body.storeViewId,
         body.attributeKey,
-        body.value,
+        body.value.toInt(),
       )
     }
 
@@ -1094,4 +1104,6 @@ class ProductStoreViewEavJdbcVerticle: AbstractVerticle() {
 
     return eavStoreViewTuple
   }
+
+  private fun Boolean.toInt() = if (this) 1 else 0
 }

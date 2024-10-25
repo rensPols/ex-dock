@@ -219,7 +219,7 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          message.reply(makeEavWebsiteFloat(rows.first()))
+          message.reply(makeEavWebsiteFloat(rows.first()), eavWebsiteFloatDeliveryOptions)
         } else {
           message.reply("No website float found")
         }
@@ -324,7 +324,7 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          message.reply(makeEavWebsiteString(rows.first()))
+          message.reply(makeEavWebsiteString(rows.first()), eavWebsiteStringDeliveryOptions)
         } else {
           message.reply("No website string found")
         }
@@ -519,7 +519,7 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
   }
 
   private fun getEavWebsiteMoneyByKey() {
-    val getEavWebsiteMoneyByKeyConsumer = eventBus.consumer<EavWebsiteInt>("process.eavWebsite.getEavWebsiteMoneyByKey")
+    val getEavWebsiteMoneyByKeyConsumer = eventBus.consumer<EavWebsiteMoney>("process.eavWebsite.getEavWebsiteMoneyByKey")
     getEavWebsiteMoneyByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT * FROM eav_website_money WHERE product_id =? AND website_id =? AND attribute_key =?"
@@ -534,7 +534,7 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          message.reply(makeEavWebsiteInt(rows.first()))
+          message.reply(makeEavWebsiteMoney(rows.first()), eavWebsiteMoneyDeliveryOptions)
         } else {
           message.reply("No Eav Website Money found")
         }
@@ -812,7 +812,7 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
     val allEavWebsiteInfoConsumer = eventBus.consumer<String>("process.eavWebsite.getAllEavWebsiteInfo")
     allEavWebsiteInfoConsumer.handler { message ->
       val query = "SELECT products.product_id, products.name, products.short_name, " +
-      "products.description, products.short_name, egb.value AS bool_value, " +
+      "products.description, products.short_name, products.short_description, egb.value AS bool_value, " +
         "egf.value AS float_value, egs.value AS string_value, " +
         "egi.value AS int_value, egm.value AS money_value, " +
         "egms.value AS multi_select_value, cpa.attribute_key, w.website_id AS website_id FROM products " +
@@ -851,7 +851,7 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
     getEavWebsiteInfoByKeyConsumer.handler { message ->
       val body = message.body()
       val query = "SELECT products.product_id, products.name, products.short_name, " +
-        "products.description, products.short_name, egb.value AS bool_value, " +
+        "products.description, products.short_name, products.short_description, egb.value AS bool_value, " +
         "egf.value AS float_value, egs.value AS string_value, " +
         "egi.value AS int_value, egm.value AS money_value, " +
         "egms.value AS multi_select_value, cpa.attribute_key, w.website_id AS website_id FROM products " +
@@ -867,6 +867,7 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
         "WHERE products.product_id =?"
 
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(body))
+      val eavWebsiteInfoList: MutableList<EavWebsiteInfo> = emptyList<EavWebsiteInfo>().toMutableList()
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
         message.reply(failedMessage)
@@ -875,10 +876,12 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
       rowsFuture.onComplete { res ->
         val rows = res.result()
         if (rows.size() > 0) {
-          message.reply(makeEavWebsiteInfo(rows.first()), eavWebsiteInfoDeliveryOptions)
-        } else {
-          message.reply("No website info found for product ID: $body")
+          rows.forEach { row ->
+            eavWebsiteInfoList.add(makeEavWebsiteInfo(row))
+          }
         }
+
+        message.reply(eavWebsiteInfoList, listDeliveryOptions)
       }
     }
   }
@@ -946,20 +949,27 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
 
   private fun makeEavWebsiteInfo(row: Row): EavWebsiteInfo {
     return EavWebsiteInfo(
-      makeEavWebsite(row),
-      makeEavWebsiteBool(row),
-      makeEavWebsiteFloat(row),
-      makeEavWebsiteString(row),
-      makeEavWebsiteInt(row),
-      makeEavWebsiteMoney(row),
-      makeEavWebsiteMultiSelect(row),
+      Products(
+        row.getInteger("product_id"),
+        row.getString("name"),
+        row.getString("short_name"),
+        row.getString("description"),
+        row.getString("short_description")
+      ),
+      row.getString("attribute_key"),
+      row.getBoolean("bool_value"),
+      row.getFloat("float_value"),
+      row.getString("string_value"),
+      row.getInteger("int_value"),
+      row.getDouble("money_value"),
+      row.getInteger("multi_select_value"),
     )
   }
 
   private fun makeEavWebsiteBoolTuple(body: EavWebsiteBool, isPutRequest: Boolean): Tuple {
     val eavWebsiteBoolTuple: Tuple = if (isPutRequest) {
       Tuple.of(
-        body.value,
+        body.value.toInt(),
         body.productId,
         body.websiteId,
         body.attributeKey,
@@ -969,7 +979,7 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
         body.productId,
         body.websiteId,
         body.attributeKey,
-        body.value,
+        body.value.toInt(),
       )
     }
 
@@ -1093,4 +1103,6 @@ class ProductWebsiteEavJdbcVerticle: AbstractVerticle() {
 
     return eavWebsiteTuple
   }
+
+  private fun Boolean.toInt() = if (this) 1 else 0
 }

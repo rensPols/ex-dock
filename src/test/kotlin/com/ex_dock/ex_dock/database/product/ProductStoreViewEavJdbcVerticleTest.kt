@@ -1,10 +1,14 @@
 package com.ex_dock.ex_dock.database.product
 
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.database.scope.ScopeJdbcVerticle
+import com.ex_dock.ex_dock.database.scope.StoreView
+import com.ex_dock.ex_dock.database.scope.Websites
 import com.ex_dock.ex_dock.helper.VerticleDeployHelper
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Future
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -29,148 +33,168 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   private var websiteId = -1
 
-  private var productJson = json {
-    obj(
-      "product_id" to productId,
-      "name" to "test name",
-      "short_name" to "test short name",
-      "description" to "test description",
-      "short_description" to "test short description"
-    )
-  }
+  private val storeViewBoolDeliveryOptions = DeliveryOptions().setCodecName("EavStoreViewBoolCodec")
+  private val storeViewFloatDeliveryOptions = DeliveryOptions().setCodecName("EavStoreViewFloatCodec")
+  private val storeViewIntDeliveryOptions = DeliveryOptions().setCodecName("EavStoreViewIntCodec")
+  private val storeViewMoneyDeliveryOptions = DeliveryOptions().setCodecName("EavStoreViewMoneyCodec")
+  private val storeViewStringDeliveryOptions = DeliveryOptions().setCodecName("EavStoreViewStringCodec")
+  private val storeViewMultiSelectDeliveryOptions = DeliveryOptions().setCodecName("EavStoreViewMultiSelectCodec")
+  private val productDeliveryOptions = DeliveryOptions().setCodecName("ProductsCodec")
+  private val customProductAttributeDeliveryOptions = DeliveryOptions().setCodecName("CustomProductAttributesCodec")
+  private val eavDeliveryOptions = DeliveryOptions().setCodecName("EavCodec")
+  private val websitesDeliveryOptions = DeliveryOptions().setCodecName("WebsitesCodec")
+  private val storeViewDeliveryOptions = DeliveryOptions().setCodecName("StoreViewCodec")
+  private val esvBoolList: MutableList<EavStoreViewBool> = emptyList<EavStoreViewBool>().toMutableList()
+  private val esvFloatList: MutableList<EavStoreViewFloat> = emptyList<EavStoreViewFloat>().toMutableList()
+  private val esvIntList: MutableList<EavStoreViewInt> = emptyList<EavStoreViewInt>().toMutableList()
+  private val esvMoneyList: MutableList<EavStoreViewMoney> = emptyList<EavStoreViewMoney>().toMutableList()
+  private val esvStringList: MutableList<EavStoreViewString> = emptyList<EavStoreViewString>().toMutableList()
+  private val esvMultiSelectList: MutableList<EavStoreViewMultiSelect> = emptyList<EavStoreViewMultiSelect>().toMutableList()
+  private val esvInfoList: MutableList<EavStoreViewInfo> = emptyList<EavStoreViewInfo>().toMutableList()
 
-  private var websiteJson = json {
-    obj(
-      "website_id" to websiteId,
-      "website_name" to "test website name"
-    )
-  }
+  private var product = Products(
+    productId = productId,
+    name = "Test Product",
+    shortName = "TProduct",
+    description = "Test Product Description",
+    shortDescription = "TPDescription"
+  )
 
-  private var storeViewJson = json {
-    obj(
-      "store_view_id" to storeViewId,
-      "website_id" to websiteId,
-      "store_view_name" to "test store view name"
-    )
-  }
+  private var customProductAttribute = CustomProductAttributes(
+    attributeKey = "test attribute key",
+    scope = 1,
+    name = "Test Attribute",
+    type = Type.INT,
+    multiselect = false,
+    required = true
+  )
 
-  private var customProductAttributeJson = json {
-    obj(
-      "attribute_key" to "test attribute key",
-      "scope" to 2,
-      "name" to "test name",
-      "type" to "int",
-      "multiselect" to "0",
-      "required" to "1"
-    )
-  }
+  private var website = Websites(
+    websiteId = websiteId,
+    websiteName = "Test Website",
+  )
 
-  private lateinit var boolJson: JsonObject
+  private var storeView = StoreView(
+    storeViewId = storeViewId,
+    websiteId = websiteId,
+    storeViewName = "Test Store View"
+  )
 
-  private lateinit var expectedBoolJson: JsonObject
 
-  private lateinit var floatJson: JsonObject
+  private lateinit var bool: EavStoreViewBool
 
-  private lateinit var stringJson: JsonObject
+  private lateinit var float: EavStoreViewFloat
 
-  private lateinit var intJson: JsonObject
+  private lateinit var string: EavStoreViewString
 
-  private lateinit var moneyJson: JsonObject
+  private lateinit var int: EavStoreViewInt
 
-  private lateinit var multiSelectJson: JsonObject
+  private lateinit var money: EavStoreViewMoney
 
-  private lateinit var eavJson: JsonObject
+  private lateinit var multiSelect: EavStoreViewMultiSelect
 
-  private lateinit var expectedFullEavJson: JsonObject
+  private lateinit var eav: Eav
+
+  private lateinit var expectedFullEav: EavStoreViewInfo
 
 
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
+      .registerCodec(GenericCodec(MutableList::class.java))
+      .registerCodec(GenericCodec(Products::class.java))
+      .registerCodec(GenericCodec(Websites::class.java))
+      .registerCodec(GenericCodec(StoreView::class.java))
+      .registerCodec(GenericCodec(CustomProductAttributes::class.java))
+      .registerCodec(GenericCodec(Eav::class.java))
+      .registerCodec(GenericCodec(EavStoreViewBool::class.java))
+      .registerCodec(GenericCodec(EavStoreViewFloat::class.java))
+      .registerCodec(GenericCodec(EavStoreViewString::class.java))
+      .registerCodec(GenericCodec(EavStoreViewInt::class.java))
+      .registerCodec(GenericCodec(EavStoreViewMoney::class.java))
+      .registerCodec(GenericCodec(EavStoreViewInfo::class.java))
+      .registerCodec(GenericCodec(EavStoreViewMultiSelect::class.java))
     Future.all(deployVerticles(vertx)).onFailure {
       testContext.failNow(it)
     }.onComplete {
-      eventBus.request<Int>("process.products.createProduct", productJson).onFailure {
+      eventBus.request<Products>("process.products.createProduct", product, productDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createProductMsg ->
-        productId = createProductMsg.result().body()
-        assertEquals("Int", createProductMsg.result().body()::class.simpleName)
+        product = createProductMsg.result().body()
+        productId = product.productId
+        assertEquals(product, createProductMsg.result().body())
 
-        eventBus.request<Int>("process.scope.createWebsite", websiteJson).onFailure {
+        eventBus.request<Websites>("process.scope.createWebsite", website, websitesDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createWebsiteMsg ->
-          websiteId = createWebsiteMsg.result().body()
-          assertEquals("Int", createWebsiteMsg.result().body()::class.simpleName)
+          website = createWebsiteMsg.result().body()
+          websiteId = website.websiteId!!
+          assertEquals(website, createWebsiteMsg.result().body())
 
-          storeViewJson = json {
-            obj(
-              "store_view_id" to storeViewId,
-              "website_id" to websiteId,
-              "store_view_name" to "test store view name"
-            )
-          }
+          storeView.websiteId = websiteId
 
-          eventBus.request<Int>("process.scope.createStoreView", storeViewJson).onFailure {
+          eventBus.request<StoreView>("process.scope.createStoreView", storeView, storeViewDeliveryOptions).onFailure {
             testContext.failNow(it)
           }.onComplete { createStoreViewMsg ->
-            storeViewId = createStoreViewMsg.result().body()
-            assertEquals("Int", createStoreViewMsg.result().body()::class.simpleName)
+            storeView = createStoreViewMsg.result().body()
+            storeViewId = storeView.storeViewId
+            assertEquals(storeView, createStoreViewMsg.result().body())
 
-            eventBus.request<String>("process.attributes.createCustomAttribute", customProductAttributeJson).onFailure {
+            eventBus.request<CustomProductAttributes>("process.attributes.createCustomAttribute", customProductAttribute, customProductAttributeDeliveryOptions).onFailure {
               testContext.failNow(it)
             }.onComplete { createAttributeMsg ->
               assert(createAttributeMsg.succeeded())
-              assertEquals("Custom attribute created successfully", createAttributeMsg.result().body())
+              assertEquals(customProductAttribute, createAttributeMsg.result().body())
               setAllJsonFields()
 
-              eventBus.request<String>("process.eavStoreView.createEavStoreViewBool", boolJson).onFailure {
+              eventBus.request<EavStoreViewBool>("process.eavStoreView.createEavStoreViewBool", bool, storeViewBoolDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { createEavStoreViewBoolMsg ->
                 assert(createEavStoreViewBoolMsg.succeeded())
-                assertEquals("EAV storeView bool created successfully", createEavStoreViewBoolMsg.result().body())
+                assertEquals(bool, createEavStoreViewBoolMsg.result().body())
 
-                eventBus.request<String>("process.eavStoreView.createEavStoreViewFloat", floatJson).onFailure {
+                eventBus.request<EavStoreViewFloat>("process.eavStoreView.createEavStoreViewFloat", float, storeViewFloatDeliveryOptions).onFailure {
                   testContext.failNow(it)
                 }.onComplete { createEavStoreViewFloatMsg ->
                   assert(createEavStoreViewFloatMsg.succeeded())
-                  assertEquals("EAV storeView float created successfully", createEavStoreViewFloatMsg.result().body())
+                  assertEquals(float, createEavStoreViewFloatMsg.result().body())
 
-                  eventBus.request<String>("process.eavStoreView.createEavStoreViewString", stringJson).onFailure {
+                  eventBus.request<EavStoreViewString>("process.eavStoreView.createEavStoreViewString", string, storeViewStringDeliveryOptions).onFailure {
                     testContext.failNow(it)
                   }.onComplete { createEavStoreViewStringMsg ->
                     assert(createEavStoreViewStringMsg.succeeded())
-                    assertEquals("EAV storeView string created successfully", createEavStoreViewStringMsg.result().body())
+                    assertEquals(string, createEavStoreViewStringMsg.result().body())
 
-                    eventBus.request<String>("process.eavStoreView.createEavStoreViewInt", intJson).onFailure {
+                    eventBus.request<EavStoreViewInt>("process.eavStoreView.createEavStoreViewInt", int, storeViewIntDeliveryOptions).onFailure {
                       testContext.failNow(it)
                     }.onComplete { createEavStoreViewIntMsg ->
                       assert(createEavStoreViewIntMsg.succeeded())
-                      assertEquals("EAV storeView int created successfully", createEavStoreViewIntMsg.result().body())
+                      assertEquals(int, createEavStoreViewIntMsg.result().body())
 
-                      eventBus.request<String>("process.eavStoreView.createEavStoreViewMoney", moneyJson).onFailure {
+                      eventBus.request<EavStoreViewMoney>("process.eavStoreView.createEavStoreViewMoney", money, storeViewMoneyDeliveryOptions).onFailure {
                         testContext.failNow(it)
                       }.onComplete { createEavStoreViewMoneyMsg ->
                         assert(createEavStoreViewMoneyMsg.succeeded())
                         assertEquals(
-                          "EAV storeView money created successfully",
+                          money,
                           createEavStoreViewMoneyMsg.result().body()
                         )
 
-                        eventBus.request<String>("process.eavStoreView.createEavStoreViewMultiSelect", multiSelectJson)
+                        eventBus.request<EavStoreViewMultiSelect>("process.eavStoreView.createEavStoreViewMultiSelect", multiSelect, storeViewMultiSelectDeliveryOptions)
                           .onFailure {
                             testContext.failNow(it)
-                          }.onComplete { createEavStoreViewMultiSelectMsg ->
-                            assert(createEavStoreViewMultiSelectMsg.succeeded())
+                          }.onComplete { createEavStoreViewEavStoreViewMsg ->
+                            assert(createEavStoreViewEavStoreViewMsg.succeeded())
                             assertEquals(
-                              "EAV storeView multi-select created successfully",
-                              createEavStoreViewMultiSelectMsg.result().body()
+                              multiSelect,
+                              createEavStoreViewEavStoreViewMsg.result().body()
                             )
 
-                            eventBus.request<String>("process.eavStoreView.createEavStoreView", eavJson).onFailure {
+                            eventBus.request<Eav>("process.eavStoreView.createEavStoreView", eav, eavDeliveryOptions).onFailure {
                               testContext.failNow(it)
                             }.onComplete { createEavStoreViewMsg ->
                               assert(createEavStoreViewMsg.succeeded())
-                              assertEquals("EAV storeView created successfully", createEavStoreViewMsg.result().body())
+                              assertEquals(eav, createEavStoreViewMsg.result().body())
 
                               testContext.completeNow()
                             }
@@ -189,14 +213,12 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavStoreViewBool(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getAllEavStoreViewBool", "").onFailure {
+    eventBus.request<MutableList<EavStoreViewBool>>("process.eavStoreView.getAllEavStoreViewBool", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavStoreViewBoolMsg ->
       assert(getAllEavStoreViewBoolMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavStoreViewBool" to listOf(expectedBoolJson))
-        },
+        esvBoolList,
         getAllEavStoreViewBoolMsg.result().body()
       )
 
@@ -206,11 +228,11 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetEavStoreViewBoolByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewBoolByKey", boolJson).onFailure {
+    eventBus.request<EavStoreViewBool>("process.eavStoreView.getEavStoreViewBoolByKey", bool, storeViewBoolDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavStoreViewByKeyMsg ->
       assert(getEavStoreViewByKeyMsg.succeeded())
-      assertEquals(expectedBoolJson, getEavStoreViewByKeyMsg.result().body())
+      assertEquals(bool, getEavStoreViewByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -218,35 +240,24 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavStoreViewBool(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedBoolJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to boolJson.getString("attribute_key"),
-        "value" to "0"
-      )
-    }
+    val updatedBool = EavStoreViewBool(
+      productId = productId,
+      attributeKey = bool.attributeKey,
+      storeViewId = storeViewId,
+      value = false
+    )
 
-    val expectedUpdatedBoolJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to boolJson.getString("attribute_key"),
-        "value" to false
-      )
-    }
-
-    eventBus.request<String>("process.eavStoreView.updateEavStoreViewBool", updatedBoolJson).onFailure {
+    eventBus.request<EavStoreViewBool>("process.eavStoreView.updateEavStoreViewBool", updatedBool, storeViewBoolDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavStoreViewByKeyMsg ->
       assert(updateEavStoreViewByKeyMsg.succeeded())
-      assertEquals("EAV storeView bool updated successfully", updateEavStoreViewByKeyMsg.result().body())
+      assertEquals(updatedBool, updateEavStoreViewByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewBoolByKey", updatedBoolJson).onFailure {
+      eventBus.request<EavStoreViewBool>("process.eavStoreView.getEavStoreViewBoolByKey", updatedBool, storeViewBoolDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavStoreViewBoolMsg ->
         assert(getUpdatedEavStoreViewBoolMsg.succeeded())
-        assertEquals(expectedUpdatedBoolJson, getUpdatedEavStoreViewBoolMsg.result().body())
+        assertEquals(updatedBool, getUpdatedEavStoreViewBoolMsg.result().body())
 
         testContext.completeNow()
       }
@@ -255,15 +266,12 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavStoreViewFloat(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getAllEavStoreViewFloat", "").onFailure {
+    eventBus.request<MutableList<EavStoreViewFloat>>("process.eavStoreView.getAllEavStoreViewFloat", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavStoreViewFloatMsg ->
       assert(getAllEavStoreViewFloatMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavStoreViewFloat" to listOf(floatJson))
-        },
-        getAllEavStoreViewFloatMsg.result().body()
+        esvFloatList, getAllEavStoreViewFloatMsg.result().body()
       )
 
       testContext.completeNow()
@@ -272,11 +280,11 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetEavStoreViewFloatByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewFloatByKey", floatJson).onFailure {
+    eventBus.request<EavStoreViewFloat>("process.eavStoreView.getEavStoreViewFloatByKey", float, storeViewFloatDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavStoreViewByKeyMsg ->
       assert(getEavStoreViewByKeyMsg.succeeded())
-      assertEquals(floatJson, getEavStoreViewByKeyMsg.result().body())
+      assertEquals(float, getEavStoreViewByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -284,26 +292,24 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavStoreViewFloat(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedFloatJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to floatJson.getString("attribute_key"),
-        "value" to 10.5
-      )
-    }
+    val updatedFloat = EavStoreViewFloat(
+      productId = productId,
+      attributeKey = float.attributeKey,
+      storeViewId = storeViewId,
+      value = 10.5F
+    )
 
-    eventBus.request<String>("process.eavStoreView.updateEavStoreViewFloat", updatedFloatJson).onFailure {
+    eventBus.request<EavStoreViewFloat>("process.eavStoreView.updateEavStoreViewFloat", updatedFloat, storeViewFloatDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavStoreViewByKeyMsg ->
       assert(updateEavStoreViewByKeyMsg.succeeded())
-      assertEquals("EAV storeView float updated successfully", updateEavStoreViewByKeyMsg.result().body())
+      assertEquals(updatedFloat, updateEavStoreViewByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewFloatByKey", updatedFloatJson).onFailure {
+      eventBus.request<EavStoreViewFloat>("process.eavStoreView.getEavStoreViewFloatByKey", updatedFloat, storeViewFloatDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavStoreViewFloatMsg ->
         assert(getUpdatedEavStoreViewFloatMsg.succeeded())
-        assertEquals(updatedFloatJson, getUpdatedEavStoreViewFloatMsg.result().body())
+        assertEquals(updatedFloat, getUpdatedEavStoreViewFloatMsg.result().body())
 
         testContext.completeNow()
       }
@@ -312,14 +318,12 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavStoreViewString(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getAllEavStoreViewString", "").onFailure {
+    eventBus.request<MutableList<EavStoreViewString>>("process.eavStoreView.getAllEavStoreViewString", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavStoreViewStringMsg ->
       assert(getAllEavStoreViewStringMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavStoreViewString" to listOf(stringJson))
-        },
+        esvStringList,
         getAllEavStoreViewStringMsg.result().body()
       )
 
@@ -329,11 +333,11 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetEavStoreViewStringByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewStringByKey", stringJson).onFailure {
+    eventBus.request<EavStoreViewString>("process.eavStoreView.getEavStoreViewStringByKey", string, storeViewStringDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavStoreViewByKeyMsg ->
       assert(getEavStoreViewByKeyMsg.succeeded())
-      assertEquals(stringJson, getEavStoreViewByKeyMsg.result().body())
+      assertEquals(string, getEavStoreViewByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -341,26 +345,24 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavStoreViewString(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedStringJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to stringJson.getString("attribute_key"),
-        "value" to "New Value"
-      )
-    }
+    val updatedString = EavStoreViewString(
+      productId = productId,
+      attributeKey = string.attributeKey,
+      storeViewId = storeViewId,
+      value = "New EAV store view string"
+    )
 
-    eventBus.request<String>("process.eavStoreView.updateEavStoreViewString", updatedStringJson).onFailure {
+    eventBus.request<EavStoreViewString>("process.eavStoreView.updateEavStoreViewString", updatedString, storeViewStringDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavStoreViewByKeyMsg ->
       assert(updateEavStoreViewByKeyMsg.succeeded())
-      assertEquals("EAV storeView string updated successfully", updateEavStoreViewByKeyMsg.result().body())
+      assertEquals(updatedString, updateEavStoreViewByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewStringByKey", updatedStringJson).onFailure {
+      eventBus.request<EavStoreViewString>("process.eavStoreView.getEavStoreViewStringByKey", updatedString, storeViewStringDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavStoreViewStringMsg ->
         assert(getUpdatedEavStoreViewStringMsg.succeeded())
-        assertEquals(updatedStringJson, getUpdatedEavStoreViewStringMsg.result().body())
+        assertEquals(updatedString, getUpdatedEavStoreViewStringMsg.result().body())
 
         testContext.completeNow()
       }
@@ -369,14 +371,12 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavStoreViewInt(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getAllEavStoreViewInt", "").onFailure {
+    eventBus.request<MutableList<EavStoreViewInt>>("process.eavStoreView.getAllEavStoreViewInt", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavStoreViewIntMsg ->
       assert(getAllEavStoreViewIntMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavStoreViewInt" to listOf(intJson))
-        },
+        esvIntList,
         getAllEavStoreViewIntMsg.result().body()
       )
 
@@ -386,11 +386,11 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetEavStoreViewIntByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewIntByKey", intJson).onFailure {
+    eventBus.request<EavStoreViewInt>("process.eavStoreView.getEavStoreViewIntByKey", int, storeViewIntDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavStoreViewByKeyMsg ->
       assert(getEavStoreViewByKeyMsg.succeeded())
-      assertEquals(intJson, getEavStoreViewByKeyMsg.result().body())
+      assertEquals(int, getEavStoreViewByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -398,26 +398,24 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavStoreViewInt(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedIntJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to intJson.getString("attribute_key"),
-        "value" to 20
-      )
-    }
+    val updatedInt = EavStoreViewInt(
+      productId = productId,
+      attributeKey = int.attributeKey,
+      storeViewId = storeViewId,
+      value = 1000
+    )
 
-    eventBus.request<String>("process.eavStoreView.updateEavStoreViewInt", updatedIntJson).onFailure {
+    eventBus.request<EavStoreViewInt>("process.eavStoreView.updateEavStoreViewInt", updatedInt, storeViewIntDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavStoreViewByKeyMsg ->
       assert(updateEavStoreViewByKeyMsg.succeeded())
-      assertEquals("EAV storeView int updated successfully", updateEavStoreViewByKeyMsg.result().body())
+      assertEquals(updatedInt, updateEavStoreViewByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewIntByKey", updatedIntJson).onFailure {
+      eventBus.request<EavStoreViewInt>("process.eavStoreView.getEavStoreViewIntByKey", updatedInt, storeViewIntDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavStoreViewIntMsg ->
         assert(getUpdatedEavStoreViewIntMsg.succeeded())
-        assertEquals(updatedIntJson, getUpdatedEavStoreViewIntMsg.result().body())
+        assertEquals(updatedInt, getUpdatedEavStoreViewIntMsg.result().body())
 
         testContext.completeNow()
       }
@@ -426,14 +424,12 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavStoreViewMoney(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getAllEavStoreViewMoney", "").onFailure {
+    eventBus.request<MutableList<EavStoreViewMoney>>("process.eavStoreView.getAllEavStoreViewMoney", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavStoreViewMoneyMsg ->
       assert(getAllEavStoreViewMoneyMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavStoreViewMoney" to listOf(moneyJson))
-        },
+        esvMoneyList,
         getAllEavStoreViewMoneyMsg.result().body()
       )
 
@@ -443,11 +439,11 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetEavStoreViewMoneyByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewMoneyByKey", moneyJson).onFailure {
+    eventBus.request<EavStoreViewMoney>("process.eavStoreView.getEavStoreViewMoneyByKey", money, storeViewMoneyDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavStoreViewByKeyMsg ->
       assert(getEavStoreViewByKeyMsg.succeeded())
-      assertEquals(moneyJson, getEavStoreViewByKeyMsg.result().body())
+      assertEquals(money, getEavStoreViewByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -455,26 +451,24 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavStoreViewMoney(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMoneyJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to moneyJson.getString("attribute_key"),
-        "value" to 100.50
-      )
-    }
+    val updatedMoney = EavStoreViewMoney(
+      productId = productId,
+      attributeKey = money.attributeKey,
+      storeViewId = storeViewId,
+      value = 100.50
+    )
 
-    eventBus.request<String>("process.eavStoreView.updateEavStoreViewMoney", updatedMoneyJson).onFailure {
+    eventBus.request<EavStoreViewMoney>("process.eavStoreView.updateEavStoreViewMoney", updatedMoney, storeViewMoneyDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavStoreViewByKeyMsg ->
       assert(updateEavStoreViewByKeyMsg.succeeded())
-      assertEquals("EAV storeView money updated successfully", updateEavStoreViewByKeyMsg.result().body())
+      assertEquals(updatedMoney, updateEavStoreViewByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewMoneyByKey", updatedMoneyJson).onFailure {
+      eventBus.request<EavStoreViewMoney>("process.eavStoreView.getEavStoreViewMoneyByKey", updatedMoney, storeViewMoneyDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavStoreViewMoneyMsg ->
         assert(getUpdatedEavStoreViewMoneyMsg.succeeded())
-        assertEquals(updatedMoneyJson, getUpdatedEavStoreViewMoneyMsg.result().body())
+        assertEquals(updatedMoney, getUpdatedEavStoreViewMoneyMsg.result().body())
 
         testContext.completeNow()
       }
@@ -483,15 +477,13 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavStoreViewMultiSelect(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getAllEavStoreViewMultiSelect", "").onFailure {
+    eventBus.request<MutableList<EavStoreViewMultiSelect>>("process.eavStoreView.getAllEavStoreViewMultiSelect", "").onFailure {
       testContext.failNow(it)
-    }.onComplete { getAllEavStoreViewMultiSelectMsg ->
-      assert(getAllEavStoreViewMultiSelectMsg.succeeded())
+    }.onComplete { getAllEavStoreViewEavStoreViewMsg ->
+      assert(getAllEavStoreViewEavStoreViewMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavStoreViewMultiSelect" to listOf(multiSelectJson))
-        },
-        getAllEavStoreViewMultiSelectMsg.result().body()
+        esvMultiSelectList,
+        getAllEavStoreViewEavStoreViewMsg.result().body()
       )
 
       testContext.completeNow()
@@ -500,11 +492,11 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetEavStoreViewMultiSelectByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewMultiSelectByKey", multiSelectJson).onFailure {
+    eventBus.request<EavStoreViewMultiSelect>("process.eavStoreView.getEavStoreViewMultiSelectByKey", multiSelect, storeViewMultiSelectDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavStoreViewByKeyMsg ->
       assert(getEavStoreViewByKeyMsg.succeeded())
-      assertEquals(multiSelectJson, getEavStoreViewByKeyMsg.result().body())
+      assertEquals(multiSelect, getEavStoreViewByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -512,27 +504,25 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavStoreViewMultiSelect(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedMultiSelectJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to multiSelectJson.getString("attribute_key"),
-        "value" to 0
-      )
-    }
+    val updatedMultiSelect = EavStoreViewMultiSelect(
+      productId = productId,
+      attributeKey = multiSelect.attributeKey,
+      storeViewId = storeViewId,
+      value = 1
+    )
 
-    eventBus.request<String>("process.eavStoreView.updateEavStoreViewMultiSelect", updatedMultiSelectJson).onFailure {
+    eventBus.request<EavGlobalMultiSelect>("process.eavStoreView.updateEavStoreViewMultiSelect", updatedMultiSelect, storeViewMultiSelectDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavStoreViewByKeyMsg ->
       assert(updateEavStoreViewByKeyMsg.succeeded())
-      assertEquals("EAV storeView multi-select updated successfully", updateEavStoreViewByKeyMsg.result().body())
+      assertEquals(updatedMultiSelect, updateEavStoreViewByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewMultiSelectByKey", updatedMultiSelectJson)
+      eventBus.request<EavGlobalMultiSelect>("process.eavStoreView.getEavStoreViewMultiSelectByKey", updatedMultiSelect, storeViewMultiSelectDeliveryOptions)
         .onFailure {
           testContext.failNow(it)
-        }.onComplete { getUpdatedEavStoreViewMultiSelectMsg ->
-        assert(getUpdatedEavStoreViewMultiSelectMsg.succeeded())
-        assertEquals(updatedMultiSelectJson, getUpdatedEavStoreViewMultiSelectMsg.result().body())
+        }.onComplete { getUpdatedEavStoreViewEavStoreViewMsg ->
+        assert(getUpdatedEavStoreViewEavStoreViewMsg.succeeded())
+        assertEquals(updatedMultiSelect, getUpdatedEavStoreViewEavStoreViewMsg.result().body())
 
         testContext.completeNow()
       }
@@ -541,14 +531,12 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavStoreView(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getAllEavStoreView", "").onFailure {
+    eventBus.request<MutableList<Eav>>("process.eavStoreView.getAllEavStoreView", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavStoreViewMsg ->
       assert(getAllEavStoreViewMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavStoreView" to listOf(eavJson))
-        },
+        mutableListOf(eav),
         getAllEavStoreViewMsg.result().body()
       )
 
@@ -558,11 +546,11 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetEavStoreViewByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewByKey", eavJson).onFailure {
+    eventBus.request<Eav>("process.eavStoreView.getEavStoreViewByKey", eav, eavDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavStoreViewByKeyMsg ->
       assert(getEavStoreViewByKeyMsg.succeeded())
-      assertEquals(eavJson, getEavStoreViewByKeyMsg.result().body())
+      assertEquals(eav, getEavStoreViewByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -570,24 +558,22 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testUpdateEavStoreView(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedEavJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to eavJson.getString("attribute_key"),
-      )
-    }
+    val updatedEav = Eav(
+      productId = productId,
+      attributeKey = eav.attributeKey,
+    )
 
-    eventBus.request<String>("process.eavStoreView.updateEavStoreView", updatedEavJson).onFailure {
+    eventBus.request<Eav>("process.eavStoreView.updateEavStoreView", updatedEav, eavDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateEavStoreViewByKeyMsg ->
       assert(updateEavStoreViewByKeyMsg.succeeded())
-      assertEquals("EAV storeView updated successfully", updateEavStoreViewByKeyMsg.result().body())
+      assertEquals(updatedEav, updateEavStoreViewByKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewByKey", updatedEavJson).onFailure {
+      eventBus.request<Eav>("process.eavStoreView.getEavStoreViewByKey", updatedEav, eavDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedEavStoreViewMsg ->
         assert(getUpdatedEavStoreViewMsg.succeeded())
-        assertEquals(updatedEavJson, getUpdatedEavStoreViewMsg.result().body())
+        assertEquals(updatedEav, getUpdatedEavStoreViewMsg.result().body())
 
         testContext.completeNow()
       }
@@ -596,14 +582,12 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetAllEavStoreViewInfo(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getAllEavStoreViewInfo", "").onFailure {
+    eventBus.request<MutableList<EavStoreViewInfo>>("process.eavStoreView.getAllEavStoreViewInfo", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllEavStoreViewInfoMsg ->
       assert(getAllEavStoreViewInfoMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavStoreViewInfo" to listOf(expectedFullEavJson))
-        }, getAllEavStoreViewInfoMsg.result().body()
+        esvInfoList, getAllEavStoreViewInfoMsg.result().body()
       )
 
       testContext.completeNow()
@@ -612,14 +596,12 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @Test
   fun testGetEavStoreViewInfoByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.eavStoreView.getEavStoreViewInfoByKey", productId).onFailure {
+    eventBus.request<MutableList<EavStoreViewInfo>>("process.eavStoreView.getEavStoreViewInfoByKey", productId).onFailure {
       testContext.failNow(it)
     }.onComplete { getEavStoreViewInfoByKeyMsg ->
       assert(getEavStoreViewInfoByKeyMsg.succeeded())
       assertEquals(
-        json {
-          obj("eavStoreViewInfo" to listOf(expectedFullEavJson))
-        }, getEavStoreViewInfoByKeyMsg.result().body()
+        esvInfoList, getEavStoreViewInfoByKeyMsg.result().body()
       )
 
       testContext.completeNow()
@@ -628,46 +610,46 @@ class ProductStoreViewEavJdbcVerticleTest {
 
   @AfterEach
   fun tearDown(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<String>("process.eavStoreView.deleteEavStoreView", eavJson).onFailure {
+    eventBus.request<String>("process.eavStoreView.deleteEavStoreView", eav, eavDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { deleteEavStoreViewMsg ->
       assert(deleteEavStoreViewMsg.succeeded())
       assertEquals("EAV storeView deleted successfully", deleteEavStoreViewMsg.result().body())
 
-      eventBus.request<String>("process.eavStoreView.deleteEavStoreViewMultiSelect", multiSelectJson).onFailure {
+      eventBus.request<String>("process.eavStoreView.deleteEavStoreViewMultiSelect", multiSelect, storeViewMultiSelectDeliveryOptions).onFailure {
         testContext.failNow(it)
-      }.onComplete { deleteEavStoreViewMultiSelectMsg ->
-        assert(deleteEavStoreViewMultiSelectMsg.succeeded())
+      }.onComplete { deleteEavStoreViewEavStoreViewMsg ->
+        assert(deleteEavStoreViewEavStoreViewMsg.succeeded())
         assertEquals(
           "EAV storeView multi-select deleted successfully",
-          deleteEavStoreViewMultiSelectMsg.result().body()
+          deleteEavStoreViewEavStoreViewMsg.result().body()
         )
 
-        eventBus.request<String>("process.eavStoreView.deleteEavStoreViewMoney", moneyJson).onFailure {
+        eventBus.request<String>("process.eavStoreView.deleteEavStoreViewMoney", money, storeViewMoneyDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { deleteEavStoreViewMoneyMsg ->
           assert(deleteEavStoreViewMoneyMsg.succeeded())
           assertEquals("EAV storeView money deleted successfully", deleteEavStoreViewMoneyMsg.result().body())
 
-          eventBus.request<String>("process.eavStoreView.deleteEavStoreViewInt", intJson).onFailure {
+          eventBus.request<String>("process.eavStoreView.deleteEavStoreViewInt", int, storeViewIntDeliveryOptions).onFailure {
             testContext.failNow(it)
           }.onComplete { deleteEavStoreViewIntMsg ->
             assert(deleteEavStoreViewIntMsg.succeeded())
             assertEquals("EAV storeView int deleted successfully", deleteEavStoreViewIntMsg.result().body())
 
-            eventBus.request<String>("process.eavStoreView.deleteEavStoreViewString", stringJson).onFailure {
+            eventBus.request<String>("process.eavStoreView.deleteEavStoreViewString", string, storeViewStringDeliveryOptions).onFailure {
               testContext.failNow(it)
             }.onComplete { deleteEavStoreViewStringMsg ->
               assert(deleteEavStoreViewStringMsg.succeeded())
               assertEquals("EAV storeView string deleted successfully", deleteEavStoreViewStringMsg.result().body())
 
-              eventBus.request<String>("process.eavStoreView.deleteEavStoreViewFloat", floatJson).onFailure {
+              eventBus.request<String>("process.eavStoreView.deleteEavStoreViewFloat", float, storeViewFloatDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { deleteEavStoreViewFloatMsg ->
                 assert(deleteEavStoreViewFloatMsg.succeeded())
                 assertEquals("EAV storeView float deleted successfully", deleteEavStoreViewFloatMsg.result().body())
 
-                eventBus.request<String>("process.eavStoreView.deleteEavStoreViewBool", boolJson).onFailure {
+                eventBus.request<String>("process.eavStoreView.deleteEavStoreViewBool", bool, storeViewBoolDeliveryOptions).onFailure {
                   testContext.failNow(it)
                 }.onComplete { deleteEavStoreViewBoolMsg ->
                   assert(deleteEavStoreViewBoolMsg.succeeded())
@@ -675,7 +657,7 @@ class ProductStoreViewEavJdbcVerticleTest {
 
                       eventBus.request<String>(
                         "process.attributes.deleteCustomAttribute",
-                        customProductAttributeJson.getString("attribute_key")
+                        customProductAttribute.attributeKey
                       ).onFailure {
                         testContext.failNow(it)
                       }.onComplete { deleteAttributeMsg ->
@@ -715,115 +697,71 @@ class ProductStoreViewEavJdbcVerticleTest {
   }
 
   private fun setAllJsonFields() {
-    productJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "name" to "test name",
-        "short_name" to "test short name",
-        "description" to "test description",
-        "short_description" to "test short description"
-      )
-    }
+    bool = EavStoreViewBool(
+      productId = productId,
+      storeViewId = storeViewId,
+      attributeKey = "test attribute key",
+      value = true
+    )
 
-    websiteJson = json {
-      obj(
-        "website_id" to websiteId,
-        "website_name" to "test website name"
-      )
-    }
+    float = EavStoreViewFloat(
+      productId = productId,
+      storeViewId = storeViewId,
+      attributeKey = "test attribute key",
+      value = 10.0f
+    )
 
-    storeViewJson = json {
-      obj(
-        "store_view_id" to storeViewId,
-        "website_id" to websiteId,
-        "store_view_name" to "test store view name"
-      )
-    }
+    string = EavStoreViewString(
+      productId = productId,
+      storeViewId = storeViewId,
+      attributeKey = "test attribute key",
+      value = "test string"
+    )
 
-    boolJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to "test attribute key",
-        "value" to "1"
-      )
-    }
+    int = EavStoreViewInt(
+      productId = productId,
+      storeViewId = storeViewId,
+      attributeKey = "test attribute key",
+      value = 10
+    )
 
-    expectedBoolJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to "test attribute key",
-        "value" to true
-      )
-    }
+    money = EavStoreViewMoney(
+      productId = productId,
+      storeViewId = storeViewId,
+      attributeKey = "test attribute key",
+      value = 10.0
+    )
 
-    floatJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to "test attribute key",
-        "value" to 1.0
-      )
-    }
+    multiSelect = EavStoreViewMultiSelect(
+      productId = productId,
+      storeViewId = storeViewId,
+      attributeKey = "test attribute key",
+      value = 1
+    )
 
-    stringJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to "test attribute key",
-        "value" to "test value"
-      )
-    }
+    eav = Eav(
+      productId = productId,
+      attributeKey = "test attribute key",
+    )
 
-    intJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to "test attribute key",
-        "value" to 1
-      )
-    }
+    expectedFullEav = EavStoreViewInfo(
+      product = product,
+      attributeKey = "test attribute key",
+      eavStoreViewBool = bool.value,
+      eavStoreViewFloat = float.value,
+      eavStoreViewString = string.value,
+      eavStoreViewInt = int.value,
+      eavStoreViewMoney = money.value,
+      eavStoreViewMultiSelect = multiSelect.value,
+    )
 
-    moneyJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to "test attribute key",
-        "value" to 10.0
-      )
-    }
-
-    multiSelectJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to "test attribute key",
-        "value" to 1
-      )
-    }
-
-    eavJson = json {
-      obj(
-        "product_id" to productId,
-        "attribute_key" to "test attribute key",
-      )
-    }
-
-    expectedFullEavJson = json {
-      obj(
-        "product_id" to productId,
-        "store_view_id" to storeViewId,
-        "attribute_key" to "test attribute key",
-        "storeViewBool" to true,
-        "storeViewFloat" to 1.0,
-        "storeViewString" to "test value",
-        "storeViewInt" to 1,
-        "storeViewMoney" to 10.0,
-        "storeViewMultiSelect" to 1
-      )
-    }
+    esvBoolList.add(bool)
+    esvFloatList.add(float)
+    esvStringList.add(string)
+    esvIntList.add(int)
+    esvMoneyList.add(money)
+    esvMultiSelectList.add(multiSelect)
+    esvInfoList.add(expectedFullEav)
   }
 
   private fun deployVerticles(vertx: Vertx): MutableList<Future<Void>> {
