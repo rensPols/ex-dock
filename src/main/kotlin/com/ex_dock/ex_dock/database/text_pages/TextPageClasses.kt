@@ -1,6 +1,6 @@
 package com.ex_dock.ex_dock.database.text_pages
 
-import com.ex_dock.ex_dock.database.account.Permission
+import com.ex_dock.ex_dock.database.category.PageIndex
 
 data class TextPages(
   var textPagesId: Int,
@@ -14,5 +14,10 @@ data class TextPagesSeo(
   var metaTitle: String?,
   var metaDescription: String?,
   var metaKeywords: String?,
-  var pageIndex: Permission
+  var pageIndex: PageIndex
+)
+
+data class FullTextPages(
+  val textPages: TextPages,
+  val textPagesSeo: TextPagesSeo
 )

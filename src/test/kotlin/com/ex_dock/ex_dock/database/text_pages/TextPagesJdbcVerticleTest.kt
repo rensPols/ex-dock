@@ -1,7 +1,11 @@
 package com.ex_dock.ex_dock.database.text_pages
 
+import com.ex_dock.ex_dock.database.account.Permission
+import com.ex_dock.ex_dock.database.category.PageIndex
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -18,73 +22,51 @@ import org.junit.jupiter.api.extension.ExtendWith
 class TextPagesJdbcVerticleTest {
     private lateinit var eventBus: EventBus
     private var textPageId = -1
+    private val textPagesDeliveryOptions = DeliveryOptions().setCodecName("TextPagesCodec")
+    private val seoTextPagesDeliveryOptions = DeliveryOptions().setCodecName("TextPagesSeoCodec")
 
-    private var textPageJson = json {
-      obj(
-        "text_pages_id" to textPageId,
-        "name" to "test name",
-        "short_text" to "test short_text",
-        "text" to "test text"
-      )
-    }
-
-  private var textPageSeoJson = json {
-    obj(
-      "text_pages_id" to textPageId,
-      "meta_title" to "test meta_title",
-      "meta_description" to "test meta_description",
-      "meta_keywords" to "test meta_keywords",
-      "page_index" to "index, follow"
+    private var textPage = TextPages(
+      textPagesId = textPageId,
+      name = "test name",
+      shortText = "test short_text",
+      text = "test text"
     )
-  }
 
-  private lateinit var fullTextPageJson: JsonObject
+  private var textPageSeo = TextPagesSeo(
+    textPagesId = textPageId,
+    metaTitle = "test meta_title",
+    metaDescription = "test meta_description",
+    metaKeywords = "test meta_keywords",
+    pageIndex = PageIndex.NoIndexFollow
+  )
+
+  private lateinit var fullTextPage: FullTextPages
 
     @BeforeEach
     fun setUp(vertx: Vertx, testContext: VertxTestContext) {
       eventBus = vertx.eventBus()
+        .registerCodec(GenericCodec(MutableList::class.java))
+        .registerCodec(GenericCodec(TextPages::class.java))
+        .registerCodec(GenericCodec(TextPagesSeo::class.java))
+        .registerCodec(GenericCodec(PageIndex::class.java))
+        .registerCodec(GenericCodec(FullTextPages::class.java))
       deployWorkerVerticleHelper(vertx,
         TextPagesJdbcVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
 
-      eventBus.request<Int>("process.textPages.create", textPageJson).onFailure {
+      eventBus.request<TextPages>("process.textPages.create", textPage, textPagesDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createPageMsg ->
         assert(createPageMsg.succeeded())
-        textPageId = createPageMsg.result().body()
+        textPage = createPageMsg.result().body()
+        textPageId = textPage.textPagesId
+        textPageSeo.textPagesId = textPageId
 
-        textPageJson = json {
-          obj(
-            "text_pages_id" to textPageId,
-            "name" to "test name",
-            "short_text" to "test short_text",
-            "text" to "test text"
-          )
-        }
+        fullTextPage = FullTextPages(
+          textPage,
+          textPageSeo
+        )
 
-        textPageSeoJson = json {
-          obj(
-            "text_pages_id" to textPageId,
-            "meta_title" to "test meta_title",
-            "meta_description" to "test meta_description",
-            "meta_keywords" to "test meta_keywords",
-            "page_index" to "index, follow"
-          )
-        }
-
-        fullTextPageJson = json {
-          obj(
-            "text_pages_id" to textPageId,
-            "name" to "test name",
-            "short_text" to "test short_text",
-            "text" to "test text",
-            "meta_title" to "test meta_title",
-            "meta_description" to "test meta_description",
-            "meta_keywords" to "test meta_keywords",
-            "page_index" to "index, follow"
-          )
-        }
-
-        eventBus.request<Int>("process.textPages.createSeoTextPage", textPageSeoJson).onFailure {
+        eventBus.request<TextPagesSeo>("process.textPages.createSeoTextPage", textPageSeo, seoTextPagesDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createSeoMsg ->
           assert(createSeoMsg.succeeded())
@@ -97,13 +79,11 @@ class TextPagesJdbcVerticleTest {
 
     @Test
     fun testGetAllPages(vertx: Vertx, testContext: VertxTestContext) {
-      eventBus.request<JsonObject>("process.textPages.getAll", "").onFailure {
+      eventBus.request<MutableList<TextPages>>("process.textPages.getAll", "").onFailure {
         testContext.failNow(it)
       }.onComplete {getAllPagesMsg ->
         assert(getAllPagesMsg.succeeded())
-        assertEquals(json {
-          obj("textPages" to listOf(textPageJson))
-        }, getAllPagesMsg.result().body())
+        assertEquals(mutableListOf(textPage), getAllPagesMsg.result().body())
 
         testContext.completeNow()
       }
@@ -111,11 +91,11 @@ class TextPagesJdbcVerticleTest {
 
   @Test
   fun testGetPageById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.textPages.getById", textPageId).onFailure {
+    eventBus.request<TextPages>("process.textPages.getById", textPageId).onFailure {
         testContext.failNow(it)
       }.onComplete {getPageByIdMsg ->
         assert(getPageByIdMsg.succeeded())
-        assertEquals(textPageJson, getPageByIdMsg.result().body())
+        assertEquals(textPage, getPageByIdMsg.result().body())
 
         testContext.completeNow()
       }
@@ -123,25 +103,23 @@ class TextPagesJdbcVerticleTest {
 
   @Test
   fun testUpdatePage(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedTextPageJson = json {
-      obj(
-        "text_pages_id" to textPageId,
-        "name" to "updated name",
-        "short_text" to "updated short_text",
-        "text" to "updated text"
-      )
-    }
+    val updatedTextPage = TextPages(
+      textPagesId = textPageId,
+      name = "updated name",
+      shortText = "updated short_text",
+      text = "updated text"
+    )
 
-    eventBus.request<JsonObject>("process.textPages.update", updatedTextPageJson).onFailure {
+    eventBus.request<TextPages>("process.textPages.update", updatedTextPage, textPagesDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updatePageMsg ->
       assert(updatePageMsg.succeeded())
 
-      eventBus.request<JsonObject>("process.textPages.getById", textPageId).onFailure {
+      eventBus.request<TextPages>("process.textPages.getById", textPageId).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedPageMsg ->
         assert(getUpdatedPageMsg.succeeded())
-        assertEquals(updatedTextPageJson, getUpdatedPageMsg.result().body())
+        assertEquals(updatedTextPage, getUpdatedPageMsg.result().body())
 
         testContext.completeNow()
       }
@@ -150,13 +128,11 @@ class TextPagesJdbcVerticleTest {
 
   @Test
   fun testGetAllSeoTextPages(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.textPages.getAllSeoTextPages", "").onFailure {
+    eventBus.request<MutableList<TextPagesSeo>>("process.textPages.getAllSeoTextPages", "").onFailure {
         testContext.failNow(it)
       }.onComplete { getAllSeoPagesMsg ->
         assert(getAllSeoPagesMsg.succeeded())
-        assertEquals(json {
-          obj("seoTextPages" to listOf(textPageSeoJson))
-        }, getAllSeoPagesMsg.result().body())
+        assertEquals(mutableListOf(textPageSeo), getAllSeoPagesMsg.result().body())
 
         testContext.completeNow()
       }
@@ -165,11 +141,11 @@ class TextPagesJdbcVerticleTest {
 
   @Test
   fun testGetSeoPageById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.textPages.getSeoTextPageBySeoTextPageId", textPageId).onFailure {
+    eventBus.request<TextPagesSeo>("process.textPages.getSeoTextPageBySeoTextPageId", textPageId).onFailure {
         testContext.failNow(it)
       }.onComplete { getSeoPageByIdMsg ->
         assert(getSeoPageByIdMsg.succeeded())
-        assertEquals(textPageSeoJson, getSeoPageByIdMsg.result().body())
+        assertEquals(textPageSeo, getSeoPageByIdMsg.result().body())
 
         testContext.completeNow()
       }
@@ -178,26 +154,24 @@ class TextPagesJdbcVerticleTest {
 
   @Test
   fun testUpdateSeoPage(vertx: Vertx, testContext: VertxTestContext) {
-    val updatedSeoTextPageJson = json {
-      obj(
-        "text_pages_id" to textPageId,
-        "meta_title" to "updated meta_title",
-        "meta_description" to "updated meta_description",
-        "meta_keywords" to "updated meta_keywords",
-        "page_index" to "index, follow"
-      )
-    }
+    val updatedSeoTextPage = TextPagesSeo(
+      textPagesId = textPageId,
+      metaTitle = "updated meta_title",
+      metaDescription = "updated meta_description",
+      metaKeywords = "updated meta_keywords",
+      pageIndex = PageIndex.NoIndexFollow
+    )
 
-    eventBus.request<JsonObject>("process.textPages.updateSeoTextPage", updatedSeoTextPageJson).onFailure {
+    eventBus.request<TextPagesSeo>("process.textPages.updateSeoTextPage", updatedSeoTextPage, seoTextPagesDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateSeoPageMsg ->
       assert(updateSeoPageMsg.succeeded())
 
-      eventBus.request<JsonObject>("process.textPages.getSeoTextPageBySeoTextPageId", textPageId).onFailure {
+      eventBus.request<TextPagesSeo>("process.textPages.getSeoTextPageBySeoTextPageId", textPageId).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedSeoPageMsg ->
         assert(getUpdatedSeoPageMsg.succeeded())
-        assertEquals(updatedSeoTextPageJson, getUpdatedSeoPageMsg.result().body())
+        assertEquals(updatedSeoTextPage, getUpdatedSeoPageMsg.result().body())
         testContext.completeNow()
       }
     }
@@ -205,13 +179,11 @@ class TextPagesJdbcVerticleTest {
 
   @Test
   fun testGetFullTextPages(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.textPages.getAllFullTextPages", "").onFailure {
+    eventBus.request<MutableList<FullTextPages>>("process.textPages.getAllFullTextPages", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getFullTextPagesMsg ->
       assert(getFullTextPagesMsg.succeeded())
-      assertEquals(json {
-        obj("fullTextPages" to listOf(fullTextPageJson))
-      }, getFullTextPagesMsg.result().body())
+      assertEquals(mutableListOf(fullTextPage), getFullTextPagesMsg.result().body())
 
       testContext.completeNow()
     }
@@ -219,11 +191,11 @@ class TextPagesJdbcVerticleTest {
 
   @Test
   fun testGetFullTextPageById(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.textPages.getFullTextPageByFullTextPageId", textPageId).onFailure {
+    eventBus.request<FullTextPages>("process.textPages.getFullTextPageByFullTextPageId", textPageId).onFailure {
       testContext.failNow(it)
     }.onComplete { getFullTextPageByIdMsg ->
       assert(getFullTextPageByIdMsg.succeeded())
-      assertEquals(fullTextPageJson, getFullTextPageByIdMsg.result().body())
+      assertEquals(fullTextPage, getFullTextPageByIdMsg.result().body())
 
       testContext.completeNow()
     }
