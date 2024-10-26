@@ -7,6 +7,7 @@ import com.ex_dock.ex_dock.database.home.HomeJdbcVerticle
 import com.ex_dock.ex_dock.database.product.*
 import com.ex_dock.ex_dock.database.scope.ScopeJdbcVerticle
 import com.ex_dock.ex_dock.database.server.ServerJDBCVerticle
+import com.ex_dock.ex_dock.database.service.DatabaseBackupVerticle
 import com.ex_dock.ex_dock.database.text_pages.TextPagesJdbcVerticle
 import com.ex_dock.ex_dock.database.url.UrlJdbcVerticle
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
@@ -24,7 +25,7 @@ class JDBCStarter: AbstractVerticle() {
     Future.all(verticles)
       .onComplete {
         println("All JDBC verticles deployed")
-        TODO("Add all codecs to the eventbus")
+//        TODO("Add all codecs to the eventbus")
       }
      .onFailure { error ->
         println("Failed to deploy JDBC verticles: $error")
@@ -47,6 +48,7 @@ class JDBCStarter: AbstractVerticle() {
     verticles.add(deployWorkerVerticleHelper(vertx, ProductStoreViewEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
     verticles.add(deployWorkerVerticleHelper(vertx, ProductWebsiteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
     verticles.add(deployWorkerVerticleHelper(vertx, ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, DatabaseBackupVerticle::class.qualifiedName.toString(), 1, 1))
   }
 
 }
