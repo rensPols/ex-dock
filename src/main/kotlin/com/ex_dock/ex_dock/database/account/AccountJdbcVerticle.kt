@@ -1,6 +1,6 @@
 package com.ex_dock.ex_dock.database.account
 
-import com.ex_dock.ex_dock.database.connection.Connection
+import com.ex_dock.ex_dock.database.connection.getConnection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.eventbus.DeliveryOptions
@@ -40,7 +40,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private val fullUserListDeliveryOptions = DeliveryOptions().setCodecName("FullUserListCodec")
 
   override fun start() {
-    client = Connection().getConnection(vertx)
+    client = getConnection(vertx)
     eventBus = vertx.eventBus()
 
     // Initialize all eventbus connections for user management
