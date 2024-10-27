@@ -50,6 +50,7 @@ class DatabaseBackupVerticle: AbstractVerticle() {
     } catch (e: Exception) {
       println(e.message)
       try {
+        // Try to load the docker values when run in GitHub actions
         val isDocker: Boolean = !System.getenv("GITHUB_RUN_NUMBER").isNullOrEmpty()
         if (isDocker) {
           frequency = "daily"
@@ -136,6 +137,7 @@ class DatabaseBackupVerticle: AbstractVerticle() {
     vertx.setTimer(waitingTime) {
       backupDatabaseData()
 
+      // Sets the given interval
       vertx.setPeriodic(frequencyInt*1000L) {
         backupDatabaseData()
       }
@@ -173,6 +175,7 @@ class DatabaseBackupVerticle: AbstractVerticle() {
     val fileDateList: MutableList<String> = emptyList<String>().toMutableList()
     var oldestDate = ""
 
+    // Skip organizing when the number of backups is lower than the maximum number of backups allowed
     if (listOfFiles!!.size >= savedBackups) {
       for (f in listOfFiles) {
         val fileDateString = f.name
@@ -213,16 +216,35 @@ class DatabaseBackupVerticle: AbstractVerticle() {
                                oldestDateParts: List<String>,
                                dateString: String,
                                oldestDate: String): String {
+    // Check if the Year is older
     if (dateParts[2].toInt() < oldestDateParts[2].toInt()) {
       return dateString
+
+      // Check if the Year is the same
     } else if (dateParts[2].toInt() == oldestDateParts[2].toInt()) {
+
+      // Check if the Month is older
       if (dateParts[1].toInt() < oldestDateParts[1].toInt()) {
         return dateString
+
+        // Check if the Month is the same
       } else if (dateParts[1].toInt() == oldestDateParts[1].toInt()) {
+
+        // Check if the Day is older
         if (dateParts[0].toInt() < oldestDateParts[0].toInt()) {
           return dateString
-        } else if (dateParts[3].toInt() < oldestDateParts[3].toInt()) {
-          return dateString
+
+          // Check if the Day is the same
+        } else if (dateParts[0].toInt() == oldestDateParts[0].toInt()) {
+
+          // Check if the Hour is older
+          if (dateParts[3].toInt() < oldestDateParts[3].toInt()) {
+            return dateString
+
+            // Check if the Hour is the same
+          } else if (dateParts[3].toInt() == oldestDateParts[3].toInt()) {
+            return dateString
+          }
         }
       }
     }
