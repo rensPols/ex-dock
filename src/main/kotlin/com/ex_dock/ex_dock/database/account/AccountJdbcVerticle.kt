@@ -1,5 +1,6 @@
 package com.ex_dock.ex_dock.database.account
 
+import com.ex_dock.ex_dock.database.connection.Connection
 import com.ex_dock.ex_dock.database.connection.getConnection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
@@ -40,7 +41,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private val fullUserListDeliveryOptions = DeliveryOptions().setCodecName("FullUserListCodec")
 
   override fun start() {
-    client = getConnection(vertx)
+    client = Connection().getConnection(vertx)
     eventBus = vertx.eventBus()
 
     // Initialize all eventbus connections for user management
@@ -447,16 +448,6 @@ class AccountJdbcVerticle: AbstractVerticle() {
     return BCrypt.hashpw(password, BCrypt.gensalt(12))
   }
 
-  private fun convertStringToPermission(name: String): Permission {
-    when (name) {
-      "read" -> return Permission.READ
-      "write" -> return Permission.WRITE
-      "read-write" -> return Permission.READ_WRITE
-    }
-
-    return Permission.NONE
-  }
-
   private fun convertPermissionToString(permission: Permission): String {
     return when (permission) {
       Permission.READ -> "read"
@@ -466,7 +457,3 @@ class AccountJdbcVerticle: AbstractVerticle() {
     }
   }
 }
-
-//fun rowToArray(row: Row): Array<Any?> {
-//  return row.toJson().values
-//}

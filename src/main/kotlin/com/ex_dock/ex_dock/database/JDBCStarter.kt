@@ -18,9 +18,11 @@ import com.ex_dock.ex_dock.database.text_pages.TextPages
 import com.ex_dock.ex_dock.database.text_pages.TextPagesJdbcVerticle
 import com.ex_dock.ex_dock.database.text_pages.TextPagesSeo
 import com.ex_dock.ex_dock.database.url.*
+import com.ex_dock.ex_dock.frontend.template_engine.template_data.single_use.SingleUseTemplateData
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
+import io.vertx.core.MultiMap
 import io.vertx.core.Promise
 
 class JDBCStarter: AbstractVerticle() {
@@ -118,6 +120,8 @@ class JDBCStarter: AbstractVerticle() {
       .registerCodec(GenericCodec(UserCreation::class.java))
       .registerCodec(GenericCodec(BackendPermissions::class.java))
       .registerCodec(GenericCodec(FullUser::class.java))
+      .registerCodec(GenericCodec(SingleUseTemplateData::class.java))
+      .registerCodec(GenericCodec(MultiMap::class.java))
   }
 
 }
