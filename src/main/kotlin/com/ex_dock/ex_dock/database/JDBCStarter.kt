@@ -122,6 +122,7 @@ class JDBCStarter: AbstractVerticle() {
       .registerCodec(GenericCodec(FullUser::class.java))
       .registerCodec(GenericCodec(SingleUseTemplateData::class.java))
       .registerCodec(GenericCodec(MultiMap::class.java))
+      .registerCodec(GenericCodec(ArrayList::class.java))
   }
 
 }

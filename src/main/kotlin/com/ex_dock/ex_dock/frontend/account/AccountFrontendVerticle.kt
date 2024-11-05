@@ -14,10 +14,12 @@ class AccountFrontendVerticle: AbstractVerticle() {
   private var userDeliveryOptions = DeliveryOptions().setCodecName("UserCreationCodec")
   private var backendPermissionsDeliveryOptions = DeliveryOptions().setCodecName("BackendPermissionsCodec")
   private var fullUserDeliveryOptions = DeliveryOptions().setCodecName("FullUserCodec")
+  private var listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
   override fun start(startPromise: Promise<Void>?) {
     eventBus = vertx.eventBus()
 
     handleAccountCreation()
+    getAccountHomeData()
   }
 
   private fun handleAccountCreation() {
@@ -57,6 +59,20 @@ class AccountFrontendVerticle: AbstractVerticle() {
           }
         } else {
           createUserMessage.cause().message
+        }
+      }
+    }
+  }
+
+  private fun getAccountHomeData() {
+    eventBus.consumer<String>("account.router.homeData").handler { message ->
+      println("Got request!")
+      eventBus.request<MutableList<FullUser>>("process.account.getAllFullUserInfo", "").onComplete {
+        if (it.succeeded()) {
+          val fullUserList = it.result().body()
+          message.reply(fullUserList, listDeliveryOptions)
+        } else {
+          it.cause().message
         }
       }
     }

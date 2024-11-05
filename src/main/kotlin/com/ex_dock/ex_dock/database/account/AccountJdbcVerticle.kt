@@ -39,6 +39,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private val backendPermissionsListDeliveryOptions = DeliveryOptions().setCodecName("BackendPermissionsListCodec")
   private val fullUserDeliveryOptions = DeliveryOptions().setCodecName("FullUserCodec")
   private val fullUserListDeliveryOptions = DeliveryOptions().setCodecName("FullUserListCodec")
+  private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
     client = Connection().getConnection(vertx)
@@ -321,6 +322,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
         "bp.product_warehouse, bp.text_pages, bp.\"API_KEY\" FROM users u " +
         "JOIN backend_permissions bp ON u.user_id = bp.user_id"
       val rowsFuture = client.preparedQuery(query).execute()
+      val fullUsers: MutableList<FullUser> = emptyList<FullUser>().toMutableList()
 
       rowsFuture.onFailure { res ->
         println("Failed to execute query: $res")
@@ -330,9 +332,12 @@ class AccountJdbcVerticle: AbstractVerticle() {
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          message.reply(rows.map { row -> makeFullUserObject(row) }, fullUserListDeliveryOptions)
+          rows.map { row ->
+            fullUsers.add(makeFullUserObject(row))
+            message.reply(fullUsers, listDeliveryOptions)
+          }
         } else {
-          message.reply(emptyList<FullUser>(), fullUserListDeliveryOptions)
+          message.reply(emptyList<FullUser>().toMutableList(), listDeliveryOptions)
         }
       }
     }

@@ -14,12 +14,12 @@
     <label style="padding-left:3vh">Read-Write</label><br>
     {% for pair in permissions %}
         <div style="display:flex">
-                <label for="{{ pair.component1() }}" style="min-width: 21vh;">{{ pair.component2() }}</label>
-                <div><input type="radio" name="{{ pair.component1() }}" value="none"></div>
-                <div style="padding-left: 5vh"><input type="radio" name="{{ pair.component1() }}" value="read"></div>
-                <div style="padding-left: 5vh;"><input type="radio" name="{{ pair.component1() }}" value="write"></div>
-                <div style="padding-left: 7vh"><input type="radio" name="{{ pair.component1() }}" value="read-write"></div>
-            </div>
+            <label for="{{ pair.component1() }}" style="min-width: 21vh;">{{ pair.component2() }}</label>
+            <div><input type="radio" name="{{ pair.component1() }}" value="none" checked></div>
+            <div style="padding-left: 5vh"><input type="radio" name="{{ pair.component1() }}" value="read"></div>
+            <div style="padding-left: 5vh;"><input type="radio" name="{{ pair.component1() }}" value="write"></div>
+            <div style="padding-left: 7vh"><input type="radio" name="{{ pair.component1() }}" value="read-write"></div>
+        </div>
     {% endfor %}
     <input type="submit" value="Submit"\>
 </form>

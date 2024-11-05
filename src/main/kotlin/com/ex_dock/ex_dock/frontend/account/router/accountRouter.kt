@@ -8,6 +8,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.ext.web.handler.BodyHandler
+import io.vertx.kotlin.coroutines.coAwait
 
 fun Router.initAccount(vertx: Vertx) {
   val accountRouter = Router.router(vertx)
@@ -18,18 +19,23 @@ fun Router.initAccount(vertx: Vertx) {
   accountRouter["/createUser"].handler(BodyHandler.create())
 
   accountRouter["/"].handler { ctx ->
-    val accountTemplateMap: Map<String, Any> = mapOf(Pair("name", "test"))
-    val accountTemplate = SingleUseTemplateData(
-      template = "templates/account.peb",
-      templateData = accountTemplateMap,
-    )
+    var fullUserList: MutableList<FullUser>
+    eventBus.request<MutableList<FullUser>>("account.router.homeData", "").onComplete { homeDataMsg ->
+      fullUserList = homeDataMsg.result().body()
 
-    eventBus.request<String>("template.generate.singleUse",
-      accountTemplate,
-      singleUseTemplateDataDeliveryOptions).onFailure {
-      ctx.fail(it)
-    }.onComplete {
-      ctx.response().putHeader("Content-Type", "text/html").end(it.result().body())
+      val accountTemplateMap: Map<String, Any> = mapOf(Pair("name", "test"), Pair("accounts", fullUserList))
+      val accountTemplate = SingleUseTemplateData(
+        template = "templates/account.peb",
+        templateData = accountTemplateMap,
+      )
+
+      eventBus.request<String>("template.generate.singleUse",
+        accountTemplate,
+        singleUseTemplateDataDeliveryOptions).onFailure {
+        ctx.fail(it)
+      }.onComplete {
+        ctx.response().putHeader("Content-Type", "text/html").end(it.result().body())
+      }
     }
   }
 
@@ -67,6 +73,23 @@ fun Router.initAccount(vertx: Vertx) {
     eventBus.request<FullUser>("account.router.createUser", requestBody, mapDeliveryOptions) {
       println(it.result().body())
       ctx.redirect("/account")
+    }
+  }
+
+  accountRouter["/delete/:userId"].handler { ctx ->
+    val userId = ctx.request().getParam("userId").toInt()
+    eventBus.request<String>("process.account.deleteBackendPermissions", userId) {
+      if (it.succeeded()) {
+        eventBus.request<String>("process.account.deleteUser", userId) { deleteUserMsg ->
+          if (deleteUserMsg.succeeded()) {
+            ctx.redirect("/account")
+          } else {
+            ctx.fail(deleteUserMsg.cause())
+          }
+        }
+      } else {
+        ctx.fail(it.cause())
+      }
     }
   }
 
