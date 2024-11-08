@@ -93,5 +93,18 @@ fun Router.initAccount(vertx: Vertx) {
     }
   }
 
+  accountRouter["/edit/:userId"].handler { ctx ->
+    val userId = ctx.request().getParam("userId").toInt()
+    eventBus.request<FullUser>("process.account.getFullUserById", userId) {
+      if (it.succeeded()) {
+        val fullUser = it.result().body()
+        ctx.put("fullUser", fullUser)
+        ctx.next()
+      } else {
+        ctx.fail(it.cause())
+      }
+    }
+  }
+
   this.route("/account*").subRouter(accountRouter)
 }

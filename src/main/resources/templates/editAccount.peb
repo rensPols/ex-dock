@@ -1,0 +1,31 @@
+{# @pebvariable name="permissions" type="kotlin.collections.List<kotlin.Pair>" #}
+{# @pebvariable name="user" type="com.ex_dock.ex_dock.database.account.FullUser" #}
+{# @pebvariable name="permission" type="com.ex_dock.ex_dock.database.account.Permission"#}
+<form action="/account/createUser">
+    <label for="email">Email:</label><br>
+    <input type="text" name="email"><br>
+    <label for="password">Password:</label><br>
+    <input type="password" name="password"><br>
+    <label for="cPassword">Confirm Password:</label><br>
+    <input type="password" name="cPassword"><br>
+    <label for="apiKey">API Key:</label><br>
+    <input type="text" name="apiKey"><br>
+    <label style="padding-left:20vh">None</label>
+    <label style="padding-left:3vh">Read</label>
+    <label style="padding-left:3vh">Write</label>
+    <label style="padding-left:3vh">Read-Write</label><br>
+    {% for pair in permissions %}
+        <div style="display:flex">
+            <label for="{{ pair.component1() }}" style="min-width: 21vh;"
+            {% if user.component2().component2() == permission.NONE %}checked{% endif %}>{{ pair.component2() }}</label>
+            <div><input type="radio" name="{{ pair.component1() }}" value="none"></div>
+            <div style="padding-left: 5vh"><input type="radio" name="{{ pair.component1() }}" value="read"
+            {% if user.component2().component2() == permission.READ %}checked{% endif %}></div>
+            <div style="padding-left: 5vh;"><input type="radio" name="{{ pair.component1() }}" value="write"
+            {% if user.component2().component2() == permission.WRITE %}checked{% endif %}></div>
+            <div style="padding-left: 7vh"><input type="radio" name="{{ pair.component1() }}" value="read-write"
+            {% if user.component2().component2() == permission.READ_WRITE %}checked{% endif %}></div>
+        </div>
+    {% endfor %}
+    <input type="submit" value="Submit"\>
+</form>

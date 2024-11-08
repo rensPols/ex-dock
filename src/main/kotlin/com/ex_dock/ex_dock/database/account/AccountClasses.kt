@@ -24,6 +24,20 @@ data class FullUser(var user: User, var backendPermissions: BackendPermissions) 
   }
 }
 
+data class BackendPermissionsEditPage(
+  val userId: Int,
+  var userPermission: Pair<String, Permission>,
+  var serverSettings: Pair<String, Permission>,
+  var template: Pair<String, Permission>,
+  var categoryContent: Pair<String, Permission>,
+  var categoryProducts: Pair<String, Permission>,
+  var productContent: Pair<String, Permission>,
+  var productPrice: Pair<String, Permission>,
+  var productWarehouse: Pair<String, Permission>,
+  var textPages: Pair<String, Permission>,
+  var apiKey: String?
+)
+
 enum class Permission(name: String) {
   NONE("none"),
   READ("read"),

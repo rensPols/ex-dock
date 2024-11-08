@@ -20,6 +20,7 @@ class AccountFrontendVerticle: AbstractVerticle() {
 
     handleAccountCreation()
     getAccountHomeData()
+    handleEditRequestPage()
   }
 
   private fun handleAccountCreation() {
@@ -71,6 +72,21 @@ class AccountFrontendVerticle: AbstractVerticle() {
         if (it.succeeded()) {
           val fullUserList = it.result().body()
           message.reply(fullUserList, listDeliveryOptions)
+        } else {
+          it.cause().message
+        }
+      }
+    }
+  }
+
+  private fun handleEditRequestPage() {
+    eventBus.consumer<Int>("account.router.handleEditPage").handler { message ->
+      val userId = message.body()
+
+      eventBus.request<FullUser>("process.account.getFullUserById", userId).onComplete {
+        if (it.succeeded()) {
+          val fullUser = it.result().body()
+          message.reply(fullUser, fullUserDeliveryOptions)
         } else {
           it.cause().message
         }

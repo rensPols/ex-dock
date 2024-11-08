@@ -7,7 +7,7 @@
   {% for account in accounts %}
     <div style="display: flex; column-gap: 8px">
         <p>{{ account.component1().component2() }}</p>
-        <a href="account/edit"><button>Edit</button></a>
+        <a href="account/edit/{{ account.component1().component1() }}"><button>Edit</button></a>
         <a href="account/delete/{{ account.component1().component1() }}"><button>Delete</button></a>
     </div>
 {% endfor %}
