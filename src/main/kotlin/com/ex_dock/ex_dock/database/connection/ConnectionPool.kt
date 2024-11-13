@@ -77,7 +77,7 @@ fun getConnection(vertx: Vertx): Pool {
         error("Could not load the Properties file!")
       }
     } catch (e: Exception) {
-      error("Could not read the Properties file!")
+      error("Could not read the Properties file and Docker backup check failed!")
     }
   }
 
