@@ -9,7 +9,10 @@ import com.ex_dock.ex_dock.frontend.product.router.initProduct
 import com.ex_dock.ex_dock.frontend.text_pages.router.initTextPages
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Promise
+import io.vertx.core.http.CookieSameSite
 import io.vertx.ext.web.Router
+import io.vertx.ext.web.handler.SessionHandler
+import io.vertx.ext.web.sstore.SessionStore
 import java.util.Properties
 
 class MainVerticle : AbstractVerticle() {
@@ -36,6 +39,12 @@ class MainVerticle : AbstractVerticle() {
       }
 
     val mainRouter : Router = Router.router(vertx)
+    val store = SessionStore.create(vertx)
+    val sessionHandler = SessionHandler.create(store)
+
+    sessionHandler.setCookieSameSite(CookieSameSite.STRICT)
+
+    mainRouter.route().handler(sessionHandler)
 
     mainRouter.enableBackendRouter(vertx)
 
