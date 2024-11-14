@@ -3,12 +3,18 @@ package com.ex_dock.ex_dock.frontend.account.router
 import com.ex_dock.ex_dock.database.account.FullUser
 import com.ex_dock.ex_dock.database.account.User
 import com.ex_dock.ex_dock.frontend.template_engine.template_data.single_use.SingleUseTemplateData
+import com.ex_dock.ex_dock.frontend.auth.ExDockAuthHandler
 import io.vertx.ext.web.Router
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.kotlin.coroutines.coAwait
+import io.vertx.core.json.Json
+import io.vertx.core.json.JsonObject
+import io.vertx.ext.auth.User
+import io.vertx.ext.auth.authentication.UsernamePasswordCredentials
+import io.vertx.ext.web.Session
 
 fun Router.initAccount(vertx: Vertx) {
   val accountRouter = Router.router(vertx)
@@ -92,18 +98,16 @@ fun Router.initAccount(vertx: Vertx) {
       }
     }
   }
+  val authHandler = ExDockAuthHandler(vertx)
 
-  accountRouter["/edit/:userId"].handler { ctx ->
-    val userId = ctx.request().getParam("userId").toInt()
-    eventBus.request<FullUser>("process.account.getFullUserById", userId) {
-      if (it.succeeded()) {
-        val fullUser = it.result().body()
-        ctx.put("fullUser", fullUser)
-        ctx.next()
-      } else {
-        ctx.fail(it.cause())
+  accountRouter.get("/").handler { ctx ->
+    eventBus.request<Any>("process.account.getData", "testUser")
+      .onSuccess{ reply ->
+        ctx.end(reply.body().toString())
       }
-    }
+      .onFailure { error ->
+        ctx.end("Error retrieving account data: ${error.localizedMessage}")
+      }
   }
 
   this.route("/account*").subRouter(accountRouter)

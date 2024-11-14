@@ -39,10 +39,10 @@ data class BackendPermissionsEditPage(
 )
 
 enum class Permission(name: String) {
-  NONE("none"),
-  READ("read"),
-  WRITE("write"),
-  READ_WRITE("read-write");
+  NONE("None"),
+  READ("Read"),
+  WRITE("Write"),
+  READ_WRITE("Read-Write");
 
   companion object {
     fun fromString(value: String): Permission {
