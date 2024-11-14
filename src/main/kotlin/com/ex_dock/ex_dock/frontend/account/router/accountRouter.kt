@@ -1,26 +1,21 @@
 package com.ex_dock.ex_dock.frontend.account.router
 
 import com.ex_dock.ex_dock.database.account.FullUser
-import com.ex_dock.ex_dock.database.account.User
 import com.ex_dock.ex_dock.frontend.template_engine.template_data.single_use.SingleUseTemplateData
 import com.ex_dock.ex_dock.frontend.auth.ExDockAuthHandler
 import io.vertx.ext.web.Router
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
-import io.vertx.ext.web.handler.BodyHandler
-import io.vertx.kotlin.coroutines.coAwait
-import io.vertx.core.json.Json
-import io.vertx.core.json.JsonObject
 import io.vertx.ext.auth.User
-import io.vertx.ext.auth.authentication.UsernamePasswordCredentials
-import io.vertx.ext.web.Session
+import io.vertx.ext.web.handler.BodyHandler
 
 fun Router.initAccount(vertx: Vertx) {
   val accountRouter = Router.router(vertx)
   val eventBus: EventBus = vertx.eventBus()
   val singleUseTemplateDataDeliveryOptions = DeliveryOptions().setCodecName("singleUseTemplateDataCodec")
   val mapDeliveryOptions = DeliveryOptions().setCodecName("MultiMapCodec")
+  val authHandler = ExDockAuthHandler(vertx)
 
   accountRouter["/createUser"].handler(BodyHandler.create())
 
@@ -46,31 +41,36 @@ fun Router.initAccount(vertx: Vertx) {
   }
 
   accountRouter["/new"].handler { ctx ->
-    val permissionList = listOf(
-      Pair("userPermission", "User permissions"),
-      Pair("serverSettings", "Server settings"),
-      Pair("template", "Templates"),
-      Pair("categoryContent", "Category content"),
-      Pair("categoryProducts", "Category products"),
-      Pair("productContent", "Product content"),
-      Pair("productPrice", "Product price"),
-      Pair("productWarehouse", "Product warehouse"),
-      Pair("textPages", "Text pages")
-    )
-    val newAccountTemplateMap: Map<String, Any> = mapOf(
-      Pair("permissions", permissionList)
-    )
-    val newAccountTemplate = SingleUseTemplateData(
-      template = "templates/newAccount.peb",
-      templateData = newAccountTemplateMap,
-    )
+    val session = ctx.session()
+    val user = session.get<User>("user")
 
-    eventBus.request<String>("template.generate.singleUse",
-      newAccountTemplate,
-      singleUseTemplateDataDeliveryOptions).onFailure {
-      ctx.fail(it)
-    }.onComplete {
-      ctx.response().putHeader("Content-Type", "text/html").end(it.result().body())
+    authHandler.verifyPermissionAuthorization(user, "accountWrite") {
+      val permissionList = listOf(
+        Pair("userPermission", "User permissions"),
+        Pair("serverSettings", "Server settings"),
+        Pair("template", "Templates"),
+        Pair("categoryContent", "Category content"),
+        Pair("categoryProducts", "Category products"),
+        Pair("productContent", "Product content"),
+        Pair("productPrice", "Product price"),
+        Pair("productWarehouse", "Product warehouse"),
+        Pair("textPages", "Text pages")
+      )
+      val newAccountTemplateMap: Map<String, Any> = mapOf(
+        Pair("permissions", permissionList)
+      )
+      val newAccountTemplate = SingleUseTemplateData(
+        template = "templates/newAccount.peb",
+        templateData = newAccountTemplateMap,
+      )
+
+      eventBus.request<String>("template.generate.singleUse",
+        newAccountTemplate,
+        singleUseTemplateDataDeliveryOptions).onFailure {
+        ctx.fail(it)
+      }.onComplete {
+        ctx.response().putHeader("Content-Type", "text/html").end(it.result().body())
+      }
     }
   }
 
@@ -98,7 +98,6 @@ fun Router.initAccount(vertx: Vertx) {
       }
     }
   }
-  val authHandler = ExDockAuthHandler(vertx)
 
   accountRouter.get("/").handler { ctx ->
     eventBus.request<Any>("process.account.getData", "testUser")
