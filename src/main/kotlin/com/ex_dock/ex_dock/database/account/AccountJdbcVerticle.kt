@@ -416,7 +416,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       productPrice = Permission.fromString(row.getString("product_price")),
       productWarehouse = Permission.fromString(row.getString("product_warehouse")),
       textPages = Permission.fromString(row.getString("text_pages")),
-      apiKey = row.getString("API_KEY").orEmpty()
+      apiKey = row.getString("API_KEY")
     )
   }
 
