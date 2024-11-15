@@ -6,6 +6,7 @@ import io.vertx.jdbcclient.JDBCPool
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.PoolOptions
 import java.util.*
+import kotlin.jvm.javaClass
 
 class Connection {
   @Deprecated("Moved getConnection out of Connection() class")
