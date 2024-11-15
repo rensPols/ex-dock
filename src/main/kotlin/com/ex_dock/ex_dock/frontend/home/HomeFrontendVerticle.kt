@@ -17,29 +17,12 @@ class HomeFrontendVerticle: AbstractVerticle() {
     val getHomeConsumer = eventBus.consumer<Any?>("frontend.retrieveHTML.home")
     getHomeConsumer.handler { message ->
       val data = getHomeData()
-      val template = retrieveHomeTemplate()
       eventBus.request<String>("template.generate.compiled", "home").onFailure {
         // TODO: implement
       }.onSuccess { response ->
         message.reply(response)
       }
     }
-  }
-
-  private fun retrieveHomeTemplate(): String {
-    // TODO: get template from templates table with key "home"
-    return """
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>exDock Home Page</title>
-        </head>
-        <body>
-          <h1>Welcome to exDock!</h1>
-          <p>This is the home page of the exDock server.</p>
-        </body>
-      </html>
-    """.trimIndent();
   }
 
   private fun getHomeData(): Map<String, Any> {
