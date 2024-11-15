@@ -100,32 +100,6 @@ class TemplateEngineVerticle: CoroutineVerticle() {
       )
     }
 
-    // TODO: add the following SQL to the database:
-    """
-      -- ************************************** `templates`
-
-      CREATE TABLE `templates`
-      (
-       `template_key`  varchar(100) NOT NULL ,
-       `template_data` text NOT NULL ,
-
-      PRIMARY KEY (`template_key`)
-      );
-
-
-
-      -- ************************************** `blocks`
-
-      CREATE TABLE `blocks`
-      (
-      `template_key` varchar(100) NOT NULL ,
-
-      PRIMARY KEY (`template_key`),
-      KEY `FK_1` (`template_key`),
-      CONSTRAINT `FK_72` FOREIGN KEY `FK_1` (`template_key`) REFERENCES `templates` (`template_key`)
-      );
-    """.trimIndent()
-
     // Compile all the templates
     for (template in templates) {
       compiledTemplates.put(template.key, engine.getTemplate(template.value))
