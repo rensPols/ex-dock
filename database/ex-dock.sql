@@ -117,6 +117,27 @@ CREATE TABLE public.backend_permissions (
 
 ALTER TABLE public.backend_permissions OWNER TO postgres;
 
+CREATE TABLE public.templates (
+  template_key character varying(100) NOT NULL,
+  template_data text NOT NULL
+);
+
+ALTER TABLE public.templates OWNER TO postgres;
+
+CREATE TABLE public.blocks (
+                             template_key character varying(100) NOT NULL
+);
+
+ALTER TABLE public.blocks OWNER TO postgres;
+
+--
+-- Name: blocks_template_key_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+--
+-- Name: url_keys; Type: TABLE; Schema: public; Owner: postgres
+--
+
 --
 -- Name: categories; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -1591,6 +1612,16 @@ ALTER TABLE ONLY public.users
 ALTER TABLE ONLY public.websites
   ADD CONSTRAINT websites_pkey PRIMARY KEY (website_id);
 
+ALTER TABLE ONLY public.templates
+  ADD CONSTRAINT templates_pkey PRIMARY KEY (template_key);
+
+ALTER TABLE ONLY public.blocks
+  ADD CONSTRAINT blocks_pkey PRIMARY KEY (template_key);
+
+CREATE INDEX "fki_FK_72" ON public.templates USING btree (template_key);
+
+CREATE INDEX "fki_FK_73" ON public.blocks USING btree (template_key);
+
 
 --
 -- Name: fki_FK_1; Type: INDEX; Schema: public; Owner: postgres
@@ -2207,6 +2238,11 @@ ALTER TABLE ONLY public.multi_select_attributes_int
 
 ALTER TABLE ONLY public.multi_select_attributes_float
   ADD CONSTRAINT "FK_9" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
+
+ALTER TABLE ONLY public.templates
+  ADD CONSTRAINT "FK_72" FOREIGN KEY (template_key) REFERENCES public.blocks(template_key);
+
+--
 
 
 --
