@@ -1,11 +1,13 @@
 {# @pebvariable name="permissions" type="kotlin.collections.List<kotlin.Pair>" #}
-<form action="/account/createUser">
+{# @pebvariable name="error" type="kotlin.Boolean" #}
+{# @pebvariable name="errorMessage" type="kotlin.String" #}
+<form action="/account/new/handler">
     <label for="email">Email:</label><br>
-    <input type="text" name="email"><br>
+    <input type="text" name="email" required><br>
     <label for="password">Password:</label><br>
-    <input type="password" name="password"><br>
+    <input type="password" name="password" required><br>
     <label for="cPassword">Confirm Password:</label><br>
-    <input type="password" name="cPassword"><br>
+    <input type="password" name="cPassword" required><br>
     <label for="apiKey">API Key:</label><br>
     <input type="text" name="apiKey"><br>
     <label style="padding-left:20vh">None</label>
@@ -22,4 +24,7 @@
         </div>
     {% endfor %}
     <input type="submit" value="Submit"\>
+    {% if error %}
+        <h2 style="color: red">{{ errorMessage }}</h2>
+    {% endif %}
 </form>

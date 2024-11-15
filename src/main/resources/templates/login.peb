@@ -1,0 +1,12 @@
+{# @pebvariable name="error" type="kotlin.Boolean" #}
+{# @pebvariable name="errorMessage" type="kotlin.String" #}
+<form action="/login/handler">
+    <label for="email">Email:</label><br>
+    <input type="text" name="email"><br>
+    <label for="password">Password:</label><br>
+    <input type="password" name="password"><br>
+    <input type="submit" value="Login"\>
+</form>
+{% if error %}
+    <h2 style="color: red">{{ errorMessage }}</h2>
+{% endif %}

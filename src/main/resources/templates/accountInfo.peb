@@ -1,0 +1,45 @@
+{# @pebvariable name="permissions" type="kotlin.collections.List<com.ex_dock.ex_dock.frontend.account.router.PermissionInfo>" #}
+{# @pebvariable name="user" type="com.ex_dock.ex_dock.database.account.FullUser" #}
+{# @pebvariable name="readOnly" type="kotlin.Boolean" #}
+{# @pebvariable name="error" type="kotlin.Boolean" #}
+{# @pebvariable name="errorMessage" type="kotlin.String" #}
+<form action="/account/{{ user.component1().component1() }}/edit">
+    <label for="email">Email:</label><br>
+    <input type="text" name="email" value="{{ user.component1().component2() }}"
+    {% if readOnly %}readonly{% endif %} required><br>
+    <label for="password">Password:</label><br>
+    <input type="password" name="password"
+    {% if readOnly %}readonly{% endif %} required><br>
+    <label for="cPassword">Confirm Password:</label><br>
+    <input type="password" name="cPassword"
+    {% if readOnly %}readonly{% endif %} required><br>
+    <label for="apiKey">API Key:</label><br>
+    <input type="text" name="apiKey" value="{{ user.component2().component11() }}"
+    {% if readOnly %}readonly{% endif %}><br>
+    <label style="padding-left:20vh">None</label>
+    <label style="padding-left:3vh">Read</label>
+    <label style="padding-left:3vh">Write</label>
+    <label style="padding-left:3vh">Read-Write</label><br>
+    {% for permission in permissions %}
+        <div style="display:flex">
+            <label for="{{ permission.component1() }}" style="min-width: 21vh;">{{ permission.component2() }}</label>
+            <div><input type="radio" name="{{ permission.component1() }}" value="none"
+            {% if permission.component3() == "None" %}checked{% endif %}
+            {% if readOnly %}{% if permission.component3() != "None" %}disabled{% endif %}{% endif %}></div>
+            <div style="padding-left: 5vh"><input type="radio" name="{{ permission.component1() }}" value="read"
+            {% if permission.component3() == "Read" %}checked{% endif %}
+    {% if readOnly %}{% if permission.component3() != "Read" %}disabled{% endif %}{% endif %}></div>
+            <div style="padding-left: 5vh;"><input type="radio" name="{{ permission.component1() }}" value="write"
+            {% if permission.component3() == "Write" %}checked{% endif %}
+    {% if readOnly %}{% if permission.component3() != "Write" %}disabled{% endif %}{% endif %}></div>
+            <div style="padding-left: 7vh"><input type="radio" name="{{ permission.component1() }}" value="read-write"
+            {% if permission.component3() == "ReadWrite" %}checked{% endif %}
+    {% if readOnly %}{% if permission.component3() != "ReadWrite" %}disabled{% endif %}{% endif %}></div>
+        </div>
+    {% endfor %}
+    <input type="submit" value="Edit"\>
+    <a href="account/delete/{{ user.component1().component1() }}"><button>Delete</button></a>
+    {% if error %}
+        <h2 style="color: red">{{ errorMessage }}</h2>
+    {% endif %}
+</form>

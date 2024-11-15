@@ -13,6 +13,7 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.Tuple
 import org.mindrot.jbcrypt.BCrypt
+import java.lang.NullPointerException
 
 class AccountJdbcVerticle: AbstractVerticle() {
 
@@ -63,6 +64,52 @@ class AccountJdbcVerticle: AbstractVerticle() {
     getAllFullUser()
     getFullUserByEmail()
     getFullUserByUserId()
+    initAdminUser()
+  }
+
+  private fun initAdminUser() {
+    val adminConsumer = eventBus.consumer<String>("process.account.admin")
+    adminConsumer.handler { msg ->
+    val hashedPassword = BCrypt.hashpw("admin123", BCrypt.gensalt())
+    val query = "INSERT INTO users (email, password) SELECT ?,? " +
+      "WHERE NOT EXISTS(SELECT email FROM users WHERE email = 'admin')"
+    val rowsFuture = client.preparedQuery(query).execute(Tuple.of("admin", hashedPassword))
+
+    rowsFuture.onFailure { res ->
+      println("Failed to execute query: $res")
+      msg.fail(500, res.message)
+    }
+
+    rowsFuture.onSuccess { res ->
+      try {
+        val adminId = res.property(JDBCPool.GENERATED_KEYS).getInteger(0)
+        val bpQuery = "INSERT INTO backend_permissions " +
+          "(user_id, user_permissions, server_settings, template, category_content, category_products, " +
+          "product_content, product_price, product_warehouse, text_pages, \"API_KEY\") SELECT " +
+          "?,?::b_permissions,?::b_permissions,?::b_permissions,?::b_permissions,?::b_permissions,?::b_permissions," +
+          "?::b_permissions,?::b_permissions,?::b_permissions,?"
+        val backendPermissions = BackendPermissions(
+          adminId, Permission.READ_WRITE, Permission.READ_WRITE, Permission.READ_WRITE, Permission.READ_WRITE,
+          Permission.READ_WRITE, Permission.READ_WRITE, Permission.READ_WRITE, Permission.READ_WRITE,
+          Permission.READ_WRITE, null
+        )
+        val bpRowsFuture = client.preparedQuery(bpQuery).execute(makeBackendPermissionsTuple(backendPermissions, false))
+
+        bpRowsFuture.onFailure { bpRes ->
+          println("Failed to execute backend permissions query: $bpRes")
+          msg.fail(500, BACKEND_PERMISSION_CREATION_FAILED)
+        }
+
+        bpRowsFuture.onComplete { _ ->
+          println("Backend permissions created successfully")
+          msg.reply("Admin created successfully")
+        }
+      } catch (e: NullPointerException) {
+        println("Admin user already exists")
+        msg.reply("Admin user already exists")
+      }
+    }
+    }
   }
 
   private fun getAllUsers() {
@@ -321,7 +368,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
         "bp.template, bp.category_content, bp.category_products, bp.product_content, bp.product_price, " +
         "bp.product_warehouse, bp.text_pages, bp.\"API_KEY\" FROM users u " +
-        "LEFT JOIN backend_permissions bp ON u.user_id = bp.user_id"
+        "JOIN backend_permissions bp ON u.user_id = bp.user_id"
       val rowsFuture = client.preparedQuery(query).execute()
       val fullUsers: MutableList<FullUser> = emptyList<FullUser>().toMutableList()
 
@@ -355,7 +402,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
         "bp.template, bp.category_content, bp.category_products, bp.product_content, bp.product_price, " +
         "bp.product_warehouse, bp.text_pages, bp.\"API_KEY\" FROM users u " +
-        "LEFT JOIN backend_permissions bp ON u.user_id = bp.user_id WHERE u.email =?"
+        "JOIN backend_permissions bp ON u.user_id = bp.user_id WHERE u.email =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(email))
 
       rowsFuture.onFailure { res ->
@@ -382,7 +429,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
         "bp.template, bp.category_content, bp.category_products, bp.product_content, bp.product_price, " +
         "bp.product_warehouse, bp.text_pages, bp.\"API_KEY\" FROM users u " +
-        "LEFT JOIN backend_permissions bp ON u.user_id = bp.user_id WHERE u.user_id =?"
+        "JOIN backend_permissions bp ON u.user_id = bp.user_id WHERE u.user_id =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(userId))
 
       rowsFuture.onFailure { res ->
@@ -421,7 +468,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       productPrice = Permission.fromString(row.getString("product_price")),
       productWarehouse = Permission.fromString(row.getString("product_warehouse")),
       textPages = Permission.fromString(row.getString("text_pages")),
-      apiKey = row.getString("API_KEY").orEmpty()
+      apiKey = row.getString("API_KEY")
     )
   }
 

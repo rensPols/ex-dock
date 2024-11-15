@@ -110,11 +110,11 @@ class ExDockAuthHandler(vertx: Vertx) : AuthenticationProvider{
   private fun addPermission(permission: Permission, task: String, user: User): User {
     return when (permission) {
       Permission.NONE -> user
-      Permission.READ -> addAuth(task + Permission.READ.name, user)
-      Permission.WRITE -> addAuth(task + Permission.WRITE.name, user)
+      Permission.READ -> addAuth(task + Permission.fromName(Permission.READ), user)
+      Permission.WRITE -> addAuth(task + Permission.fromName(Permission.WRITE), user)
       Permission.READ_WRITE -> {
-        val newUser = addAuth(task + Permission.READ.name, user)
-        addAuth(task + Permission.WRITE.name, newUser)
+        val newUser = addAuth(task + Permission.fromName(Permission.READ), user)
+        addAuth(task + Permission.fromName(Permission.WRITE), newUser)
       }
     }
   }
@@ -138,18 +138,26 @@ class ExDockAuthHandler(vertx: Vertx) : AuthenticationProvider{
   /**
    * Verify if the user is authorized to view the requested resource
    */
-  fun verifyPermissionAuthorization(user: User, task: String, callBack: Consumer<JsonObject>) {
-          if (saveAuthorization.contains(PermissionBasedAuthorization.create(task))
-            && saveAuthorization.first { authorization -> authorization == PermissionBasedAuthorization.create(task) }
-              .match(user)) {
-            callBack.accept(JsonObject().apply {
-              put("success", true)
-            })
-          } else {
-            callBack.accept(JsonObject().apply {
-              put("success", false)
-              put("message", "Permission denied for task: $task")
-            })
-          }
+  fun verifyPermissionAuthorization(user: User?, task: String, callBack: Consumer<JsonObject>) {
+    if (user == null) {
+      callBack.accept(JsonObject().apply {
+        put("success", false)
+        put("message", "User not authenticated")
+      })
+      return
+    }
+
+    if (saveAuthorization.contains(PermissionBasedAuthorization.create(task))
+      && saveAuthorization.first { authorization -> authorization == PermissionBasedAuthorization.create(task) }
+        .match(user)) {
+      callBack.accept(JsonObject().apply {
+        put("success", true)
+      })
+    } else {
+      callBack.accept(JsonObject().apply {
+        put("success", false)
+        put("message", "Permission denied for task: $task")
+      })
+    }
    }
 }

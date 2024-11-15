@@ -5,6 +5,7 @@ import com.ex_dock.ex_dock.frontend.account.router.initAccount
 import com.ex_dock.ex_dock.frontend.category.router.initCategory
 import com.ex_dock.ex_dock.frontend.checkout.router.initCheckout
 import com.ex_dock.ex_dock.frontend.home.router.initHome
+import com.ex_dock.ex_dock.frontend.login.router.initLogin
 import com.ex_dock.ex_dock.frontend.product.router.initProduct
 import com.ex_dock.ex_dock.frontend.text_pages.router.initTextPages
 import io.vertx.core.AbstractVerticle
@@ -41,6 +42,7 @@ class MainVerticle : AbstractVerticle() {
     val mainRouter : Router = Router.router(vertx)
     val store = SessionStore.create(vertx)
     val sessionHandler = SessionHandler.create(store)
+    val eventBus = vertx.eventBus()
 
     sessionHandler.setCookieSameSite(CookieSameSite.STRICT)
 
@@ -54,6 +56,7 @@ class MainVerticle : AbstractVerticle() {
     mainRouter.initTextPages(vertx)
     mainRouter.initCheckout(vertx)
     mainRouter.initAccount(vertx)
+    mainRouter.initLogin(vertx)
 
     vertx
       .createHttpServer()
@@ -61,7 +64,12 @@ class MainVerticle : AbstractVerticle() {
       .listen(props.getProperty("FRONTEND_PORT").toInt()) {http ->
         if (http.succeeded()) {
           println("HTTP server started on port ${props.getProperty("FRONTEND_PORT")}")
-          startPromise.complete()
+          eventBus.request<String>("process.account.admin", "").onFailure {
+            println("failure to create admin")
+            startPromise.fail(http.cause())
+          }.onComplete {
+            startPromise.complete()
+          }
         } else {
           println("Failed to start HTTP server: ${http.cause()}")
           startPromise.fail(http.cause())

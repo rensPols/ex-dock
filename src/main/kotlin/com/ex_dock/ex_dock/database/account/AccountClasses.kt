@@ -1,5 +1,7 @@
 package com.ex_dock.ex_dock.database.account
 
+import java.util.*
+
 data class User(var userId: Int, var email: String, var password: String)
 
 data class UserCreation(var email: String, var password: String)
@@ -46,7 +48,21 @@ enum class Permission(name: String) {
 
   companion object {
     fun fromString(value: String): Permission {
-      return values().find { it.name == value } ?: NONE
+      return when (value) {
+        "read" -> READ
+        "write" -> WRITE
+        "read-write" -> READ_WRITE
+        else -> NONE
+      }
+    }
+
+    fun fromName(permission: Permission): String {
+      return when (permission) {
+        READ -> "Read"
+        WRITE -> "Write"
+        READ_WRITE -> "ReadWrite"
+        NONE -> "None"
+      }
     }
   }
 }

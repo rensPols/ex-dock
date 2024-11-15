@@ -6,7 +6,6 @@ import io.vertx.core.MultiMap
 import io.vertx.core.Promise
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
-import io.vertx.core.json.Json
 
 class AccountFrontendVerticle: AbstractVerticle() {
 
@@ -21,6 +20,7 @@ class AccountFrontendVerticle: AbstractVerticle() {
     handleAccountCreation()
     getAccountHomeData()
     handleEditRequestPage()
+    handleEditAccountData()
   }
 
   private fun handleAccountCreation() {
@@ -65,9 +65,47 @@ class AccountFrontendVerticle: AbstractVerticle() {
     }
   }
 
+  private fun handleEditAccountData() {
+    eventBus.consumer<MultiMap>("account.router.editAccountData").handler { message ->
+      val data = message.body()
+      val userId = data["userId"]?.toInt()?: -1
+      val updatedUser = User(userId, data["email"], data["password"])
+      val updatedBackendPermissions = BackendPermissions(
+        userId,
+        convertStringToPermission(data["userPermission"]),
+        convertStringToPermission(data["serverSettings"]),
+        convertStringToPermission(data["template"]),
+        convertStringToPermission(data["categoryContent"]),
+        convertStringToPermission(data["categoryProducts"]),
+        convertStringToPermission(data["productContent"]),
+        convertStringToPermission(data["productPrice"]),
+        convertStringToPermission(data["productWarehouse"]),
+        convertStringToPermission(data["textPages"]),
+        data["apiKey"]
+      )
+
+      eventBus.request<User>("process.account.updateUser", updatedUser, userDeliveryOptions).onComplete {
+        if (it.succeeded()) {
+          eventBus.request<BackendPermissions>("process.account.updateBackendPermissions",
+            updatedBackendPermissions, backendPermissionsDeliveryOptions)
+            .onFailure { failure ->
+              message.reply(failure.message)
+            }.onComplete { msg ->
+              if (msg.succeeded()) {
+                message.reply("success")
+              } else {
+                message.reply(msg.cause().message)
+              }
+            }
+        } else {
+          message.reply(it.cause().message)
+        }
+      }
+    }
+  }
+
   private fun getAccountHomeData() {
     eventBus.consumer<String>("account.router.homeData").handler { message ->
-      println("Got request!")
       eventBus.request<MutableList<FullUser>>("process.account.getAllFullUserInfo", "").onComplete {
         if (it.succeeded()) {
           val fullUserList = it.result().body()
