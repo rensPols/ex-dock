@@ -1,11 +1,16 @@
 package com.ex_dock.ex_dock.database.url
 
+import com.ex_dock.ex_dock.database.category.Categories
 import com.ex_dock.ex_dock.database.category.CategoryJdbcVerticle
+import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.database.product.ProductJdbcVerticle
+import com.ex_dock.ex_dock.database.product.Products
+import com.ex_dock.ex_dock.database.text_pages.TextPages
 import com.ex_dock.ex_dock.database.text_pages.TextPagesJdbcVerticle
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Future
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -28,133 +33,138 @@ class UrlJdbcVerticleTest {
   private var textPageId = -1
 
   private var categoryId = -1
+  private val urlKeysDeliveryOptions = DeliveryOptions().setCodecName("UrlKeysCodec")
+  private val textPageUrlsDeliveryOptions = DeliveryOptions().setCodecName("TextPageUrlsCodec")
+  private val categoryUrlsDeliveryOptions = DeliveryOptions().setCodecName("CategoryUrlsCodec")
+  private val productUrlsDeliveryOptions = DeliveryOptions().setCodecName("ProductUrlsCodec")
+  private val productDeliveryOptions = DeliveryOptions().setCodecName("ProductsCodec")
+  private val categoryDeliveryOptions = DeliveryOptions().setCodecName("CategoriesCodec")
+  private val textPageDeliveryOptions = DeliveryOptions().setCodecName("TextPagesCodec")
+  private val fullUrlRequestInfoDeliveryOptions = DeliveryOptions().setCodecName("FullUrlRequestInfoCodec")
 
-  private var urlJson = json {
-    obj(
-      "url_key" to "/",
-      "upper_key" to "/",
-      "page_type" to "product"
-    )
-  }
+  private var url = UrlKeys(
+    urlKey = "/",
+    upperKey = "/",
+    pageType = convertStringToPageType("product")
+  )
 
-  private var textPageJson = json {
-    obj(
-      "text_pages_id" to textPageId,
-      "name" to "test name",
-      "short_text" to "test short_text",
-      "text" to "test text"
-    )
-  }
+  private var textPage = TextPages(
+    textPagesId = textPageId,
+    name = "test name",
+    shortText = "test short_text",
+    text = "test text"
+  )
 
-  private var categoryJson = json {
-    obj(
-      "category_id" to categoryId,
-      "upper_category" to null,
-      "name" to "test name",
-      "short_description" to "test description",
-      "description" to "test description"
-    )
-  }
+  private var category = Categories(
+    categoryId = categoryId,
+    upperCategory = null,
+    name = "test name",
+    shortDescription = "test description",
+    description = "test description"
+  )
 
-  private var productJson = json {
-    obj(
-      "product_id" to productId,
-      "name" to "test name",
-      "short_name" to "test name",
-      "description" to "test description",
-      "short_description" to "test description"
-    )
-  }
+  private var product = Products(
+    productId = productId,
+    name = "test name",
+    shortName = "test name",
+    description = "test description",
+    shortDescription = "test description"
+  )
 
-  private var textPageUrlJson = json {
-    obj(
-      "url_key" to "/",
-      "upper_key" to "/",
-      "text_pages_id" to textPageId
-    )
-  }
+  private var textPageUrl = TextPageUrls(
+    urlKeys = "/",
+    upperKey = "/",
+    textPagesId = textPageId,
+  )
 
-  private var productUrlJson = json {
-    obj(
-      "url_key" to "/",
-      "upper_key" to "/",
-      "product_id" to productId
-    )
-  }
+  private var productUrl = ProductUrls(
+    urlKeys = "/",
+    upperKey = "/",
+    productId = productId,
+  )
 
-  private var categoryUrlJson = json {
-    obj(
-      "url_key" to "/",
-      "upper_key" to "/",
-      "category_id" to categoryId
-    )
-  }
+  private var categoryUrl = CategoryUrls(
+    urlKeys = "/",
+    upperKey = "/",
+    categoryId = categoryId,
+  )
 
-  private var fullUrlJson = json {
-    obj(
-      "url_key" to "/",
-      "upper_key" to "/",
-      "page_type" to "product",
-      "text_pages_id" to textPageId,
-      "text_page_name" to "test name",
-      "text_page_short_text" to "test short_text",
-      "text_page_text" to "test text",
-      "category_id" to categoryId,
-      "upper_category" to null,
-      "category_name" to "test name",
-      "category_short_description" to "test description",
-      "category_description" to "test description",
-      "product_id" to productId,
-      "product_name" to "test name",
-      "product_short_name" to "test name",
-      "product_description" to "test description",
-      "product_short_description" to "test description"
-    )
-  }
+  private var fullUrl = FullUrlKeys(
+    urlKeys = url,
+    textPage = textPage,
+    category = category,
+    product = product
+  )
+
+  private var joinList = JoinList(
+    joinTextPage = true,
+    joinCategory = true,
+    joinProduct = true
+  )
+
+  private var fullUrlRequestInfo = FullUrlRequestInfo(
+    urlKeys = url.urlKey,
+    upperKey = url.upperKey,
+    joinList = joinList
+  )
 
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
+      .registerCodec(GenericCodec(MutableList::class.java))
+      .registerCodec(GenericCodec(UrlKeys::class.java))
+      .registerCodec(GenericCodec(TextPages::class.java))
+      .registerCodec(GenericCodec(Categories::class.java))
+      .registerCodec(GenericCodec(Products::class.java))
+      .registerCodec(GenericCodec(TextPageUrls::class.java))
+      .registerCodec(GenericCodec(ProductUrls::class.java))
+      .registerCodec(GenericCodec(CategoryUrls::class.java))
+      .registerCodec(GenericCodec(FullUrlKeys::class.java))
+      .registerCodec(GenericCodec(FullUrlRequestInfo::class.java))
+      .registerCodec(GenericCodec(JoinList::class.java))
     Future.all(deployNeededVerticles(vertx)).onComplete {
-      eventBus.request<Int>("process.url.createUrlKey", urlJson).onFailure {
+      eventBus.request<UrlKeys>("process.url.createUrlKey", url, urlKeysDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { createUrlMsg ->
-        assertEquals("Url key successfully created", createUrlMsg.result().body())
+        assertEquals(url, createUrlMsg.result().body())
 
-        eventBus.request<Int>("process.textPages.create", textPageJson).onFailure {
+        eventBus.request<TextPages>("process.textPages.create", textPage, textPageDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { createTextPageMsg ->
-          textPageId = createTextPageMsg.result().body()
-          assertEquals("Int", createTextPageMsg.result().body()::class.simpleName)
+          textPage = createTextPageMsg.result().body()
+          textPageId = textPage.textPagesId
+          assertEquals(textPage, createTextPageMsg.result().body())
 
-          eventBus.request<Int>("process.categories.create", categoryJson).onFailure {
+          eventBus.request<Categories>("process.categories.create", category, categoryDeliveryOptions).onFailure {
             testContext.failNow(it)
           }.onComplete { createCategoryMsg ->
-            categoryId = createCategoryMsg.result().body()
-            assertEquals("Int", createCategoryMsg.result().body()::class.simpleName)
+            category = createCategoryMsg.result().body()
+            categoryId = category.categoryId!!
+            assertEquals(category, createCategoryMsg.result().body())
 
-            eventBus.request<Int>("process.products.createProduct", productJson).onFailure {
+            eventBus.request<Products>("process.products.createProduct", product, productDeliveryOptions).onFailure {
               testContext.failNow(it)
-            }.onComplete {
-              productId = createCategoryMsg.result().body()
-              assertEquals("Int", createCategoryMsg.result().body()::class.simpleName)
+            }.onComplete { createProductMsg ->
+              product = createProductMsg.result().body()
+              productId = product.productId
+              assertEquals(product, createProductMsg.result().body())
 
-              setAllJsonS()
+              setAllJsons()
 
-              eventBus.request<String>("process.url.createTextPageUrl", textPageUrlJson).onFailure {
+              eventBus.request<TextPageUrls>("process.url.createTextPageUrl", textPageUrl, textPageUrlsDeliveryOptions).onFailure {
                 testContext.failNow(it)
               }.onComplete { createTextPageUrlMsg ->
-                assertEquals("Text page url created successfully", createTextPageUrlMsg.result().body())
+                assertEquals(textPageUrl, createTextPageUrlMsg.result().body())
 
-                eventBus.request<String>("process.url.createProductUrl", productUrlJson).onFailure {
+                eventBus.request<ProductUrls>("process.url.createProductUrl", productUrl, productUrlsDeliveryOptions).onFailure {
                   testContext.failNow(it)
                 }.onComplete {  createProductUrlMsg ->
-                  assertEquals("Product url created successfully", createProductUrlMsg.result().body())
+                  assertEquals(productUrl, createProductUrlMsg.result().body())
 
-                  eventBus.request<String>("process.url.createCategoryUrl", categoryUrlJson).onFailure {
+                  eventBus.request<CategoryUrls>("process.url.createCategoryUrl", categoryUrl, categoryUrlsDeliveryOptions).onFailure {
                     testContext.failNow(it)
                   }.onComplete { createCategoryUrlMsg ->
-                    assertEquals("Category url created successfully", createCategoryUrlMsg.result().body())
+                    assertEquals(categoryUrl, createCategoryUrlMsg.result().body())
 
                     testContext.completeNow()
                   }
@@ -168,11 +178,11 @@ class UrlJdbcVerticleTest {
   }
   @Test
   fun testGetAllUrlKeys(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.url.getAllUrlKeys", "").onFailure {
+    eventBus.request<MutableList<UrlKeys>>("process.url.getAllUrlKeys", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllUrlKeysMsg ->
       assert(getAllUrlKeysMsg.succeeded())
-      assertEquals(json { obj("urlKeys" to listOf(urlJson)) }, getAllUrlKeysMsg.result().body())
+      assertEquals(mutableListOf(url), getAllUrlKeysMsg.result().body())
 
       testContext.completeNow()
     }
@@ -180,11 +190,11 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun testGetUrlKeyByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.url.getUrlByKey", urlJson).onFailure {
+    eventBus.request<UrlKeys>("process.url.getUrlByKey", url, urlKeysDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getUrlKeyByIdMsg ->
       assert(getUrlKeyByIdMsg.succeeded())
-      assertEquals(urlJson, getUrlKeyByIdMsg.result().body())
+      assertEquals(url, getUrlKeyByIdMsg.result().body())
 
       testContext.completeNow()
     }
@@ -192,25 +202,23 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun updateUrlKey(vertx: Vertx, testContext: VertxTestContext) {
-    val updateUrlJson = json {
-      obj(
-        "url_key" to "/",
-        "upper_key" to "/",
-        "page_type" to "text_page"
-      )
-    }
+    val updateUrl = UrlKeys(
+      urlKey = "/",
+      upperKey = "/",
+      pageType = convertStringToPageType("category")
+    )
 
-    eventBus.request<String>("process.url.updateUrlKey", updateUrlJson).onFailure {
+    eventBus.request<UrlKeys>("process.url.updateUrlKey", updateUrl, urlKeysDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateUrlKeyMsg ->
       assert(updateUrlKeyMsg.succeeded())
-      assertEquals("Url key updated successfully", updateUrlKeyMsg.result().body())
+      assertEquals(updateUrl, updateUrlKeyMsg.result().body())
 
-      eventBus.request<JsonObject>("process.url.getUrlByKey", updateUrlJson).onFailure {
+      eventBus.request<UrlKeys>("process.url.getUrlByKey", updateUrl, urlKeysDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedUrlByKeyMsg ->
         assert(getUpdatedUrlByKeyMsg.succeeded())
-        assertEquals(updateUrlJson, getUpdatedUrlByKeyMsg.result().body())
+        assertEquals(updateUrl, getUpdatedUrlByKeyMsg.result().body())
 
         testContext.completeNow()
       }
@@ -219,11 +227,11 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun testGetAllTextPageUrls(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.url.getAllTextPageUrls", "").onFailure {
+    eventBus.request<MutableList<TextPageUrls>>("process.url.getAllTextPageUrls", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllTextPageUrlsMsg ->
       assert(getAllTextPageUrlsMsg.succeeded())
-      assertEquals(json { obj("textPageUrls" to listOf(textPageUrlJson)) }, getAllTextPageUrlsMsg.result().body())
+      assertEquals(mutableListOf(textPageUrl), getAllTextPageUrlsMsg.result().body())
 
       testContext.completeNow()
     }
@@ -231,11 +239,11 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun getTextPageUrlByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.url.getTextPageUrlByKey", textPageUrlJson).onFailure {
+    eventBus.request<TextPageUrls>("process.url.getTextPageUrlByKey", textPageUrl, textPageUrlsDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getTextPageUrlByKeyMsg ->
       assert(getTextPageUrlByKeyMsg.succeeded())
-      assertEquals(textPageUrlJson, getTextPageUrlByKeyMsg.result().body())
+      assertEquals(textPageUrl, getTextPageUrlByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -243,25 +251,23 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun updateTextPageUrl(vertx: Vertx, testContext: VertxTestContext) {
-    val updateTextPageUrlJson = json {
-      obj(
-        "url_key" to "/",
-        "upper_key" to "/",
-        "text_pages_id" to textPageId
-      )
-    }
+    val updateTextPageUrl = TextPageUrls(
+      textPagesId = textPageId,
+      urlKeys = "/",
+      upperKey = "/",
+    )
 
-    eventBus.request<String>("process.url.updateTextPageUrl", updateTextPageUrlJson).onFailure {
+    eventBus.request<TextPageUrls>("process.url.updateTextPageUrl", updateTextPageUrl, textPageUrlsDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateTextPageUrlMsg ->
       assert(updateTextPageUrlMsg.succeeded())
-      assertEquals("Text page url updated successfully", updateTextPageUrlMsg.result().body())
+      assertEquals(updateTextPageUrl, updateTextPageUrlMsg.result().body())
 
-      eventBus.request<JsonObject>("process.url.getTextPageUrlByKey", updateTextPageUrlJson).onFailure {
+      eventBus.request<TextPageUrls>("process.url.getTextPageUrlByKey", updateTextPageUrl, textPageDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedTextPageUrlByKeyMsg ->
         assert(getUpdatedTextPageUrlByKeyMsg.succeeded())
-        assertEquals(updateTextPageUrlJson, getUpdatedTextPageUrlByKeyMsg.result().body())
+        assertEquals(updateTextPageUrl, getUpdatedTextPageUrlByKeyMsg.result().body())
 
         testContext.completeNow()
       }
@@ -270,11 +276,11 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun testGetAllProductUrls(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.url.getAllProductUrls", "").onFailure {
+    eventBus.request<MutableList<ProductUrls>>("process.url.getAllProductUrls", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllProductUrlsMsg ->
       assert(getAllProductUrlsMsg.succeeded())
-      assertEquals(json { obj("productUrls" to listOf(productUrlJson)) }, getAllProductUrlsMsg.result().body())
+      assertEquals(mutableListOf(productUrl), getAllProductUrlsMsg.result().body())
 
       testContext.completeNow()
     }
@@ -282,11 +288,11 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun getProductUrlByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.url.getProductUrlByKey", productUrlJson).onFailure {
+    eventBus.request<ProductUrls>("process.url.getProductUrlByKey", productUrl, productUrlsDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getProductUrlByKeyMsg ->
       assert(getProductUrlByKeyMsg.succeeded())
-      assertEquals(productUrlJson, getProductUrlByKeyMsg.result().body())
+      assertEquals(productUrl, getProductUrlByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -294,25 +300,23 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun updateProductUrl(vertx: Vertx, testContext: VertxTestContext) {
-    val updateProductUrlJson = json {
-      obj(
-        "url_key" to "/",
-        "upper_key" to "/",
-        "product_id" to productId
-      )
-    }
+    val updateProductUrl = ProductUrls(
+      productId = productId,
+      urlKeys = "/",
+      upperKey = "/",
+    )
 
-    eventBus.request<String>("process.url.updateProductUrl", updateProductUrlJson).onFailure {
+    eventBus.request<ProductUrls>("process.url.updateProductUrl", updateProductUrl, productUrlsDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateProductUrlMsg ->
       assert(updateProductUrlMsg.succeeded())
-      assertEquals("Product url updated successfully", updateProductUrlMsg.result().body())
+      assertEquals(updateProductUrl, updateProductUrlMsg.result().body())
 
-      eventBus.request<JsonObject>("process.url.getProductUrlByKey", updateProductUrlJson).onFailure {
+      eventBus.request<ProductUrls>("process.url.getProductUrlByKey", updateProductUrl, productUrlsDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedProductUrlByKeyMsg ->
         assert(getUpdatedProductUrlByKeyMsg.succeeded())
-        assertEquals(updateProductUrlJson, getUpdatedProductUrlByKeyMsg.result().body())
+        assertEquals(updateProductUrl, getUpdatedProductUrlByKeyMsg.result().body())
 
         testContext.completeNow()
       }
@@ -321,11 +325,11 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun testGetAllCategoryUrls(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.url.getAllCategoryUrls", "").onFailure {
+    eventBus.request<MutableList<CategoryUrls>>("process.url.getAllCategoryUrls", "").onFailure {
       testContext.failNow(it)
     }.onComplete { getAllCategoryUrlsMsg ->
       assert(getAllCategoryUrlsMsg.succeeded())
-      assertEquals(json { obj("categoryUrls" to listOf(categoryUrlJson)) }, getAllCategoryUrlsMsg.result().body())
+      assertEquals(mutableListOf(categoryUrl), getAllCategoryUrlsMsg.result().body())
 
       testContext.completeNow()
     }
@@ -333,11 +337,11 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun getCategoryUrlByKey(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<JsonObject>("process.url.getCategoryUrlByKey", categoryUrlJson).onFailure {
+    eventBus.request<CategoryUrls>("process.url.getCategoryUrlByKey", categoryUrl, categoryUrlsDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getCategoryUrlByKeyMsg ->
       assert(getCategoryUrlByKeyMsg.succeeded())
-      assertEquals(categoryUrlJson, getCategoryUrlByKeyMsg.result().body())
+      assertEquals(categoryUrl, getCategoryUrlByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -345,25 +349,23 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun updateCategoryUrl(vertx: Vertx, testContext: VertxTestContext) {
-    val updateCategoryUrlJson = json {
-      obj(
-        "url_key" to "/",
-        "upper_key" to "/",
-        "category_id" to categoryId
-      )
-    }
+    val updateCategoryUrl = CategoryUrls(
+      categoryId = categoryId,
+      urlKeys = "/",
+      upperKey = "/",
+    )
 
-    eventBus.request<String>("process.url.updateCategoryUrl", updateCategoryUrlJson).onFailure {
+    eventBus.request<CategoryUrls>("process.url.updateCategoryUrl", updateCategoryUrl, categoryUrlsDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { updateCategoryUrlMsg ->
       assert(updateCategoryUrlMsg.succeeded())
-      assertEquals("Category url updated successfully", updateCategoryUrlMsg.result().body())
+      assertEquals(updateCategoryUrl, updateCategoryUrlMsg.result().body())
 
-      eventBus.request<JsonObject>("process.url.getCategoryUrlByKey", updateCategoryUrlJson).onFailure {
+      eventBus.request<CategoryUrls>("process.url.getCategoryUrlByKey", updateCategoryUrl, categoryUrlsDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { getUpdatedCategoryUrlByKeyMsg ->
         assert(getUpdatedCategoryUrlByKeyMsg.succeeded())
-        assertEquals(updateCategoryUrlJson, getUpdatedCategoryUrlByKeyMsg.result().body())
+        assertEquals(updateCategoryUrl, getUpdatedCategoryUrlByKeyMsg.result().body())
 
         testContext.completeNow()
       }
@@ -372,19 +374,11 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun testGetAllFullUrlsFullJoin(vertx: Vertx, testContext: VertxTestContext) {
-    val joinList = json {
-      obj(
-        "joinTextPage" to true,
-        "joinCategory" to true,
-        "joinProduct" to true
-      )
-    }
-
-    eventBus.request<JsonObject>("process.url.getAllFullUrls", joinList).onFailure {
+    eventBus.request<MutableList<FullUrlKeys>>("process.url.getAllFullUrls", fullUrlRequestInfo, fullUrlRequestInfoDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete {  getAllFullJoinMsg ->
       assert(getAllFullJoinMsg.succeeded())
-      assertEquals(json { obj("fullUrls" to listOf(fullUrlJson)) }, getAllFullJoinMsg.result().body())
+      assertEquals(mutableListOf(fullUrl), getAllFullJoinMsg.result().body())
 
       testContext.completeNow()
 
@@ -393,21 +387,11 @@ class UrlJdbcVerticleTest {
 
   @Test
   fun testGetFullUrlByKey(vertx: Vertx, testContext: VertxTestContext) {
-    val joinList = json {
-      obj(
-        "joinTextPage" to true,
-        "joinCategory" to true,
-        "joinProduct" to true,
-        "url_key" to "/",
-        "upper_key" to "/"
-      )
-    }
-
-    eventBus.request<JsonObject>("process.url.getFullUrlByKey", joinList).onFailure {
+    eventBus.request<FullUrlKeys>("process.url.getFullUrlByKey", fullUrlRequestInfo, fullUrlRequestInfoDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { getFullUrlByKeyMsg ->
       assert(getFullUrlByKeyMsg.succeeded())
-      assertEquals(fullUrlJson, getFullUrlByKeyMsg.result().body())
+      assertEquals(fullUrl, getFullUrlByKeyMsg.result().body())
 
       testContext.completeNow()
     }
@@ -415,19 +399,19 @@ class UrlJdbcVerticleTest {
 
   @AfterEach
   fun tearDown(vertx: Vertx, testContext: VertxTestContext) {
-    eventBus.request<String>("process.url.deleteCategoryUrl", categoryUrlJson).onFailure {
+    eventBus.request<String>("process.url.deleteCategoryUrl", categoryUrl, categoryUrlsDeliveryOptions).onFailure {
       testContext.failNow(it)
     }.onComplete { deleteCategoryUrlMsg ->
       assert(deleteCategoryUrlMsg.succeeded())
       assertEquals("Category url deleted successfully", deleteCategoryUrlMsg.result().body())
 
-      eventBus.request<String>("process.url.deleteProductUrl", productUrlJson).onFailure {
+      eventBus.request<String>("process.url.deleteProductUrl", productUrl, productUrlsDeliveryOptions).onFailure {
         testContext.failNow(it)
       }.onComplete { deleteProductUrlMsg ->
         assert(deleteProductUrlMsg.succeeded())
         assertEquals("Product url deleted successfully", deleteProductUrlMsg.result().body())
 
-        eventBus.request<String>("process.url.deleteTextPageUrl", textPageUrlJson).onFailure {
+        eventBus.request<String>("process.url.deleteTextPageUrl", textPageUrl, textPageDeliveryOptions).onFailure {
           testContext.failNow(it)
         }.onComplete { deleteTextPageUrlMsg ->
           assert(deleteTextPageUrlMsg.succeeded())
@@ -451,7 +435,7 @@ class UrlJdbcVerticleTest {
                 assert(deleteTextPageMsg.succeeded())
                 assertEquals("Text page deleted successfully", deleteTextPageMsg.result().body())
 
-                eventBus.request<String>("process.url.deleteUrlKey", urlJson).onFailure {
+                eventBus.request<String>("process.url.deleteUrlKey", url, urlKeysDeliveryOptions).onFailure {
                   testContext.failNow(it)
                 }.onComplete { deleteUrlKeyMsg ->
                   assert(deleteUrlKeyMsg.succeeded())
@@ -467,81 +451,13 @@ class UrlJdbcVerticleTest {
     }
   }
 
-  private fun setAllJsonS() {
-    textPageJson = json {
-      obj(
-        "text_pages_id" to textPageId,
-        "name" to "test name",
-        "short_text" to "test short_text",
-        "text" to "test text"
-      )
-    }
-
-    categoryJson =  json {
-      obj(
-        "category_id" to categoryId,
-        "upper_category" to null,
-        "name" to "test name",
-        "short_description" to "test description",
-        "description" to "test description"
-      )
-    }
-
-    productJson = json {
-      obj(
-        "product_id" to productId,
-        "name" to "test name",
-        "short_name" to "test name",
-        "description" to "test description",
-        "short_description" to "test description"
-      )
-    }
-
-    textPageUrlJson = json {
-      obj(
-        "url_key" to "/",
-        "upper_key" to "/",
-        "text_pages_id" to textPageId
-      )
-    }
-
-    productUrlJson = json {
-      obj(
-        "url_key" to "/",
-        "upper_key" to "/",
-        "product_id" to productId
-      )
-    }
-
-    categoryUrlJson = json {
-      obj(
-        "url_key" to "/",
-        "upper_key" to "/",
-        "category_id" to categoryId
-      )
-    }
-
-    fullUrlJson = json {
-      obj(
-        "url_key" to "/",
-        "upper_key" to "/",
-        "page_type" to "product",
-        "text_pages_id" to textPageId,
-        "text_page_name" to "test name",
-        "text_page_short_text" to "test short_text",
-        "text_page_text" to "test text",
-        "category_id" to categoryId,
-        "upper_category" to null,
-        "category_name" to "test name",
-        "category_short_description" to "test description",
-        "category_description" to "test description",
-        "product_id" to productId,
-        "product_name" to "test name",
-        "product_short_name" to "test name",
-        "product_description" to "test description",
-        "product_short_description" to "test description"
-      )
-    }
+  private fun setAllJsons() {
+    textPageUrl.textPagesId = textPageId
+    categoryUrl.categoryId = categoryId
+    productUrl.productId = productId
+    fullUrl.textPage = textPage
+    fullUrl.category = category
+    fullUrl.product = product
   }
 
   private fun deployNeededVerticles(vertx: Vertx): MutableList<Future<Void>> {
@@ -567,5 +483,14 @@ class UrlJdbcVerticleTest {
     ))
 
     return verticleList
+  }
+
+  private fun convertStringToPageType(pageType: String): PageType {
+    return when (pageType) {
+      "text_page" -> PageType.TEXT_PAGE
+      "category" -> PageType.CATEGORY
+      "product" -> PageType.PRODUCT
+      else -> throw IllegalArgumentException("Invalid page type: $pageType")
+    }
   }
 }
