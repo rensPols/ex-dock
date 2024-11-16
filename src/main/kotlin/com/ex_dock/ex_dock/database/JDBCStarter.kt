@@ -13,6 +13,7 @@ import com.ex_dock.ex_dock.database.scope.Websites
 import com.ex_dock.ex_dock.database.server.ServerDataData
 import com.ex_dock.ex_dock.database.server.ServerJDBCVerticle
 import com.ex_dock.ex_dock.database.server.ServerVersionData
+import com.ex_dock.ex_dock.database.service.ServiceVerticle
 import com.ex_dock.ex_dock.database.template.Block
 import com.ex_dock.ex_dock.database.template.Template
 import com.ex_dock.ex_dock.database.template.TemplateJdbcVerticle
@@ -25,10 +26,12 @@ import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.Promise
+import io.vertx.core.eventbus.EventBus
 
-class JDBCStarter: AbstractVerticle() {
+class JDBCStarter : AbstractVerticle() {
 
   private var verticles: MutableList<Future<Void>> = emptyList<Future<Void>>().toMutableList()
+  private lateinit var eventBus: EventBus
 
   override fun start(starPromise: Promise<Void>) {
     addAllVerticles()
@@ -37,8 +40,15 @@ class JDBCStarter: AbstractVerticle() {
       .onComplete {
         println("All JDBC verticles deployed")
         getAllCodecClasses()
+        eventBus = vertx.eventBus()
+
+        eventBus.request<String>("process.service.populateTemplates", "").onFailure {
+          // TODO: handle error
+        }.onSuccess {
+          println("Database populated with standard Data")
+        }
       }
-     .onFailure { error ->
+      .onFailure { error ->
         println("Failed to deploy JDBC verticles: $error")
       }
   }
@@ -53,13 +63,49 @@ class JDBCStarter: AbstractVerticle() {
     verticles.add(deployWorkerVerticleHelper(vertx, ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5))
     verticles.add(deployWorkerVerticleHelper(vertx, ServerJDBCVerticle::class.qualifiedName.toString(), 5, 5))
     verticles.add(deployWorkerVerticleHelper(vertx, UrlJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, ProductCompleteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(
+      deployWorkerVerticleHelper(
+        vertx,
+        ProductCompleteEavJdbcVerticle::class.qualifiedName.toString(),
+        5,
+        5
+      )
+    )
     verticles.add(deployWorkerVerticleHelper(vertx, ProductGlobalEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, ProductMultiSelectJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, ProductStoreViewEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, ProductWebsiteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(
+      deployWorkerVerticleHelper(
+        vertx,
+        ProductMultiSelectJdbcVerticle::class.qualifiedName.toString(),
+        5,
+        5
+      )
+    )
+    verticles.add(
+      deployWorkerVerticleHelper(
+        vertx,
+        ProductStoreViewEavJdbcVerticle::class.qualifiedName.toString(),
+        5,
+        5
+      )
+    )
+    verticles.add(
+      deployWorkerVerticleHelper(
+        vertx,
+        ProductWebsiteEavJdbcVerticle::class.qualifiedName.toString(),
+        5,
+        5
+      )
+    )
+    verticles.add(
+      deployWorkerVerticleHelper(
+        vertx,
+        ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(),
+        5,
+        5
+      )
+    )
     verticles.add(deployWorkerVerticleHelper(vertx, TemplateJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, ServiceVerticle::class.qualifiedName.toString(), 1, 1))
   }
 
   private fun getAllCodecClasses() {
