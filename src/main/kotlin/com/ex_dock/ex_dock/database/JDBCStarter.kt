@@ -13,6 +13,7 @@ import com.ex_dock.ex_dock.database.scope.Websites
 import com.ex_dock.ex_dock.database.server.ServerDataData
 import com.ex_dock.ex_dock.database.server.ServerJDBCVerticle
 import com.ex_dock.ex_dock.database.server.ServerVersionData
+import com.ex_dock.ex_dock.database.service.PopulateException
 import com.ex_dock.ex_dock.database.service.ServiceVerticle
 import com.ex_dock.ex_dock.database.template.Block
 import com.ex_dock.ex_dock.database.template.Template
@@ -43,7 +44,7 @@ class JDBCStarter : AbstractVerticle() {
         eventBus = vertx.eventBus()
 
         eventBus.request<String>("process.service.populateTemplates", "").onFailure {
-          // TODO: handle error
+          throw PopulateException("Could not populate the database with standard data. Closing the server!")
         }.onSuccess {
           println("Database populated with standard Data")
         }

@@ -11,3 +11,5 @@ fun getAllStandardTemplates(): List<Template> {
   ))
   return templates.toList()
 }
+
+class PopulateException(message: String) : Exception(message)
