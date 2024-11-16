@@ -13,6 +13,9 @@ import com.ex_dock.ex_dock.database.scope.Websites
 import com.ex_dock.ex_dock.database.server.ServerDataData
 import com.ex_dock.ex_dock.database.server.ServerJDBCVerticle
 import com.ex_dock.ex_dock.database.server.ServerVersionData
+import com.ex_dock.ex_dock.database.template.Block
+import com.ex_dock.ex_dock.database.template.Template
+import com.ex_dock.ex_dock.database.template.TemplateJdbcVerticle
 import com.ex_dock.ex_dock.database.text_pages.FullTextPages
 import com.ex_dock.ex_dock.database.text_pages.TextPages
 import com.ex_dock.ex_dock.database.text_pages.TextPagesJdbcVerticle
@@ -56,6 +59,7 @@ class JDBCStarter: AbstractVerticle() {
     verticles.add(deployWorkerVerticleHelper(vertx, ProductStoreViewEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
     verticles.add(deployWorkerVerticleHelper(vertx, ProductWebsiteEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
     verticles.add(deployWorkerVerticleHelper(vertx, ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(deployWorkerVerticleHelper(vertx, TemplateJdbcVerticle::class.qualifiedName.toString(), 5, 5))
   }
 
   private fun getAllCodecClasses() {
@@ -118,6 +122,8 @@ class JDBCStarter: AbstractVerticle() {
       .registerCodec(GenericCodec(UserCreation::class.java))
       .registerCodec(GenericCodec(BackendPermissions::class.java))
       .registerCodec(GenericCodec(FullUser::class.java))
+      .registerCodec(GenericCodec(Template::class.java))
+      .registerCodec(GenericCodec(Block::class.java))
   }
 
 }
