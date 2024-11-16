@@ -1,11 +1,10 @@
 package com.ex_dock.ex_dock.database.text_pages
 
 import com.ex_dock.ex_dock.database.category.PageIndex
-import com.ex_dock.ex_dock.database.connection.Connection
+import com.ex_dock.ex_dock.database.connection.getConnection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
-import io.vertx.core.json.JsonObject
 import io.vertx.jdbcclient.JDBCPool
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
@@ -22,7 +21,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
   private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
-    client = Connection().getConnection(vertx)
+    client = getConnection(vertx)
     eventBus = vertx.eventBus()
 
     // Initialize the eventbus connections with the text pages table
