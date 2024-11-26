@@ -22,41 +22,6 @@ fun getConnection(vertx: Vertx): Pool {
   val connection: Pool
   val connectOptions = JDBCConnectOptions()
 
-    try {
-      val props: Properties = javaClass.classLoader.getResourceAsStream("secret.properties").use {
-        Properties().apply { load(it) }
-      }
-    } catch (e: Exception) {
-      try {
-          val isDocker: Boolean = !System.getenv("GITHUB_RUN_NUMBER").isNullOrEmpty()
-          if (isDocker) {
-            connectOptions
-              .setJdbcUrl("jdbc:postgresql://localhost:8890/ex-dock")
-              .setUser("postgres")
-              .setPassword("docker")
-          } else {
-            error("Could not load the Properties file!")
-          }
-      } catch (e: Exception) {
-        error("Could not read the Properties file!")
-      }
-    }
-
-    val poolOptions = PoolOptions()
-      .setMaxSize(16)
-      .setName("ex-dock")
-
-    connection = JDBCPool.pool(vertx, connectOptions, poolOptions)
-
-    return connection
-  }
-}
-
-
-fun getConnection(vertx: Vertx): Pool {
-  val connection: Pool
-  val connectOptions = JDBCConnectOptions()
-
   try {
     val props: Properties = ClassLoaderDummy::class.java.classLoader.getResourceAsStream("secret.properties").use {
       Properties().apply { load(it) }
