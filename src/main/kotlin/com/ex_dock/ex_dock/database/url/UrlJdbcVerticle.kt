@@ -1,7 +1,7 @@
 package com.ex_dock.ex_dock.database.url
 
 import com.ex_dock.ex_dock.database.category.Categories
-import com.ex_dock.ex_dock.database.connection.Connection
+import com.ex_dock.ex_dock.database.connection.getConnection
 import com.ex_dock.ex_dock.database.product.Products
 import com.ex_dock.ex_dock.database.text_pages.TextPages
 import io.vertx.core.AbstractVerticle
@@ -23,7 +23,7 @@ class UrlJdbcVerticle: AbstractVerticle() {
   private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
-    client = Connection().getConnection(vertx)
+    client = getConnection(vertx)
     eventBus = vertx.eventBus()
 
     // Initialize all eventbus connections with the url_keys table
