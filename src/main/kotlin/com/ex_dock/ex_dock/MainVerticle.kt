@@ -9,6 +9,7 @@ import com.ex_dock.ex_dock.frontend.product.router.initProduct
 import com.ex_dock.ex_dock.frontend.text_pages.router.initTextPages
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Promise
+import io.vertx.core.eventbus.EventBus
 import io.vertx.ext.web.Router
 import java.util.Properties
 
@@ -37,9 +38,11 @@ class MainVerticle : AbstractVerticle() {
 
     val mainRouter : Router = Router.router(vertx)
 
+    val eventBus: EventBus = vertx.eventBus()
+
     mainRouter.enableBackendRouter(vertx)
 
-    mainRouter.initHome()
+    mainRouter.initHome(eventBus)
     mainRouter.initProduct(vertx)
     mainRouter.initCategory(vertx)
     mainRouter.initTextPages(vertx)
