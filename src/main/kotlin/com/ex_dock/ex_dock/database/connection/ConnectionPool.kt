@@ -1,5 +1,7 @@
 package com.ex_dock.ex_dock.database.connection
 
+import com.ex_dock.ex_dock.ClassLoaderDummy
+import com.ex_dock.ex_dock.MainVerticle
 import io.vertx.core.Vertx
 import io.vertx.jdbcclient.JDBCConnectOptions
 import io.vertx.jdbcclient.JDBCPool
@@ -55,7 +57,7 @@ fun getConnection(vertx: Vertx): Pool {
   val connectOptions = JDBCConnectOptions()
 
   try {
-    val props: Properties = ClassLoader.getSystemClassLoader().getResourceAsStream("secret.properties").use {
+    val props: Properties = ClassLoaderDummy::class.java.classLoader.getResourceAsStream("secret.properties").use {
       Properties().apply { load(it) }
     }
 

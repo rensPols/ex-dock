@@ -1,14 +1,11 @@
 package com.ex_dock.ex_dock.database.server
 
-import com.ex_dock.ex_dock.database.connection.Connection
+import com.ex_dock.ex_dock.database.connection.getConnection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.eventbus.Message
-import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
@@ -23,7 +20,7 @@ class ServerJDBCVerticle: AbstractVerticle() {
   private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
-    client = Connection().getConnection(vertx)
+    client = getConnection(vertx)
     eventBus = vertx.eventBus()
 
     // Initialize all eventbus connections with the Server Data table

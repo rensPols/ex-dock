@@ -1,6 +1,6 @@
 package com.ex_dock.ex_dock.database.category
 
-import com.ex_dock.ex_dock.database.connection.Connection
+import com.ex_dock.ex_dock.database.connection.getConnection
 import com.ex_dock.ex_dock.database.product.Products
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.DeliveryOptions
@@ -19,7 +19,7 @@ class CategoryJdbcVerticle: AbstractVerticle() {
   private val seoCategoriesDeliveryOptions = DeliveryOptions().setCodecName("CategoriesSeoCodec")
 
   override fun start() {
-    client = Connection().getConnection(vertx)
+    client = getConnection(vertx)
     eventBus = vertx.eventBus()
 
     // Initialize all eventbus connections for basic categories
