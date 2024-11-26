@@ -6,9 +6,8 @@ import com.ex_dock.ex_dock.frontend.template_engine.template_data.single_use.Sin
 import io.pebbletemplates.pebble.PebbleEngine
 import io.pebbletemplates.pebble.loader.StringLoader
 import io.pebbletemplates.pebble.template.PebbleTemplate
+import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.EventBus
-import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
@@ -16,12 +15,12 @@ import io.vertx.sqlclient.Tuple
 import java.io.StringWriter
 
 class TemplateEngineVerticle: AbstractVerticle() {
-//  private lateinit var client: Pool
+  private lateinit var client: Pool
   private lateinit var eventBus: EventBus
   private val engine = PebbleEngine.Builder().loader(StringLoader()).build()
   private var compiledTemplates: MutableMap<String, PebbleTemplate> = mutableMapOf()
 
-  override suspend fun start() {
+  override fun start() {
     println("[CHECK] TemplateEngineVerticle | check 0")
     client = getConnection(vertx)
     println("[CHECK] TemplateEngineVerticle | check 1")
@@ -49,8 +48,10 @@ class TemplateEngineVerticle: AbstractVerticle() {
   }
 
   // TODO: test
-  private suspend fun compiledTemplate() {
+  private fun compiledTemplate() {
+    println("[CHECK] compiledTemplate() | check 0")
     compileAllTemplates()
+    println("[CHECK] compiledTemplate() | check 1")
 
     // TODO: make a global data variable for this verticle
     // TEMP:
@@ -59,6 +60,7 @@ class TemplateEngineVerticle: AbstractVerticle() {
       "secondName" to "testSecondName"
     )
 
+    println("[CHECK] compiledTemplate() | check 2")
     eventBus.localConsumer<String>("template.generate.compiled") { message ->
       println("[CHECK] eventBus: template.generate.compiled | check 0")
       var compiledTemplate: PebbleTemplate? = compiledTemplates[message.body()]
@@ -105,24 +107,34 @@ class TemplateEngineVerticle: AbstractVerticle() {
         message.reply("The '${message.body()}' template does not exist in the database")
       }
     }
+    println("[CHECK] compiledTemplate() | check 3")
   }
 
-  private suspend fun compileAllTemplates() {
+  private fun compileAllTemplates() {
+    println("[CHECK] compiledAllTemplate() | check 0")
     var templates: MutableMap<String, String> = mutableMapOf()
-    val templatesRowSet: RowSet<Row> = client.preparedQuery(
+    println("[CHECK] compiledAllTemplate() | check 1")
+    client.preparedQuery(
       "SELECT template_key, template_data FROM templates"
-    ).execute().coAwait()
+    ).execute().onFailure { err ->
+      println("[FAILURE] query: \"SELECT template_key, template_data FROM templates\" failed")
+      println("err.message: ${err.message}")
+    }.onSuccess { res ->
+      res.forEach { templateRow ->
+        println("[CHECK] compiledAllTemplate() | check 1.1")
+        templates.put(
+          templateRow.getString("template_key"),
+          templateRow.getString("template_data")
+        )
+      }
 
-    templatesRowSet.forEach { templateRow ->
-      templates.put(
-        templateRow.getString("template_key"),
-        templateRow.getString("template_data")
-      )
+      println("[CHECK] compiledAllTemplate() | check 2")
+      for (template in templates) {
+        println("[CHECK] compiledAllTemplate() | check 2.1")
+        compiledTemplates.put(template.key, engine.getTemplate(template.value))
+        println("[CHECK] compiledAllTemplate() | check 2.2")
+      }
     }
-
-    // Compile all the templates
-    for (template in templates) {
-      compiledTemplates.put(template.key, engine.getTemplate(template.value))
-    }
+    println("[CHECK] compiledAllTemplate() | check 3")
   }
 }
