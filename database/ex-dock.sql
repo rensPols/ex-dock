@@ -2239,8 +2239,8 @@ ALTER TABLE ONLY public.multi_select_attributes_int
 ALTER TABLE ONLY public.multi_select_attributes_float
   ADD CONSTRAINT "FK_9" FOREIGN KEY (attribute_key) REFERENCES public.custom_product_attributes(attribute_key);
 
-ALTER TABLE ONLY public.templates
-  ADD CONSTRAINT "FK_72" FOREIGN KEY (template_key) REFERENCES public.blocks(template_key);
+ALTER TABLE ONLY public.blocks
+  ADD CONSTRAINT "FK_72" FOREIGN KEY (template_key) REFERENCES public.templates(template_key);
 
 --
 
