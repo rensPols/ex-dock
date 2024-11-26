@@ -22,11 +22,16 @@ class TemplateEngineVerticle: CoroutineVerticle() {
   private var compiledTemplates: MutableMap<String, PebbleTemplate> = mutableMapOf()
 
   override suspend fun start() {
+    println("[CHECK] TemplateEngineVerticle | check 0")
     client = getConnection(vertx)
+    println("[CHECK] TemplateEngineVerticle | check 1")
     eventBus = vertx.eventBus()
+    println("[CHECK] TemplateEngineVerticle | check 2")
 
     singleUseTemplate()
+    println("[CHECK] TemplateEngineVerticle | check 3")
     compiledTemplate()
+    println("[CHECK] TemplateEngineVerticle | check 4")
   }
 
   private fun singleUseTemplate() {
@@ -54,14 +59,21 @@ class TemplateEngineVerticle: CoroutineVerticle() {
       "secondName" to "testSecondName"
     )
 
-    eventBus.consumer<String>("template.generate.compiled") { message ->
+    eventBus.localConsumer<String>("template.generate.compiled") { message ->
+      println("[CHECK] eventBus: template.generate.compiled | check 0")
       var compiledTemplate: PebbleTemplate? = compiledTemplates[message.body()]
 
+      println("[CHECK] eventBus: template.generate.compiled | check 1")
+
       if (compiledTemplate != null) {
+        println("[CHECK] eventBus: template.generate.compiled -- is compiled | check 2.0")
         val writer = StringWriter()
+        println("[CHECK] eventBus: template.generate.compiled -- is compiled | check 2.1")
         compiledTemplate.evaluate(writer, data)
+        println("[CHECK] eventBus: template.generate.compiled -- is compiled | check 2.2")
         message.reply(writer.toString())
-        return@consumer
+        println("[CHECK] eventBus: template.generate.compiled -- is compiled | check 2.3")
+        return@localConsumer
       }
 
       client.preparedQuery(
@@ -70,18 +82,26 @@ class TemplateEngineVerticle: CoroutineVerticle() {
         println("Failed to execute query: $e")
         message.reply("A failure occurred during the generation of the template, attempted template: ${message.body()}")
       }.onSuccess { rowSet: RowSet<Row> ->
+        println("[CHECK] eventBus: template.generate.compiled -- is not compiled | check 3.0")
         if (rowSet.rowCount() > 0) {
+          println("[CHECK] eventBus: template.generate.compiled -- is not compiled | check 3.1")
           compiledTemplate = engine.getTemplate(rowSet.first().getString("template_data"))
+          println("[CHECK] eventBus: template.generate.compiled -- is not compiled | check 3.2")
           compiledTemplates.put(
             rowSet.first().getString("template_key"),
             compiledTemplate
           )
+          println("[CHECK] eventBus: template.generate.compiled -- is not compiled | check 3.3")
 
           val writer = StringWriter()
+          println("[CHECK] eventBus: template.generate.compiled -- is not compiled | check 3.4")
           compiledTemplate.evaluate(writer, data)
+          println("[CHECK] eventBus: template.generate.compiled -- is not compiled | check 3.5")
           message.reply(writer.toString())
+          println("[CHECK] eventBus: template.generate.compiled -- is not compiled | check 3.6")
           return@onSuccess
         }
+        println("[CHECK] eventBus: template.generate.compiled -- is not compiled | check 4.0")
         message.reply("The '${message.body()}' template does not exist in the database")
       }
     }

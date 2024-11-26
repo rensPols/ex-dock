@@ -19,6 +19,7 @@ class HomeFrontendVerticle: AbstractVerticle() {
       val data = getHomeData()
       eventBus.request<String>("template.generate.compiled", "home").onFailure {
         // TODO: implement
+        println("eventbus request for 'template.generate.compiled' failed from within eventbus request 'frontend.retrieveHTML.home'")
       }.onSuccess { response ->
         message.reply(response)
       }
