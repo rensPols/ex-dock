@@ -23,15 +23,10 @@ fun getConnection(vertx: Vertx): Pool {
   val connectOptions = JDBCConnectOptions()
 
   try {
-    lateinit var props: Properties
-    try {
-      props = Thread.currentThread().contextClassLoader.getResourceAsStream("secret.properties").use {
-        Properties().apply { load(it) }
-      }
-    } catch (e: Exception) {
-      println("Could not load secret.properties")
-      error("Could not load secret.properties")
+    val props: Properties = ClassLoaderDummy::class.java.classLoader.getResourceAsStream("secret.properties").use {
+      Properties().apply { load(it) }
     }
+
     connectOptions
       .setJdbcUrl(props.getProperty("DATABASE_URL"))
       .setUser(props.getProperty("DATABASE_USERNAME"))
