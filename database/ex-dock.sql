@@ -119,7 +119,8 @@ ALTER TABLE public.backend_permissions OWNER TO postgres;
 
 CREATE TABLE public.templates (
   template_key character varying(100) NOT NULL,
-  template_data text NOT NULL
+  template_data text NOT NULL,
+  data_string text NOT NULL
 );
 
 ALTER TABLE public.templates OWNER TO postgres;

@@ -39,9 +39,10 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private val backendPermissionsListDeliveryOptions = DeliveryOptions().setCodecName("BackendPermissionsListCodec")
   private val fullUserDeliveryOptions = DeliveryOptions().setCodecName("FullUserCodec")
   private val fullUserListDeliveryOptions = DeliveryOptions().setCodecName("FullUserListCodec")
+  private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
-    client = Connection().getConnection(vertx)
+    client = getConnection(vertx)
     eventBus = vertx.eventBus()
 
     // Initialize all eventbus connections for user management
@@ -320,7 +321,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
         "bp.template, bp.category_content, bp.category_products, bp.product_content, bp.product_price, " +
         "bp.product_warehouse, bp.text_pages, bp.\"API_KEY\" FROM users u " +
-        "LEFT JOIN backend_permissions bp ON u.user_id = bp.user_id"
+        "JOIN backend_permissions bp ON u.user_id = bp.user_id"
       val rowsFuture = client.preparedQuery(query).execute()
 
       rowsFuture.onFailure { res ->
