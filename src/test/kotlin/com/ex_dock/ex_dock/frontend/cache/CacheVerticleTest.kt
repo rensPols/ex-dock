@@ -10,7 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 @ExtendWith(VertxExtension::class)
 class CacheVerticleTest {
-  private val hitCount = 100
+  private val hitCount = 10000
   private val requestedData = "accounts;categories"
 
   // This method should not be in the GitHub test, but only be done for manual testing purposes
@@ -22,11 +22,13 @@ class CacheVerticleTest {
       val eventBus = vertx.eventBus()
       var counter = 0
 
-      vertx.setPeriodic(100L) {
-        eventBus.request<CacheData>("process.cache.requestData", requestedData).onComplete {
-          if (counter > 100) testContext.completeNow()
-          println(it.result().body())
+      vertx.setPeriodic(1L) {
+        eventBus.request<CacheData>("process.cache.requestData", requestedData).onSuccess {
+          if (counter > hitCount) testContext.completeNow()
+          println(it.body())
           counter++
+        }.onFailure {
+          testContext.failNow(it)
         }
       }
     }
