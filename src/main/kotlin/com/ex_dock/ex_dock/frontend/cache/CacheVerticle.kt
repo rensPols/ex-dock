@@ -74,19 +74,19 @@ class CacheVerticle : AbstractVerticle() {
    */
   private fun loadCacheData(key: String): CacheData {
     return when (key) {
-      "accounts" -> getDataFromDatabase(key, "account.getAllFullUserInfo")
-      "categories" -> getDataFromDatabase(key, "categories.getAllFullInfo")
-      "custom_attributes" -> getDataFromDatabase(key, "attributes.getAllCustomAttributes")
-      "global_eav" -> getDataFromDatabase(key, "eavGlobal.getAllEavGlobalInfo")
-      "products" -> getDataFromDatabase(key, "products.getAllFullProducts")
-      "multi_select" -> getDataFromDatabase(key, "multiSelect.getAllMultiSelectAttributesInfo")
-      "store_view_eav" -> getDataFromDatabase(key, "eavStoreView.getAllEavStoreViewInfo")
-      "website_eav" -> getDataFromDatabase(key, "eavWebsite.getAllEavWebsiteInfo")
-      "scopes" -> getDataFromDatabase(key, "scope.getAllScopes")
-      "server_data" -> getDataFromDatabase(key, "server.getAllServerData")
-      "server_version" -> getDataFromDatabase(key, "server.getAllServerVersions")
-      "text_pages" -> getDataFromDatabase(key, "textPages.getAllFullTextPages")
-      "urls" -> getDataFromDatabase(key, "url.getAllFullUrls")
+      "accounts" -> getDataFromDatabase("account.getAllFullUserInfo")
+      "categories" -> getDataFromDatabase("categories.getAllFullInfo")
+      "custom_attributes" -> getDataFromDatabase("attributes.getAllCustomAttributes")
+      "global_eav" -> getDataFromDatabase("eavGlobal.getAllEavGlobalInfo")
+      "products" -> getDataFromDatabase("products.getAllFullProducts")
+      "multi_select" -> getDataFromDatabase("multiSelect.getAllMultiSelectAttributesInfo")
+      "store_view_eav" -> getDataFromDatabase("eavStoreView.getAllEavStoreViewInfo")
+      "website_eav" -> getDataFromDatabase("eavWebsite.getAllEavWebsiteInfo")
+      "scopes" -> getDataFromDatabase("scope.getAllScopes")
+      "server_data" -> getDataFromDatabase("server.getAllServerData")
+      "server_version" -> getDataFromDatabase("server.getAllServerVersions")
+      "text_pages" -> getDataFromDatabase("textPages.getAllFullTextPages")
+      "urls" -> getDataFromDatabase("url.getAllFullUrls")
       else -> throw InvalidCacheKeyException("Unknown cache key: $key")
     }
   }
@@ -114,7 +114,7 @@ class CacheVerticle : AbstractVerticle() {
     }
   }
 
-  private fun getDataFromDatabase(key: String, address: String): CacheData {
+  private fun getDataFromDatabase(address: String): CacheData {
     // Initialize a new CacheData object to avoid null values
     val cacheData = CacheData(
       data = Future.future {},

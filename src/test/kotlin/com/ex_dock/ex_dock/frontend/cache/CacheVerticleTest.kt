@@ -2,6 +2,7 @@ package com.ex_dock.ex_dock.frontend.cache
 
 import com.ex_dock.ex_dock.database.JDBCStarter
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
+import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
