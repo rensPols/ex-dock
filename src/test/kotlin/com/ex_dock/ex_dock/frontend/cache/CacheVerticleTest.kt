@@ -23,7 +23,6 @@ class CacheVerticleTest {
       val amount: Int = 1_000_000
       val futures: Array<Future<Any>?> = arrayOfNulls(amount)
 
-      val mark1 = timeSource.markNow()
       for (i in 0 until amount) {
         futures[i] = eventBus.request<CacheData>("process.cache.requestData", requestedData)
           .map { it.body() } // Convert Future<Message<CacheData>> to Future<CacheData>, then to Future<Any>
@@ -32,8 +31,6 @@ class CacheVerticleTest {
       Future.all(futures.toMutableList()).onFailure { err ->
         testContext.failNow(err)
       }.onSuccess {
-        val mark2 = timeSource.markNow()
-        println(mark2 - mark1)
         testContext.completeNow()
       }
     }
