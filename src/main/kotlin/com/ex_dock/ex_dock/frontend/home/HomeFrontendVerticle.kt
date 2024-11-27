@@ -21,7 +21,7 @@ class HomeFrontendVerticle: AbstractVerticle() {
         // TODO: implement
         println("eventbus request for 'template.generate.compiled' failed from within eventbus request 'frontend.retrieveHTML.home'")
       }.onSuccess { response ->
-        message.reply(response)
+        message.reply(response.body())
       }
     }
   }
