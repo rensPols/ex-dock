@@ -1,6 +1,5 @@
 package com.ex_dock.ex_dock.frontend.cache
 
-import com.ex_dock.ex_dock.database.account.FullUser
 import com.ex_dock.ex_dock.database.service.InvalidCacheKeyException
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.LoadingCache
@@ -35,25 +34,28 @@ class CacheVerticle: AbstractVerticle() {
   private fun getData() {
     val cacheConsumer = eventBus.consumer<String>("process.cache.requestData")
     cacheConsumer.handler { message ->
-      val futures = mutableListOf<Future<Void>>()
+      val futures = mutableListOf<Future<Unit>>()
       val requestedData = message.body()
       val cacheMap = emptyMap<String, List<Any>>().toMutableMap()
       val keyString = requestedData.split(";")
 
-      //Iterate through all keys in the key string
+      // Iterate through all keys in the key string
       for (key in keyString) {
         futures.add(Future.future { promise ->
           var cacheData = cache[key]
 
           // If the cache data is still the initial value, wait until it's loaded
           if (cacheData.initial) {
-            vertx.setPeriodic(100) { // Check periodically without blocking
+            vertx.setPeriodic(100) {
+
+              // Check periodically without blocking
               cacheData = cache[key]
               if (!cacheData.initial) {
                 incrementHitCount(key)
                 cacheMap[key] = cacheData.data
                 promise.complete()
-                vertx.cancelTimer(it) // Cancel the periodic check once done
+                // Cancel the periodic check once done
+                vertx.cancelTimer(it)
               }
             }
           } else {
@@ -112,7 +114,7 @@ class CacheVerticle: AbstractVerticle() {
     // Check if the cache data exists and is not expired or deleted
     if (cacheData != null) {
       // Check if the cache data is over the threshold of max hit count or if the flag is set
-      if (cacheData.hits > maxHitCount || cacheData.flag) {
+      if (cacheData.hits >= maxHitCount || cacheData.flag) {
 
         // Delete the cache data to reset the hit count
         cache.invalidate(key)
@@ -127,7 +129,7 @@ class CacheVerticle: AbstractVerticle() {
   }
 
   private fun getDataFromDatabase(key: String, address: String): CacheData {
-    //Sets the cache data to an initial value to avoid null values
+    // Sets the cache data to an initial value to avoid null values
     val cacheData = CacheData(
       data = emptyList(),
       hits = 0,
@@ -137,7 +139,7 @@ class CacheVerticle: AbstractVerticle() {
 
     // Makes a future that runs in the background fetching the data
     Future.future { promise ->
-      eventBus.request<MutableList<FullUser>>("process.$address", "")
+      eventBus.request<MutableList<Any>>("process.$address", "")
       {
         if (it.succeeded()) {
           cacheData.data = it.result().body()
@@ -163,6 +165,7 @@ class CacheVerticle: AbstractVerticle() {
  * @param flag The flag if the data has expired due to other reasons. f.e. new data
  * @param initial If the data is the initial data that gets returned when fetching the new data
  */
+// TODO: overwrite access operator
 data class CacheData(
   var data: List<Any>,
   var hits: Int,
