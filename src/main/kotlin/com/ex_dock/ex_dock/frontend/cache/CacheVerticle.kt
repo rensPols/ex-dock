@@ -111,8 +111,8 @@ class CacheVerticle: AbstractVerticle() {
 
     // Check if the cache data exists and is not expired or deleted
     if (cacheData != null) {
-      // Check if the cache data is over the threshold of max hit count
-      if (cacheData.hits >= maxHitCount) {
+      // Check if the cache data is over the threshold of max hit count or if the flag is set
+      if (cacheData.hits > maxHitCount || cacheData.flag) {
 
         // Delete the cache data to reset the hit count
         cache.invalidate(key)
