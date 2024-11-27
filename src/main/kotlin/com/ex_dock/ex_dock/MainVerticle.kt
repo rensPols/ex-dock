@@ -10,6 +10,7 @@ import com.ex_dock.ex_dock.frontend.text_pages.router.initTextPages
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Promise
 import io.vertx.core.http.CookieSameSite
+import io.vertx.core.eventbus.EventBus
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.handler.SessionHandler
 import io.vertx.ext.web.sstore.SessionStore
@@ -46,9 +47,11 @@ class MainVerticle : AbstractVerticle() {
 
     mainRouter.route().handler(sessionHandler)
 
+    val eventBus: EventBus = vertx.eventBus()
+
     mainRouter.enableBackendRouter(vertx)
 
-    mainRouter.initHome()
+    mainRouter.initHome(eventBus)
     mainRouter.initProduct(vertx)
     mainRouter.initCategory(vertx)
     mainRouter.initTextPages(vertx)
@@ -61,6 +64,7 @@ class MainVerticle : AbstractVerticle() {
       .listen(props.getProperty("FRONTEND_PORT").toInt()) {http ->
         if (http.succeeded()) {
           println("HTTP server started on port ${props.getProperty("FRONTEND_PORT")}")
+          startPromise.complete()
         } else {
           println("Failed to start HTTP server: ${http.cause()}")
           startPromise.fail(http.cause())
