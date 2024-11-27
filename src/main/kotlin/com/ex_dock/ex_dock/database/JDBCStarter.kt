@@ -110,7 +110,7 @@ class JDBCStarter : AbstractVerticle() {
     )
     verticles.add(deployWorkerVerticleHelper(vertx, TemplateJdbcVerticle::class.qualifiedName.toString(), 5, 5))
     verticles.add(deployWorkerVerticleHelper(vertx, ServiceVerticle::class.qualifiedName.toString(), 1, 1))
-    verticles.add(deployWorkerVerticleHelper(vertx, CacheVerticle::class.qualifiedName.toString(), 1, 1))
+    verticles.add(deployWorkerVerticleHelper(vertx, CacheVerticle::class.qualifiedName.toString(), 5, 5))
   }
 
   private fun getAllCodecClasses() {

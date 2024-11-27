@@ -20,17 +20,21 @@ class CacheVerticleTest {
     deployWorkerVerticleHelper(vertx, JDBCStarter::class.qualifiedName.toString(), 1, 1).onComplete {
       println("STARTING TESTS")
       val eventBus = vertx.eventBus()
-      var counter = 0
+      val amount: Int = 1_000_000
+      val futures: Array<Future<Any>?> = arrayOfNulls(amount)
 
-      vertx.setPeriodic(1000L) {
-        eventBus.request<CacheData>("process.cache.requestData", requestedData).onSuccess {
-          println(counter)
-          if (counter > hitCount) testContext.completeNow()
-          println(it.body())
-          counter++
-        }.onFailure {
-          testContext.failNow(it)
-        }
+      val mark1 = timeSource.markNow()
+      for (i in 0 until amount) {
+        futures[i] = eventBus.request<CacheData>("process.cache.requestData", requestedData)
+          .map { it.body() } // Convert Future<Message<CacheData>> to Future<CacheData>, then to Future<Any>
+      }
+
+      Future.all(futures.toMutableList()).onFailure { err ->
+        testContext.failNow(err)
+      }.onSuccess {
+        val mark2 = timeSource.markNow()
+        println(mark2 - mark1)
+        testContext.completeNow()
       }
     }
   }
