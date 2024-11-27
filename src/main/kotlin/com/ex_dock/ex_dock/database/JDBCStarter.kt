@@ -23,7 +23,9 @@ import com.ex_dock.ex_dock.database.text_pages.TextPages
 import com.ex_dock.ex_dock.database.text_pages.TextPagesJdbcVerticle
 import com.ex_dock.ex_dock.database.text_pages.TextPagesSeo
 import com.ex_dock.ex_dock.database.url.*
+import com.ex_dock.ex_dock.frontend.cache.CacheVerticle
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
+import com.sun.tools.javac.jvm.Gen
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.Promise
@@ -47,6 +49,7 @@ class JDBCStarter : AbstractVerticle() {
           throw PopulateException("Could not populate the database with standard data. Closing the server!")
         }.onSuccess {
           println("Database populated with standard Data")
+          starPromise.complete()
         }
       }
       .onFailure { error ->
@@ -107,6 +110,7 @@ class JDBCStarter : AbstractVerticle() {
     )
     verticles.add(deployWorkerVerticleHelper(vertx, TemplateJdbcVerticle::class.qualifiedName.toString(), 5, 5))
     verticles.add(deployWorkerVerticleHelper(vertx, ServiceVerticle::class.qualifiedName.toString(), 1, 1))
+    verticles.add(deployWorkerVerticleHelper(vertx, CacheVerticle::class.qualifiedName.toString(), 1, 1))
   }
 
   private fun getAllCodecClasses() {
@@ -171,6 +175,7 @@ class JDBCStarter : AbstractVerticle() {
       .registerCodec(GenericCodec(FullUser::class.java))
       .registerCodec(GenericCodec(Template::class.java))
       .registerCodec(GenericCodec(Block::class.java))
+      .registerCodec(GenericCodec(Map::class.java))
   }
 
 }

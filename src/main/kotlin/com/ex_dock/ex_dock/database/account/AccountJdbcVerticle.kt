@@ -38,6 +38,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private val backendPermissionsListDeliveryOptions = DeliveryOptions().setCodecName("BackendPermissionsListCodec")
   private val fullUserDeliveryOptions = DeliveryOptions().setCodecName("FullUserCodec")
   private val fullUserListDeliveryOptions = DeliveryOptions().setCodecName("FullUserListCodec")
+  private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
     client = getConnection(vertx)
@@ -76,9 +77,9 @@ class AccountJdbcVerticle: AbstractVerticle() {
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          message.reply(rows.map { row -> makeUserObject(row) }, userListDeliveryOptions)
+          message.reply(rows.map { row -> makeUserObject(row) }, listDeliveryOptions)
         } else {
-          message.reply(emptyList<User>(), userListDeliveryOptions)
+          message.reply(emptyList<User>(), listDeliveryOptions)
         }
       }
     }
@@ -329,9 +330,9 @@ class AccountJdbcVerticle: AbstractVerticle() {
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          message.reply(rows.map { row -> makeFullUserObject(row) }, fullUserListDeliveryOptions)
+          message.reply(rows.map { row -> makeFullUserObject(row) }, listDeliveryOptions)
         } else {
-          message.reply(emptyList<FullUser>(), fullUserListDeliveryOptions)
+          message.reply(emptyList<FullUser>(), listDeliveryOptions)
         }
       }
     }

@@ -13,3 +13,5 @@ fun getAllStandardTemplates(): List<Template> {
 }
 
 class PopulateException(message: String) : Exception(message)
+
+class InvalidCacheKeyException(message: String) : Exception(message)
