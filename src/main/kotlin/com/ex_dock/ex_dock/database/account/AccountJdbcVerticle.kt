@@ -1,5 +1,6 @@
 package com.ex_dock.ex_dock.database.account
 
+import com.ex_dock.ex_dock.database.connection.Connection
 import com.ex_dock.ex_dock.database.connection.getConnection
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
@@ -40,7 +41,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private val fullUserListDeliveryOptions = DeliveryOptions().setCodecName("FullUserListCodec")
 
   override fun start() {
-    client = getConnection(vertx)
+    client = Connection().getConnection(vertx)
     eventBus = vertx.eventBus()
 
     // Initialize all eventbus connections for user management
@@ -59,6 +60,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
     // Initialize all eventbus connections for full user information
     getAllFullUser()
+    getFullUserByEmail()
     getFullUserByUserId()
   }
 
@@ -318,7 +320,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
         "bp.template, bp.category_content, bp.category_products, bp.product_content, bp.product_price, " +
         "bp.product_warehouse, bp.text_pages, bp.\"API_KEY\" FROM users u " +
-        "JOIN backend_permissions bp ON u.user_id = bp.user_id"
+        "LEFT JOIN backend_permissions bp ON u.user_id = bp.user_id"
       val rowsFuture = client.preparedQuery(query).execute()
 
       rowsFuture.onFailure { res ->
@@ -337,6 +339,36 @@ class AccountJdbcVerticle: AbstractVerticle() {
     }
   }
 
+  /**
+   * Gets a full user by their unique username
+   */
+  private fun getFullUserByEmail() {
+    val getFullUserInformationByEmailConsumer =
+      eventBus.consumer<String>("process.account.getFullUserByEmail")
+    getFullUserInformationByEmailConsumer.handler { message ->
+      val email = message.body()
+      val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
+        "bp.template, bp.category_content, bp.category_products, bp.product_content, bp.product_price, " +
+        "bp.product_warehouse, bp.text_pages, bp.\"API_KEY\" FROM users u " +
+        "LEFT JOIN backend_permissions bp ON u.user_id = bp.user_id WHERE u.email =?"
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(email))
+
+      rowsFuture.onFailure { res ->
+        println("Failed to execute query: $res")
+        message.fail(500, FAILED)
+      }
+
+      rowsFuture.onSuccess { res ->
+        val rows = res.value()
+        if (rows.size() > 0) {
+          message.reply(makeFullUserObject(rows.first()), fullUserDeliveryOptions)
+        } else {
+          message.fail(404, NO_USER)
+        }
+      }
+    }
+  }
+
   private fun getFullUserByUserId() {
     val getFullUserInformationByUserIdConsumer =
       eventBus.consumer<Int>("process.account.getFullUserByUserId")
@@ -345,7 +377,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
         "bp.template, bp.category_content, bp.category_products, bp.product_content, bp.product_price, " +
         "bp.product_warehouse, bp.text_pages, bp.\"API_KEY\" FROM users u " +
-        "JOIN backend_permissions bp ON u.user_id = bp.user_id WHERE u.user_id =?"
+        "LEFT JOIN backend_permissions bp ON u.user_id = bp.user_id WHERE u.user_id =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(userId))
 
       rowsFuture.onFailure { res ->
@@ -466,7 +498,3 @@ class AccountJdbcVerticle: AbstractVerticle() {
     }
   }
 }
-
-//fun rowToArray(row: Row): Array<Any?> {
-//  return row.toJson().values
-//}

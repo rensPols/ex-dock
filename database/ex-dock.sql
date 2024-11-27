@@ -778,7 +778,7 @@ ALTER TABLE public.url_keys OWNER TO postgres;
 
 CREATE TABLE public.users (
                             user_id integer NOT NULL,
-                            email character varying(320) NOT NULL,
+                            email character varying(320) NOT NULL UNIQUE ,
                             password character varying(100) NOT NULL
 );
 
