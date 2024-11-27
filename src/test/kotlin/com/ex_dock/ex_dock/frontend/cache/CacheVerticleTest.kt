@@ -28,7 +28,9 @@ class CacheVerticleTest {
           .map { it.body() } // Convert Future<Message<CacheData>> to Future<CacheData>, then to Future<Any>
       }
 
-      Future.all(futures.toMutableList()).onFailure { err ->
+      val futuresMutable: MutableList<Future<Any>> = futures.filterNotNull().toMutableList()
+
+      Future.all(futuresMutable).onFailure { err ->
         testContext.failNow(err)
       }.onSuccess {
         testContext.completeNow()
