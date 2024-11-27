@@ -48,20 +48,28 @@ class ExDockAuthHandler(vertx: Vertx) : AuthenticationProvider{
    */
   @Deprecated("Deprecated in Kotlin")
   override fun authenticate(credentials: JsonObject?, resultHandler: Handler<AsyncResult<User>>?) {
-    //Test if credentials are not null
+    // this is required for inheriting
+  }
+
+  /**
+   * Authenticates the user with given UsernamePasswordCredentials
+   */
+  override fun authenticate(credentials: Credentials?, resultHandler: Handler<AsyncResult<User>>?) {
+    // Test if credentials are not null
     if (credentials == null) {
       resultHandler?.handle(Future.failedFuture("Missing credentials"))
       return
     }
 
-    val email = credentials.getString("username")
-    val password = credentials.getString("password")
+    val jsonCredentials = credentials.toJson()
+    val email = jsonCredentials.getString("username")
+    val password = jsonCredentials.getString("password")
 
-    //Request a user based on the given email
+    // Request a user based on the given email
     eventBus.request<FullUser>("process.account.getFullUserByEmail", email).onComplete {
       if (it.succeeded()) {
         val user = it.result().body()
-        //Check if the password matches the hashed password in the database
+        // Check if the password matches the hashed password in the database
         if (BCrypt.checkpw(password, user.user.password)) {
           resultHandler?.handle(Future.succeededFuture(convertUser(user)))
         } else {
@@ -71,13 +79,6 @@ class ExDockAuthHandler(vertx: Vertx) : AuthenticationProvider{
         resultHandler?.handle(Future.failedFuture("User not found"))
       }
     }
-  }
-
-  /**
-   * Authenticates the user with given UsernamePasswordCredentials
-   */
-  override fun authenticate(credentials: Credentials?, resultHandler: Handler<AsyncResult<User>>?) {
-    return authenticate(credentials?.toJson(), resultHandler)
   }
 
   /**
