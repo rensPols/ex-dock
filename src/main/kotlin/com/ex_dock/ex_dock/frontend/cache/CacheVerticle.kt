@@ -9,7 +9,7 @@ import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import java.util.concurrent.TimeUnit
 
-class CacheVerticle: AbstractVerticle() {
+class CacheVerticle : AbstractVerticle() {
   private lateinit var cache: LoadingCache<String, CacheData>
   private val mapDeliveryOptions = DeliveryOptions().setCodecName("MapCodec")
   private val expireDuration = 10L
@@ -21,11 +21,11 @@ class CacheVerticle: AbstractVerticle() {
   override fun start() {
     eventBus = vertx.eventBus()
 
-    // Initialize the cache
+    // Initialize the cache with a CacheLoader that handles cache population and refresh
     cache = Caffeine.newBuilder()
       .expireAfterWrite(expireDuration, TimeUnit.MINUTES)
       .refreshAfterWrite(refreshDuration, TimeUnit.MINUTES)
-      .build { k -> convertRequestedDataToAddress(k) }
+      .build { key -> loadCacheData(key) }
 
     // Initialize the eventbus address to handle the cache requests
     getData()
@@ -42,50 +42,37 @@ class CacheVerticle: AbstractVerticle() {
       // Iterate through all keys in the key string
       for (key in keyString) {
         futures.add(Future.future { promise ->
-          var cacheData = cache[key]
+          val cacheData = cache[key]
 
-          // If the cache data is still the initial value, wait until it's loaded
-          if (cacheData.initial) {
-            vertx.setPeriodic(100) {
-
-              // Check periodically without blocking
-              cacheData = cache[key]
-              if (!cacheData.initial) {
-                incrementHitCount(key)
-                cacheMap[key] = cacheData.data
-                promise.complete()
-                // Cancel the periodic check once done
-                vertx.cancelTimer(it)
-              }
-            }
-          } else {
-            // If data is already loaded, just increment the hit count and add to map
+          cacheData.data.onFailure { err ->
+            promise.fail(err.message)
+          }.onSuccess { res ->
             incrementHitCount(key)
-            cacheMap[key] = cacheData.data
+            cacheMap[key] = res
             promise.complete()
           }
         })
       }
 
       // Wait for all cache keys to be processed before replying
-      Future.all(futures).onComplete{ ar ->
+      Future.all(futures).onComplete { ar ->
         if (ar.succeeded()) {
           // Once all the futures are completed, send the response back
           message.reply(cacheMap.toMap(), mapDeliveryOptions)
         } else {
           // Handle any failure (shouldn't occur in this case)
-          message.fail(500, "Failed to load cache data")
+          message.fail(500, ar.cause().message)
         }
       }
     }
   }
 
   /**
-   * Converts the given key to the cache data from the database with the correct address
-   * @param key The ket to use
-   * @return The cache data from the database
+   * Uses CacheLoader to load the cache data and avoids recursion or invalidation
+   * @param key The cache key
+   * @return CacheData that represents the loaded cache data
    */
-  private fun convertRequestedDataToAddress(key: String): CacheData {
+  private fun loadCacheData(key: String): CacheData {
     return when (key) {
       "accounts" -> getDataFromDatabase(key, "account.getAllFullUserInfo")
       "categories" -> getDataFromDatabase(key, "categories.getAllFullInfo")
@@ -113,44 +100,35 @@ class CacheVerticle: AbstractVerticle() {
 
     // Check if the cache data exists and is not expired or deleted
     if (cacheData != null) {
-      // Check if the cache data is over the threshold of max hit count or if the flag is set
+      // If hits exceed the threshold, reset the cache
       if (cacheData.hits >= maxHitCount || cacheData.flag) {
-
-        // Delete the cache data to reset the hit count
+        // We invalidate the cache directly, this is safe because we use CacheLoader
         cache.invalidate(key)
         println("CACHE DATA EXPIRED")
         return
       }
 
-      // Increment the hit count of the cache data
+      // Increment the hit count
       cacheData.hits++
-      cache.put(key, cacheData)
+      cache.put(key, cacheData)  // Refresh the cache after incrementing the hit count
     }
   }
 
   private fun getDataFromDatabase(key: String, address: String): CacheData {
-    // Sets the cache data to an initial value to avoid null values
+    // Initialize a new CacheData object to avoid null values
     val cacheData = CacheData(
-      data = emptyList(),
+      data = Future.future {},
       hits = 0,
-      flag = false,
-      initial = true
+      flag = false
     )
 
-    // Makes a future that runs in the background fetching the data
-    Future.future { promise ->
-      eventBus.request<MutableList<Any>>("process.$address", "")
-      {
-        if (it.succeeded()) {
-          cacheData.data = it.result().body()
-          cacheData.initial = false
-        } else {
-          cacheData.flag = true
-        }
-
-        cache.put(key, cacheData)
-
-        promise.complete(cacheData)
+    // Fetch data asynchronously
+    cacheData.data = Future.future { promise ->
+      eventBus.request<MutableList<Any>>("process.$address", "").onFailure {
+        cacheData.flag = true
+        promise.fail("Failed to load cache data")
+      }.onSuccess { res ->
+        promise.complete(res.body().toList())
       }
     }
 
@@ -161,14 +139,12 @@ class CacheVerticle: AbstractVerticle() {
 /**
  * Cache data object for use in the cache
  * @param data The data from the database as a list
- * @param hits The amount of time the cache got hit
- * @param flag The flag if the data has expired due to other reasons. f.e. new data
- * @param initial If the data is the initial data that gets returned when fetching the new data
+ * @param hits The number of times the cache was accessed
+ * @param flag The flag indicating if the data has expired
  */
-// TODO: overwrite access operator
 data class CacheData(
-  var data: List<Any>,
+  var data: Future<List<Any>>,
   var hits: Int,
-  var flag: Boolean,
-  var initial: Boolean
+  var flag: Boolean
 )
+

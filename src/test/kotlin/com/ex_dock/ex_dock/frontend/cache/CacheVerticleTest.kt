@@ -22,8 +22,9 @@ class CacheVerticleTest {
       val eventBus = vertx.eventBus()
       var counter = 0
 
-      vertx.setPeriodic(1L) {
+      vertx.setPeriodic(1000L) {
         eventBus.request<CacheData>("process.cache.requestData", requestedData).onSuccess {
+          println(counter)
           if (counter > hitCount) testContext.completeNow()
           println(it.body())
           counter++
