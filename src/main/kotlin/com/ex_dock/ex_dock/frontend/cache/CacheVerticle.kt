@@ -14,7 +14,7 @@ class CacheVerticle: AbstractVerticle() {
   private val mapDeliveryOptions = DeliveryOptions().setCodecName("MapCodec")
   private val expireDuration = 10L
   private val refreshDuration = 1L
-  private val maxHitCount = 5
+  private val maxHitCount = 100
 
   private lateinit var eventBus: EventBus
 
