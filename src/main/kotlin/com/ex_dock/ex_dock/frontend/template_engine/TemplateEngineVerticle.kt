@@ -42,7 +42,6 @@ class TemplateEngineVerticle: AbstractVerticle() {
     }
   }
 
-  // TODO: test
   private fun compiledTemplate() {
     compileAllTemplates()
 
