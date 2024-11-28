@@ -337,9 +337,9 @@ class AccountJdbcVerticle: AbstractVerticle() {
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          message.reply(rows.map { row -> makeFullUserObject(row) }, listDeliveryOptions)
+          message.reply(rows.map { row -> makeFullUserObject(row) }, fullUserDeliveryOptions)
         } else {
-          message.reply(emptyList<FullUser>(), listDeliveryOptions)
+          message.reply(emptyList<FullUser>(), fullUserDeliveryOptions)
         }
       }
     }
