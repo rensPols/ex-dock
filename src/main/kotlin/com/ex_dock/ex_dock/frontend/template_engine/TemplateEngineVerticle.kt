@@ -83,7 +83,10 @@ class TemplateEngineVerticle: AbstractVerticle() {
   private fun incrementTemplateHitCount(key: String) {
     val templateCacheData = templateCache.getIfPresent(key)
 
+    // Check if the cache data exists and is not expired or deleted
     if (templateCacheData != null) {
+
+      // Check if the template data hits exceed the maximum hits or if the flag is set
       if (templateCacheData.hits >= maxHitCount || templateCacheData.flag) {
         templateCache.invalidate(key)
         println("CACHE DATA EXPIRED")
@@ -104,7 +107,7 @@ class TemplateEngineVerticle: AbstractVerticle() {
     )
 
     // Fetch the template data asynchronously
-    templateCacheData.templateData  = Future.future { promise ->
+    templateCacheData.templateData = Future.future { promise ->
       val query = "SELECT template_key, template_data, data_string FROM templates WHERE template_key = ?"
       client.preparedQuery(query).execute(Tuple.of(key)).onFailure { err ->
         println("[FAILURE] query: \"$query\" failed")

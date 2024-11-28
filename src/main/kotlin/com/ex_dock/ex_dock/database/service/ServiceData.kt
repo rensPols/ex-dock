@@ -6,8 +6,9 @@ fun getAllStandardTemplates(): List<Template> {
   val templates: MutableList<Template> = emptyList<Template>().toMutableList()
 
   templates.add(Template(
-    "testKey",
-    "<test>testData</test>"
+    "home",
+    "<test>{% for user in accounts %} {{ user.component1().component1() }} {% endfor %}</test>",
+    "accounts"
   ))
   return templates.toList()
 }
