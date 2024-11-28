@@ -1,8 +1,8 @@
 package com.ex_dock.ex_dock.database.product
 
 import com.ex_dock.ex_dock.database.category.PageIndex
-import com.ex_dock.ex_dock.database.connection.Connection
 import com.ex_dock.ex_dock.database.connection.getConnection
+import com.ex_dock.ex_dock.frontend.cache.setCacheFlag
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
@@ -22,6 +22,10 @@ class ProductJdbcVerticle: AbstractVerticle() {
   private val productPricingDeliveryOptions = DeliveryOptions().setCodecName("ProductsPricingCodec")
   private val fullProductDeliveryOptions = DeliveryOptions().setCodecName("FullProductCodec")
   private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
+
+  companion object {
+    private const val CACHE_ADDRESS = "products"
+  }
 
   override fun start() {
     client = getConnection(vertx)
@@ -110,6 +114,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
       }.onSuccess{ res ->
         val productId: Int = res.value().property(JDBCPool.GENERATED_KEYS).getInteger(0)
         product.productId = productId
+        setCacheFlag(eventBus, CACHE_ADDRESS)
         message.reply(product, productDeliveryOptions)
       }
     }
@@ -127,6 +132,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }.onSuccess{ res ->
         if (res.rowCount() > 0) {
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply(product, productDeliveryOptions)
         } else {
           message.reply("Failed to update product")
@@ -147,6 +153,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         message.reply(failedMessage)
       }.onSuccess{ res ->
         if (res.rowCount() > 0) {
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply("Product deleted successfully")
         } else {
           message.reply("Failed to delete product")
@@ -210,6 +217,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { _ ->
+        setCacheFlag(eventBus, CACHE_ADDRESS)
         message.reply(productSeo, productSeoDeliveryOptions)
       }
     }
@@ -226,6 +234,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { _ ->
+        setCacheFlag(eventBus, CACHE_ADDRESS)
         message.reply(productSeo, productSeoDeliveryOptions)
       }
     }
@@ -242,6 +251,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { _ ->
+        setCacheFlag(eventBus, CACHE_ADDRESS)
         message.reply("Product SEO deleted successfully")
       }
     }
@@ -300,6 +310,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { _ ->
+        setCacheFlag(eventBus, CACHE_ADDRESS)
         message.reply(productPricing, productPricingDeliveryOptions)
       }
     }
@@ -316,6 +327,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { _ ->
+        setCacheFlag(eventBus, CACHE_ADDRESS)
         message.reply(productPricing, productPricingDeliveryOptions)
       }
     }
@@ -332,6 +344,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
         println("Failed to execute query: $res")
         message.reply(failedMessage)
       }.onSuccess { _ ->
+        setCacheFlag(eventBus, CACHE_ADDRESS)
         message.reply("Product pricing deleted successfully")
       }
     }

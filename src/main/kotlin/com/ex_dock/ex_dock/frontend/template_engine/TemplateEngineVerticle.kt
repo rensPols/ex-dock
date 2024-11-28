@@ -36,6 +36,7 @@ class TemplateEngineVerticle: AbstractVerticle() {
 
     singleUseTemplate()
     getCompiledTemplate()
+    invalidateCacheKey()
   }
 
   private fun singleUseTemplate() {
@@ -87,7 +88,7 @@ class TemplateEngineVerticle: AbstractVerticle() {
     if (templateCacheData != null) {
 
       // Check if the template data hits exceed the maximum hits or if the flag is set
-      if (templateCacheData.hits >= maxHitCount || templateCacheData.flag) {
+      if (templateCacheData.hits >= maxHitCount) {
         templateCache.invalidate(key)
         println("CACHE DATA EXPIRED")
         return
@@ -103,7 +104,6 @@ class TemplateEngineVerticle: AbstractVerticle() {
     val templateCacheData = TemplateCacheData(
       templateData = Future.future {},
       hits = 0,
-      flag = false
     )
 
     // Fetch the template data asynchronously
@@ -130,10 +130,20 @@ class TemplateEngineVerticle: AbstractVerticle() {
 
     return templateCacheData
   }
+
+  private fun invalidateCacheKey() {
+    eventBus.consumer<String>("template.cache.invalidate") { _ ->
+      val keys = templateCache.asMap().keys
+
+      for (key in keys) {
+        templateCache.refresh(key)
+        println("CACHE DATA REFRESHED FOR KEY: $key")
+      }
+    }
+  }
 }
 
 private data class TemplateCacheData(
   var templateData: Future<String>,
   var hits: Int,
-  var flag: Boolean
 )
