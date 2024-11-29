@@ -1,5 +1,6 @@
 package com.ex_dock.ex_dock.database.product
 
+import com.ex_dock.ex_dock.database.category.Categories
 import com.ex_dock.ex_dock.database.category.PageIndex
 import com.sun.org.apache.xpath.internal.operations.Bool
 
@@ -228,6 +229,21 @@ data class FullProduct(
   var productsPricing: ProductsPricing
 )
 
+data class FullProductWithCategory(
+  var product: Products,
+  var productsSeo: ProductsSeo,
+  var productsPricing: ProductsPricing,
+  var category: List<Categories>
+) {
+  companion object {
+    fun getListOfCategoryNames(categories: List<Categories>): List<String> {
+      val categoryNames: MutableList<String> = mutableListOf()
+      categories.forEach { categoryNames.add(it.name) }
+      return categoryNames.toList()
+    }
+  }
+}
+
 data class EavGlobalInfo(
   val eav: Eav,
   val eavGlobalBool: Boolean,
@@ -243,5 +259,11 @@ enum class Type(name: String) {
   FLOAT("float"),
   INT("int"),
   STRING("string"),
-  MONEY("money"),
+  MONEY("money");
+
+  companion object {
+    fun fromString(name: String): Type? {
+      return Type.values().find { it.name == name }
+    }
+  }
 }

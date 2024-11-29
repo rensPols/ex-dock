@@ -1,5 +1,6 @@
 package com.ex_dock.ex_dock.database.product
 
+import com.ex_dock.ex_dock.database.category.Categories
 import com.ex_dock.ex_dock.database.category.PageIndex
 import com.ex_dock.ex_dock.database.connection.getConnection
 import com.ex_dock.ex_dock.frontend.cache.setCacheFlag
@@ -8,6 +9,7 @@ import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
 import io.vertx.jdbcclient.JDBCPool
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
@@ -22,6 +24,7 @@ class ProductJdbcVerticle: AbstractVerticle() {
   private val productPricingDeliveryOptions = DeliveryOptions().setCodecName("ProductsPricingCodec")
   private val fullProductDeliveryOptions = DeliveryOptions().setCodecName("FullProductCodec")
   private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
+  private val fullProductWithCategoryDeliveryOptions = DeliveryOptions().setCodecName("FullProductWithCategoryCodec")
 
   companion object {
     private const val CACHE_ADDRESS = "products"
@@ -55,6 +58,10 @@ class ProductJdbcVerticle: AbstractVerticle() {
     // Initialize all eventbus connections to the full products info tables
     getAllFullProducts()
     getFullProductById()
+
+    // Initialize all eventbus connections to the full products info tables with categories
+    getFullProductWithCategories()
+    getAllFullProductWithCategoriesByProductId()
   }
 
   private fun getAllProducts() {
@@ -400,6 +407,123 @@ class ProductJdbcVerticle: AbstractVerticle() {
     }
   }
 
+  /**
+   * Gets all full products including the corresponding categories
+   */
+  private fun getFullProductWithCategories() {
+    val allProductWithCategoriesConsumer = eventBus.consumer<Int>("process.products.getFullProductWithCategories")
+    allProductWithCategoriesConsumer.handler { message ->
+      val fullProductWithCategoryList: MutableList<FullProductWithCategory> = mutableListOf()
+      var currentCategoryList: MutableList<Categories> = mutableListOf()
+      lateinit var currentFullProduct: FullProduct
+      var currentId = -1;
+      var counter = 0;
+
+      val query = "SELECT * FROM products " +
+        "JOIN public.products_pricing pp on products.product_id = pp.product_id " +
+        "JOIN public.products_seo ps on products.product_id = ps.product_id " +
+        "JOIN public.categories_products cp ON products.product_id = cp.product_id " +
+        "JOIN public.categories c ON cp.category_id = c.category_id " +
+        "ORDER BY products.product_id"
+      val rowsFuture = client.preparedQuery(query).execute()
+
+      rowsFuture.onFailure { res ->
+        println("Failed to execute query: $res")
+        message.fail(500, failedMessage)
+      }
+
+      rowsFuture.onComplete { res ->
+        val rows: RowSet<Row> = res.result()
+        rows.forEach { row ->
+          // Check if product is the first product
+          if (currentId == -1) {
+            currentFullProduct = makeFullProducts(row)
+            currentId = row.getInteger("product_id")
+          }
+
+          val productId = row.getInteger("product_id")
+          // Check if the current product is a new product
+          if (currentId != productId) {
+            val fullProductWithCategory = FullProductWithCategory(
+              product = currentFullProduct.product,
+              productsSeo = currentFullProduct.productsSeo,
+              productsPricing = currentFullProduct.productsPricing,
+              category = currentCategoryList
+            )
+            fullProductWithCategoryList.add(fullProductWithCategory)
+
+            // Reset current variables
+            currentCategoryList = mutableListOf()
+            currentId = productId
+            currentFullProduct = makeFullProducts(row)
+          }
+
+          // Add the category to the list
+          val category = makeCategory(row)
+          currentCategoryList.add(category)
+          counter++
+
+          // Check if the current row is the last row
+          if (counter == rows.size()) {
+            val fullProductWithCategory = FullProductWithCategory(
+              product = currentFullProduct.product,
+              productsSeo = currentFullProduct.productsSeo,
+              productsPricing = currentFullProduct.productsPricing,
+              category = currentCategoryList
+            )
+            fullProductWithCategoryList.add(fullProductWithCategory)
+          }
+        }
+
+        message.reply(fullProductWithCategoryList, listDeliveryOptions)
+      }
+    }
+  }
+
+  private fun getAllFullProductWithCategoriesByProductId() {
+    val allProductWithCategoriesByProductIdConsumer = eventBus
+      .consumer<Int>("process.products.getFullProductWithCategoriesByProductId")
+    allProductWithCategoriesByProductIdConsumer.handler { message ->
+      val categoryList: MutableList<Categories> = mutableListOf()
+      val productId = message.body()
+      val query = "SELECT * FROM products " +
+        "JOIN public.products_pricing pp ON products.product_id = pp.product_id " +
+        "JOIN public.products_seo ps ON products.product_id = ps.product_id " +
+        "JOIN public.categories_products cp ON products.product_id = cp.product_id " +
+        "JOIN public.categories c ON cp.category_id = c.category_id " +
+        "WHERE products.product_id =?"
+      val rowsFuture = client.preparedQuery(query).execute(Tuple.of(productId))
+
+      rowsFuture.onFailure { res ->
+        println("Failed to execute query: $res")
+        message.fail(500, failedMessage)
+      }
+
+      rowsFuture.onComplete { res ->
+        val rows: RowSet<Row> = res.result()
+        if (rows.size() > 0) {
+          val firstRow = rows.first()
+          val fullProduct = makeFullProducts(firstRow)
+
+          rows.forEach { row ->
+            val category = makeCategory(row)
+            categoryList.add(category)
+          }
+
+          val fullProductWithCategory = FullProductWithCategory(
+            product = fullProduct.product,
+            productsSeo = fullProduct.productsSeo,
+            productsPricing = fullProduct.productsPricing,
+            category = categoryList
+          )
+          message.reply(fullProductWithCategory, fullProductWithCategoryDeliveryOptions)
+        } else {
+          message.reply(emptyList<FullProductWithCategory>())
+        }
+      }
+    }
+  }
+
   private fun makeProduct(row: Row): Products {
     return Products(
       productId = row.getInteger("product_id"),
@@ -517,5 +641,15 @@ class ProductJdbcVerticle: AbstractVerticle() {
       "index, nofollow" -> PageIndex.IndexNoFollow
       else -> throw IllegalArgumentException("Invalid page index: $name")
     }
+  }
+
+  private fun makeCategory(row: Row): Categories {
+    return Categories(
+      categoryId = row.getInteger("category_id"),
+      upperCategory = row.getInteger("upper_category"),
+      name = row.getString("name"),
+      shortDescription = row.getString("short_description"),
+      description = row.getString("description")
+    )
   }
 }

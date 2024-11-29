@@ -79,7 +79,7 @@ class CacheVerticle : AbstractVerticle() {
       "categories" -> getDataFromDatabase("categories.getAllFullInfo")
       "custom_attributes" -> getDataFromDatabase("attributes.getAllCustomAttributes")
       "global_eav" -> getDataFromDatabase("eavGlobal.getAllEavGlobalInfo")
-      "products" -> getDataFromDatabase("products.getAllFullProducts")
+      "products" -> getDataFromDatabase("products.getFullProductWithCategories")
       "multi_select" -> getDataFromDatabase("multiSelect.getAllMultiSelectAttributesInfo")
       "store_view_eav" -> getDataFromDatabase("eavStoreView.getAllEavStoreViewInfo")
       "website_eav" -> getDataFromDatabase("eavWebsite.getAllEavWebsiteInfo")
@@ -127,7 +127,7 @@ class CacheVerticle : AbstractVerticle() {
       eventBus.request<MutableList<Any>>("process.$address", "").onFailure {
         promise.fail("Failed to load cache data")
       }.onSuccess { res ->
-        promise.complete(res.body().toList())
+         promise.complete(res.body().toList())
       }
     }
 

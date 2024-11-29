@@ -38,4 +38,18 @@ class CacheVerticleTest {
       }
     }
   }
+
+  @Test
+  fun manualTest(vertx: Vertx, testContext: VertxTestContext) {
+    deployWorkerVerticleHelper(vertx, JDBCStarter::class.qualifiedName.toString(), 1, 1).onComplete {
+      val eventBus = vertx.eventBus()
+      eventBus.request<MutableList<Any>>("process.products.getFullProductWithCategories", "").onFailure {
+        testContext.failNow(it)
+      }.onSuccess { res ->
+        val body = res.body()
+        println("Received $body from getAllProducts")
+        testContext.completeNow()
+      }
+    }
+  }
 }

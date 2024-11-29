@@ -50,5 +50,18 @@ data class FullUrlRequestInfo(
 enum class PageType(name: String) {
   PRODUCT("product"),
   CATEGORY("category"),
-  TEXT_PAGE("text_page")
+  TEXT_PAGE("text_page");
+
+  companion object {
+    fun fromName(name: String): PageType? = values().find { it.name == name }
+    fun toString(pageType: PageType): String {
+      return when (pageType) {
+        PRODUCT -> "product"
+        CATEGORY -> "category"
+        TEXT_PAGE -> "text_page"
+      }
+    }
+  }
+
+
 }

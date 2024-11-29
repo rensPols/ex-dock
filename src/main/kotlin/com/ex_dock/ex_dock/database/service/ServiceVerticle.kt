@@ -26,6 +26,7 @@ class ServiceVerticle: AbstractVerticle() {
         val rowsFuture = client.preparedQuery(query).execute(Tuple.of(
           template.templateKey,
           template.templateData,
+          template.dataString,
           template.templateKey
         ))
 

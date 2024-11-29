@@ -12,37 +12,13 @@ fun Router.initProduct(vertx: Vertx) {
   val productRouter = Router.router(vertx)
   val eventBus: EventBus = vertx.eventBus()
 
-  productRouter.post("/").handler(BodyHandler.create())
-
-  productRouter.get("/").handler { ctx ->
-    eventBus.request<JsonObject>("process.products.getAll", "")
-      .onSuccess{ reply ->
-        ctx.end(reply.body().toString())
-      }.onFailure { error ->
-        ctx.end("Error retrieving products: ${error.localizedMessage}")
-      }
-  }
-
-  productRouter.get("/id/:id").handler { ctx ->
-    val productId = Json.obj {
-      "productId" to ctx.pathParam("id")
+  productRouter["/"].handler { ctx ->
+    eventBus.request<String>("frontend.retrieveHTML.productHome", "").onFailure {
+      ctx.end("You've successfully accessed the '/product' path for the exDock server, " +
+        "but the product page failed to load")
+    }.onSuccess {
+      ctx.end(it.body())
     }
-    eventBus.request<JsonObject>("process.products.getProductById", productId)
-     .onSuccess{ reply ->
-        ctx.end(reply.body().toString())
-      }.onFailure { error ->
-        ctx.end("Error retrieving product with id $productId: ${error.localizedMessage}")
-      }
-  }
-
-  productRouter.post("/").handler { ctx ->
-    val requestBody = ctx.body().asJsonObject()
-    eventBus.request<JsonObject>("process.products.createProduct", requestBody)
-     .onSuccess{ reply ->
-        ctx.end(reply.body().toString())
-      }.onFailure { error ->
-        ctx.end("Error creating product: ${error.localizedMessage}")
-      }
   }
 
   this.route("/product*").subRouter(productRouter)

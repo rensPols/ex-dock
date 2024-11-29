@@ -1,6 +1,8 @@
 package com.ex_dock.ex_dock.frontend.template_engine
 
 import com.ex_dock.ex_dock.database.connection.getConnection
+import com.ex_dock.ex_dock.database.product.FullProduct
+import com.ex_dock.ex_dock.database.product.FullProductWithCategory
 import com.ex_dock.ex_dock.frontend.template_engine.template_data.single_use.SingleUseTemplateData
 import com.ex_dock.ex_dock.frontend.template_engine.template_data.single_use.SingleUseTemplateDataCodec
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -131,6 +133,39 @@ class TemplateEngineVerticle: AbstractVerticle() {
     return templateCacheData
   }
 
+  private fun loadTemplateCacheData(key: String, filter: ProductFilter): TemplateCacheData {
+    // Initialize a new TemplateData object to avoid null values
+    val templateCacheData = TemplateCacheData(
+      templateData = Future.future {},
+      hits = 0,
+    )
+
+    // Fetch the template data asynchronously
+    templateCacheData.templateData = Future.future { promise ->
+      val query = "SELECT template_key, template_data, data_string FROM templates WHERE template_key = ?"
+      client.preparedQuery(query).execute(Tuple.of(key)).onFailure { err ->
+        println("[FAILURE] query: \"$query\" failed")
+        println("err.message: ${err.message}")
+        promise.fail(err)
+      }.onSuccess { res ->
+        // Fetch the data from the cache
+        eventBus.request<Map<String, Any>>("process.cache.requestData", res.first().getString("data_string"))
+          .onFailure { dataError ->
+            println("Failed to load data from cache: $dataError")
+            promise.fail(dataError)
+          }.onSuccess { templateData ->
+            val templateCacheDataMap = filterProduct(templateData.body(), filter)
+            val writer = StringWriter()
+            val compiledTemplate = engine.getTemplate(res.first().getString("template_data"))
+            compiledTemplate.evaluate(writer, templateCacheDataMap)
+            promise.complete(writer.toString())
+          }
+      }
+    }
+
+    return templateCacheData
+  }
+
   private fun invalidateCacheKey() {
     eventBus.consumer<String>("template.cache.invalidate") { _ ->
       val keys = templateCache.asMap().keys
@@ -141,9 +176,35 @@ class TemplateEngineVerticle: AbstractVerticle() {
       }
     }
   }
+
+  private fun filterProduct(templateCacheData: Map<String, Any>, filter: ProductFilter): Map<String, Any> {
+    @Suppress("UNCHECKED_CAST")
+    try {
+      val productList: List<FullProductWithCategory> = templateCacheData["products"] as List<FullProductWithCategory>
+      val filteredProductList = productList.filter {
+        it.productsPricing.price >= filter.lowPrice
+          && it.productsPricing.price <= filter.highPrice
+          && FullProductWithCategory.getListOfCategoryNames(it.category).contains(filter.category)
+          && it.product.name.contains(filter.name)
+      }
+      val returnMap = templateCacheData.toMutableMap()
+      returnMap["products"] = filteredProductList as Any
+      return returnMap
+    } catch (e: Exception) {
+      println("Failed to cast templateCacheData[\"products\"] to List<FullProduct>: ${e.message}")
+      return templateCacheData
+    }
+  }
 }
 
 private data class TemplateCacheData(
   var templateData: Future<String>,
   var hits: Int,
+)
+
+private data class ProductFilter(
+  val lowPrice: Int,
+  val highPrice: Int,
+  val category: String,
+  val name: String,
 )

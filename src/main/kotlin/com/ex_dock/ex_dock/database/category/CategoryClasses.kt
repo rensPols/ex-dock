@@ -33,4 +33,19 @@ enum class PageIndex(pIndex: String) {
   IndexNoFollow("index, nofollow"),
   NoIndexFollow("noindex, follow"),
   NoIndexNoFollow("noindex, nofollow");
+
+  companion object {
+    fun fromString(value: String): PageIndex? {
+      return values().find { it.name == value }
+    }
+
+    fun toString(pageIndex: PageIndex): String {
+      return when (pageIndex) {
+        IndexFollow -> "index, follow"
+        IndexNoFollow -> "index, nofollow"
+        NoIndexFollow -> "noindex, follow"
+        NoIndexNoFollow -> "noindex, nofollow"
+      }
+    }
+  }
 }
