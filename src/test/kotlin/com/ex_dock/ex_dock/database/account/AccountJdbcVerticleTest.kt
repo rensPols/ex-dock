@@ -395,7 +395,7 @@ class AccountJdbcVerticleTest {
     val processAccountDeleteUserCheckpoint = testContext.checkpoint()
 
     var userId = -1
-    val FullUserList: MutableList<FullUser> = emptyList<FullUser>().toMutableList()
+    val fullUserList: MutableList<FullUser> = emptyList<FullUser>().toMutableList()
 
     var testUserCreation = UserCreation(
       email = "test@example.com",
@@ -437,7 +437,7 @@ class AccountJdbcVerticleTest {
         )
         allInfoResult.user.password = ""
 
-        FullUserList.add(allInfoResult)
+        fullUserList.add(allInfoResult)
 
         assertEquals(createUserMsg.result().body(), testUser)
 
@@ -458,7 +458,7 @@ class AccountJdbcVerticleTest {
           }.onComplete { getAllFullMsg ->
             val fullBody = getAllFullMsg.result().body()
             fullBody[0].user.password = ""
-            assertEquals(fullBody, FullUserList)
+            assertEquals(fullBody, fullUserList)
 
             processAccountGetAllFullUserInfoCheckpoint.flag()
 
