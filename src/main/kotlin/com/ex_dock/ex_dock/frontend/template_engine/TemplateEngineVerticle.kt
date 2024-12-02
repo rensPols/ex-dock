@@ -62,7 +62,7 @@ class TemplateEngineVerticle: AbstractVerticle() {
       val key = message.body()
       var templateString = ""
 
-      val future: Future<Unit> = Future.future{ promise ->
+      val future: Future<Unit> = Future.future { promise ->
         val templateCacheData = templateCache[key]
 
         // Wait until the fetching of the template is done
