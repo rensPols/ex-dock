@@ -43,7 +43,6 @@ class TemplateEngineVerticle: AbstractVerticle() {
     eventBus.registerCodec(SingleUseTemplateDataCodec())
     eventBus.consumer("template.generate.singleUse") { message ->
       val singleUseTemplateData: SingleUseTemplateData = message.body()
-
       val compiledTemplate = engine.getTemplate(singleUseTemplateData.template)
 
       val writer = StringWriter()
