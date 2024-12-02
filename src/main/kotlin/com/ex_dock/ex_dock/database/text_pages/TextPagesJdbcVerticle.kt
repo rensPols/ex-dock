@@ -2,6 +2,7 @@ package com.ex_dock.ex_dock.database.text_pages
 
 import com.ex_dock.ex_dock.database.category.PageIndex
 import com.ex_dock.ex_dock.database.connection.getConnection
+import com.ex_dock.ex_dock.frontend.cache.setCacheFlag
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
@@ -19,6 +20,10 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
   private val seoTextPagesDeliveryOptions = DeliveryOptions().setCodecName("TextPagesSeoCodec")
   private val fullTextPagesDeliveryOptions = DeliveryOptions().setCodecName("FullTextPagesCodec")
   private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
+
+  companion object {
+    private const val CACHE_ADDRESS = "text_pages"
+  }
 
   override fun start() {
     client = getConnection(vertx)
@@ -115,6 +120,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
       rowsFuture.onSuccess { res ->
         if (res.rowCount() > 0) {
           body.textPagesId = res.property(JDBCPool.GENERATED_KEYS).getInteger(0)
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply(body, textPagesDeliveryOptions)
         } else {
           message.reply("Failed to create text page")
@@ -141,6 +147,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onSuccess { res ->
         if (res.rowCount() > 0) {
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply(body, textPagesDeliveryOptions)
         } else {
           message.reply("Failed to update text page")
@@ -166,6 +173,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onSuccess { res ->
         if (res.rowCount() > 0) {
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply("Text page deleted successfully")
         } else {
           message.reply("No text page found with ID")
@@ -248,6 +256,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
       rowsFuture.onSuccess { res ->
         if (res.rowCount() > 0) {
           body.textPagesId = res.property(JDBCPool.GENERATED_KEYS).getInteger(0)
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply(body, seoTextPagesDeliveryOptions)
         } else {
           message.reply("Failed to create seo text page")
@@ -276,6 +285,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onSuccess { res ->
         if (res.rowCount() > 0) {
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply(body, seoTextPagesDeliveryOptions)
         } else {
           message.reply("Failed to update seo text page")
@@ -301,6 +311,7 @@ class TextPagesJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onSuccess { res ->
         if (res.rowCount() > 0) {
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply("SEO text page deleted successfully")
         } else {
           message.reply("No SEO text page found with ID")
