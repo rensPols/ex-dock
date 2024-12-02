@@ -1,14 +1,12 @@
 package com.ex_dock.ex_dock.database.connection
 
 import com.ex_dock.ex_dock.ClassLoaderDummy
-import com.ex_dock.ex_dock.MainVerticle
 import io.vertx.core.Vertx
 import io.vertx.jdbcclient.JDBCConnectOptions
 import io.vertx.jdbcclient.JDBCPool
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.PoolOptions
-import java.util.*
-import kotlin.jvm.javaClass
+import java.util.Properties
 
 
 fun getConnection(vertx: Vertx): Pool {
@@ -16,7 +14,8 @@ fun getConnection(vertx: Vertx): Pool {
   val connectOptions = JDBCConnectOptions()
 
   try {
-    val props: Properties = ClassLoaderDummy::class.java.classLoader.getResourceAsStream("secret.properties").use {
+    val props:
+        Properties = ClassLoaderDummy::class.java.classLoader.getResourceAsStream("secret.properties").use {
       Properties().apply { load(it) }
     }
 
@@ -24,7 +23,7 @@ fun getConnection(vertx: Vertx): Pool {
       .setJdbcUrl(props.getProperty("DATABASE_URL"))
       .setUser(props.getProperty("DATABASE_USERNAME"))
       .setPassword(props.getProperty("DATABASE_PASSWORD"))
-  } catch (e: Exception) {
+  } catch (_: Exception) {
     try {
       val isDocker: Boolean = !System.getenv("GITHUB_RUN_NUMBER").isNullOrEmpty()
       if (isDocker) {
@@ -35,7 +34,7 @@ fun getConnection(vertx: Vertx): Pool {
       } else {
         error("Could not load the Properties file!")
       }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
       error("Could not read the Properties file!")
     }
   }
