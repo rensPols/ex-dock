@@ -58,59 +58,24 @@ class JDBCStarter : AbstractVerticle() {
   }
 
   private fun addAllVerticles() {
-    verticles.add(deployWorkerVerticleHelper(vertx, AccountJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, CategoryJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, CheckoutJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, HomeJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, ProductJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, TextPagesJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, ScopeJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, ServerJDBCVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, UrlJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(
-      deployWorkerVerticleHelper(
-        vertx,
-        ProductCompleteEavJdbcVerticle::class.qualifiedName.toString(),
-        5,
-        5
-      )
-    )
-    verticles.add(deployWorkerVerticleHelper(vertx, ProductGlobalEavJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(
-      deployWorkerVerticleHelper(
-        vertx,
-        ProductMultiSelectJdbcVerticle::class.qualifiedName.toString(),
-        5,
-        5
-      )
-    )
-    verticles.add(
-      deployWorkerVerticleHelper(
-        vertx,
-        ProductStoreViewEavJdbcVerticle::class.qualifiedName.toString(),
-        5,
-        5
-      )
-    )
-    verticles.add(
-      deployWorkerVerticleHelper(
-        vertx,
-        ProductWebsiteEavJdbcVerticle::class.qualifiedName.toString(),
-        5,
-        5
-      )
-    )
-    verticles.add(
-      deployWorkerVerticleHelper(
-        vertx,
-        ProductCustomAttributesJdbcVerticle::class.qualifiedName.toString(),
-        5,
-        5
-      )
-    )
-    verticles.add(deployWorkerVerticleHelper(vertx, TemplateJdbcVerticle::class.qualifiedName.toString(), 5, 5))
-    verticles.add(deployWorkerVerticleHelper(vertx, ServiceVerticle::class.qualifiedName.toString(), 1, 1))
-    verticles.add(deployWorkerVerticleHelper(vertx, CacheVerticle::class.qualifiedName.toString(), 5, 5))
+    verticles.add(vertx.deployWorkerVerticleHelper(AccountJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(CategoryJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(CheckoutJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(HomeJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(ProductJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(TextPagesJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(ScopeJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(ServerJDBCVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(UrlJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(ProductCompleteEavJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(ProductGlobalEavJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(ProductMultiSelectJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(ProductStoreViewEavJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(ProductWebsiteEavJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(ProductCustomAttributesJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(TemplateJdbcVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(ServiceVerticle::class))
+    verticles.add(vertx.deployWorkerVerticleHelper(CacheVerticle::class))
   }
 
   private fun getAllCodecClasses() {
