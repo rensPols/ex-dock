@@ -17,11 +17,11 @@ import org.mindrot.jbcrypt.BCrypt
 
 @ExtendWith(VertxExtension::class)
 class AccountJdbcVerticleTest {
-  private val userCodec: MessageCodec<User, User> = GenericCodec(User::class.java)
-  private val userCreationCodec: MessageCodec<UserCreation, UserCreation> = GenericCodec(UserCreation::class.java)
+  private val userCodec: MessageCodec<User, User> = GenericCodec(User::class)
+  private val userCreationCodec: MessageCodec<UserCreation, UserCreation> = GenericCodec(UserCreation::class)
   private val backendPermissionsCodec: MessageCodec<BackendPermissions, BackendPermissions> =
-    GenericCodec(BackendPermissions::class.java)
-  private val fullUserCodec: MessageCodec<FullUser, FullUser> = GenericCodec(FullUser::class.java)
+    GenericCodec(BackendPermissions::class)
+  private val fullUserCodec: MessageCodec<FullUser, FullUser> = GenericCodec(FullUser::class)
   private val userListCodec: MessageCodec<List<User>, List<User>> = GenericListCodec(User::class)
   private val backendPermissionsListCodec: MessageCodec<List<BackendPermissions>, List<BackendPermissions>> =
     GenericListCodec(BackendPermissions::class)

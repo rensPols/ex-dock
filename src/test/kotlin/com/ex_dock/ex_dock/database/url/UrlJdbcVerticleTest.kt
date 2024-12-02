@@ -111,17 +111,17 @@ class UrlJdbcVerticleTest {
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(MutableList::class.java))
-      .registerCodec(GenericCodec(UrlKeys::class.java))
-      .registerCodec(GenericCodec(TextPages::class.java))
-      .registerCodec(GenericCodec(Categories::class.java))
-      .registerCodec(GenericCodec(Products::class.java))
-      .registerCodec(GenericCodec(TextPageUrls::class.java))
-      .registerCodec(GenericCodec(ProductUrls::class.java))
-      .registerCodec(GenericCodec(CategoryUrls::class.java))
-      .registerCodec(GenericCodec(FullUrlKeys::class.java))
-      .registerCodec(GenericCodec(FullUrlRequestInfo::class.java))
-      .registerCodec(GenericCodec(JoinList::class.java))
+      .registerCodec(GenericCodec(MutableList::class))
+      .registerCodec(GenericCodec(UrlKeys::class))
+      .registerCodec(GenericCodec(TextPages::class))
+      .registerCodec(GenericCodec(Categories::class))
+      .registerCodec(GenericCodec(Products::class))
+      .registerCodec(GenericCodec(TextPageUrls::class))
+      .registerCodec(GenericCodec(ProductUrls::class))
+      .registerCodec(GenericCodec(CategoryUrls::class))
+      .registerCodec(GenericCodec(FullUrlKeys::class))
+      .registerCodec(GenericCodec(FullUrlRequestInfo::class))
+      .registerCodec(GenericCodec(JoinList::class))
     Future.all(deployNeededVerticles(vertx)).onComplete {
       eventBus.request<UrlKeys>("process.url.createUrlKey", url, urlKeysDeliveryOptions).onFailure {
         testContext.failNow(it)

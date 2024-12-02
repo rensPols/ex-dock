@@ -103,16 +103,16 @@ class ProductMultiSelectJdbcVerticleTest {
   @BeforeEach
   fun setUp(vertx: Vertx, testContext: VertxTestContext) {
     eventBus = vertx.eventBus()
-      .registerCodec(GenericCodec(MutableList::class.java))
-      .registerCodec(GenericCodec(Products::class.java))
-      .registerCodec(GenericCodec(CustomProductAttributes::class.java))
-      .registerCodec(GenericCodec(Eav::class.java))
-      .registerCodec(GenericCodec(MultiSelectBool::class.java))
-      .registerCodec(GenericCodec(MultiSelectFloat::class.java))
-      .registerCodec(GenericCodec(MultiSelectString::class.java))
-      .registerCodec(GenericCodec(MultiSelectInt::class.java))
-      .registerCodec(GenericCodec(MultiSelectMoney::class.java))
-      .registerCodec(GenericCodec(MultiSelectInfo::class.java))
+      .registerCodec(GenericCodec(MutableList::class))
+      .registerCodec(GenericCodec(Products::class))
+      .registerCodec(GenericCodec(CustomProductAttributes::class))
+      .registerCodec(GenericCodec(Eav::class))
+      .registerCodec(GenericCodec(MultiSelectBool::class))
+      .registerCodec(GenericCodec(MultiSelectFloat::class))
+      .registerCodec(GenericCodec(MultiSelectString::class))
+      .registerCodec(GenericCodec(MultiSelectInt::class))
+      .registerCodec(GenericCodec(MultiSelectMoney::class))
+      .registerCodec(GenericCodec(MultiSelectInfo::class))
     Future.all(deployVerticles(vertx)).onFailure {
       testContext.failNow(it)
     }.onComplete {

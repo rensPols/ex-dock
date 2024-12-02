@@ -45,11 +45,11 @@ class TextPagesJdbcVerticleTest {
     @BeforeEach
     fun setUp(vertx: Vertx, testContext: VertxTestContext) {
       eventBus = vertx.eventBus()
-        .registerCodec(GenericCodec(MutableList::class.java))
-        .registerCodec(GenericCodec(TextPages::class.java))
-        .registerCodec(GenericCodec(TextPagesSeo::class.java))
-        .registerCodec(GenericCodec(PageIndex::class.java))
-        .registerCodec(GenericCodec(FullTextPages::class.java))
+        .registerCodec(GenericCodec(MutableList::class))
+        .registerCodec(GenericCodec(TextPages::class))
+        .registerCodec(GenericCodec(TextPagesSeo::class))
+        .registerCodec(GenericCodec(PageIndex::class))
+        .registerCodec(GenericCodec(FullTextPages::class))
       deployWorkerVerticleHelper(vertx,
         TextPagesJdbcVerticle::class.qualifiedName.toString(), 5, 5).onComplete {
 
