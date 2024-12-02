@@ -7,6 +7,7 @@ import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.LoadingCache
 import io.pebbletemplates.pebble.PebbleEngine
 import io.pebbletemplates.pebble.loader.StringLoader
+import io.pebbletemplates.pebble.template.PebbleTemplate
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.eventbus.EventBus
@@ -19,6 +20,7 @@ class TemplateEngineVerticle: AbstractVerticle() {
   private lateinit var client: Pool
   private lateinit var eventBus: EventBus
   private lateinit var templateCache: LoadingCache<String, TemplateCacheData>
+  private lateinit var compiledTemplateCache: LoadingCache<String, Future<CompiledTemplateCacheData>>
   private val engine = PebbleEngine.Builder().loader(StringLoader()).build()
 
   private val expireDuration = 10L
@@ -33,6 +35,9 @@ class TemplateEngineVerticle: AbstractVerticle() {
       .expireAfterWrite(expireDuration, TimeUnit.MINUTES)
       .refreshAfterWrite(refreshDuration, TimeUnit.MINUTES)
       .build { k -> loadTemplateCacheData(k)}
+
+    compiledTemplateCache = Caffeine.newBuilder()
+      .build { k -> cacheCompiledTemplate(k) }
 
     singleUseTemplate()
     getCompiledTemplate()
@@ -80,6 +85,23 @@ class TemplateEngineVerticle: AbstractVerticle() {
     }
   }
 
+  private fun cacheCompiledTemplate(key: String): Future<CompiledTemplateCacheData> {
+    return Future.future { promise ->
+      val query = "SELECT template_key, template_data, data_string FROM templates WHERE template_key = ?"
+      client.preparedQuery(query).execute(Tuple.of(key)).onFailure { err ->
+        println("[FAILURE] query: \"$query\" failed")
+        println("err.message: ${err.message}")
+        promise.fail(err)
+      }.onSuccess { res ->
+        val result = engine.getTemplate(res.first().getString("template_data"))
+        promise.complete(CompiledTemplateCacheData(
+          result,
+          res.first().getString("data_string")
+          ))
+      }
+    }
+  }
+
   private fun incrementTemplateHitCount(key: String) {
     val templateCacheData = templateCache.getIfPresent(key)
 
@@ -107,20 +129,18 @@ class TemplateEngineVerticle: AbstractVerticle() {
 
     // Fetch the template data asynchronously
     templateCacheData.templateData = Future.future { promise ->
-      val query = "SELECT template_key, template_data, data_string FROM templates WHERE template_key = ?"
-      client.preparedQuery(query).execute(Tuple.of(key)).onFailure { err ->
-        println("[FAILURE] query: \"$query\" failed")
+      compiledTemplateCache[key].onFailure { err ->
         println("err.message: ${err.message}")
         promise.fail(err)
       }.onSuccess { res ->
         // Fetch the data from the cache
-        eventBus.request<Map<String, Any>>("process.cache.requestData", res.first().getString("data_string"))
+        eventBus.request<Map<String, Any>>("process.cache.requestData", res.dataString)
           .onFailure { dataError ->
             println("Failed to load data from cache: $dataError")
             promise.fail(dataError)
           }.onSuccess { templateData ->
             val writer = StringWriter()
-            val compiledTemplate = engine.getTemplate(res.first().getString("template_data"))
+            val compiledTemplate = res.compiledTemplate
             compiledTemplate.evaluate(writer, templateData.body())
             promise.complete(writer.toString())
           }
@@ -145,4 +165,9 @@ class TemplateEngineVerticle: AbstractVerticle() {
 private data class TemplateCacheData(
   var templateData: Future<String>,
   var hits: Int,
+)
+
+private data class CompiledTemplateCacheData(
+  var compiledTemplate: PebbleTemplate,
+  var dataString: String,
 )
