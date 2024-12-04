@@ -1,6 +1,5 @@
 package com.ex_dock.ex_dock.backend.v1.router.image
 
-import com.ex_dock.ex_dock.helper.convertImageToWebp
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.handler.BodyHandler
@@ -18,7 +17,7 @@ fun Router.initImage(vertx: Vertx) {
 
   imageRouter.post("/").handler { ctx ->
     val path = ctx.request().getFormAttribute("path")
-    convertImageToWebp(path)
+    eventBus.send("process.service.convertImage", path)
     ctx.end("request to imageRouter successful")
   }
 

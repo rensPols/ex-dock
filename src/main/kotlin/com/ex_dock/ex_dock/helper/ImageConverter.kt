@@ -12,7 +12,7 @@ import javax.imageio.ImageWriteParam
 import javax.imageio.ImageWriter
 import javax.imageio.stream.ImageOutputStream
 
-fun convertImageToWebp(path: String) {
+fun convertImage(path: String) {
   // Set all the path locations
   val validExtensions = listOf("png", "jpg", "jpeg", "webp")
   val imagePath = System.getProperty("user.dir") + "\\src\\main\\resources\\images\\"
@@ -39,9 +39,16 @@ fun convertImageToWebp(path: String) {
   for (file in folder.listFiles()!!) {
     if (!validExtensions.contains(file.name)) {
       val newName = File("$directory$fileName.$extension")
-      println(file.renameTo(newName))
+      file.renameTo(newName)
       convertToWebp("$directory$fileName", extension, newName)
       convertToBasicExtensions("$directory$fileName", extension, validExtensions, newName)
+    }
+  }
+
+  // Delete original file if not renamed earlier
+  for (file in folder.listFiles()!!) {
+    if (!validExtensions.contains(file.name)) {
+      file.delete()
     }
   }
 }
