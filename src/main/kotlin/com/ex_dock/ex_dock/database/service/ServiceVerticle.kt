@@ -44,6 +44,7 @@ class ServiceVerticle: AbstractVerticle() {
   private fun imageConverter() {
     eventBus.consumer("process.service.convertImage") { message ->
       val path = message.body()
+      println("Got request")
       convertImage(path)
       message.reply("Image conversion completed")
     }

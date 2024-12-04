@@ -14,7 +14,7 @@ import javax.imageio.stream.ImageOutputStream
 
 fun convertImage(path: String) {
   // Set all the path locations
-  val validExtensions = listOf("png", "jpg", "jpeg", "webp")
+  val validExtensions = listOf("png", "jpg", "webp")
   val imagePath = System.getProperty("user.dir") + "\\src\\main\\resources\\images\\"
   val pathSplit = path.split(".")
   val directorySplit = pathSplit[0].split("\\")
@@ -37,7 +37,7 @@ fun convertImage(path: String) {
   val folder = File(imagePath)
   // Get the new uploaded image
   for (file in folder.listFiles()!!) {
-    if (!validExtensions.contains(file.name)) {
+    if (!validExtensions.contains(file.extension)) {
       val newName = File("$directory$fileName.$extension")
       file.renameTo(newName)
       convertToWebp("$directory$fileName", extension, newName)
