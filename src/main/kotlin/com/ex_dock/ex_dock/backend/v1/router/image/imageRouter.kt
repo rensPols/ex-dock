@@ -17,7 +17,8 @@ fun Router.initImage(vertx: Vertx) {
   imageRouter.post("/").handler(StaticHandler.create("src/main/resources/images").setCachingEnabled(false))
 
   imageRouter.post("/").handler { ctx ->
-    convertImageToWebp(vertx, "test", "png")
+    val path = ctx.request().getFormAttribute("path")
+    convertImageToWebp(path)
     ctx.end("request to imageRouter successful")
   }
 
