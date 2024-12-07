@@ -1,6 +1,7 @@
 package com.ex_dock.ex_dock.database.service
 
 import com.ex_dock.ex_dock.database.connection.getConnection
+import com.ex_dock.ex_dock.helper.convertImage
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.eventbus.EventBus
 import io.vertx.sqlclient.Pool
@@ -15,6 +16,7 @@ class ServiceVerticle: AbstractVerticle() {
     eventBus = vertx.eventBus()
 
     populateTemplateTable()
+    imageConverter()
   }
 
   private fun populateTemplateTable() {
@@ -36,6 +38,15 @@ class ServiceVerticle: AbstractVerticle() {
       }
 
       message.reply("Completed populating templates")
+    }
+  }
+
+  private fun imageConverter() {
+    eventBus.consumer("process.service.convertImage") { message ->
+      val path = message.body()
+      println("Got request")
+      convertImage(path)
+      message.reply("Image conversion completed")
     }
   }
 }
