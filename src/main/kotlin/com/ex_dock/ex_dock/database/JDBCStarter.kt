@@ -49,7 +49,11 @@ class JDBCStarter : AbstractVerticle() {
           throw PopulateException("Could not populate the database with standard data. Closing the server!")
         }.onSuccess {
           println("Database populated with standard Data")
-          starPromise.complete()
+          eventBus.request<String>("process.service.addAdminUser", "").onFailure {
+            throw PopulateException("Could not add admin user. Closing the server!")
+          }.onSuccess {
+            starPromise.complete()
+          }
         }
       }
       .onFailure { error ->

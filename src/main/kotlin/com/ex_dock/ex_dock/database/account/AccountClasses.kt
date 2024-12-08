@@ -34,5 +34,14 @@ enum class Permission(name: String) {
     fun fromString(value: String): Permission {
       return values().find { it.name == value } ?: NONE
     }
+
+    fun toString(permission: Permission): String {
+      return when (permission) {
+        NONE -> "none"
+        READ -> "read"
+        WRITE -> "write"
+        READ_WRITE -> "read-write"
+      }
+    }
   }
 }
