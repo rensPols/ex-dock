@@ -28,7 +28,7 @@ fun Router.enableBackendV1Router(vertx: Vertx, absoluteMounting: Boolean = false
       )
       .addPubSecKey(
         PubSecKeyOptions()
-         .setAlgorithm("HS256")
+         .setAlgorithm("RS256")
          .setBuffer(authProvider.privateKey)
       )
   )
@@ -44,13 +44,11 @@ fun Router.enableBackendV1Router(vertx: Vertx, absoluteMounting: Boolean = false
         val user = it.result()
         val token = jwtAuth.generateToken(
           JsonObject().apply {
-            put("userId", user.principal().getString("userId"))
+            put("userId", user.principal().getString("id"))
             put("email", user.principal().getString("email"))
+            put("authorizations", user.principal().getJsonArray("authorizations"))
           },
-          JWTOptions().apply {
-            algorithm = "HS256"
-            expiresInSeconds = 3600
-          }
+          JWTOptions().setAlgorithm("RS256")
         )
 
         ctx.response().putHeader("Content-Type", "text/plain").end(token)
@@ -61,6 +59,17 @@ fun Router.enableBackendV1Router(vertx: Vertx, absoluteMounting: Boolean = false
   }
 
   backendV1Router.route().handler(JWTAuthHandler.create(jwtAuth))
+
+  backendV1Router["/test"].handler { ctx ->
+    val token: String = ctx.request().headers()["Authorization"].replace("Bearer ", "")
+    exDockAuthHandler.verifyPermissionAuthorization(token, "userREAD") {
+      if (it.getBoolean("success")) {
+        ctx.end()
+      } else {
+        ctx.response().setStatusCode(403).end("User does not have the permission for this")
+      }
+    }
+  }
 
   // TODO: routing
 

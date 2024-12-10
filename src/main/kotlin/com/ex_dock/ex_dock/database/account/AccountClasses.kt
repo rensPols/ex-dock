@@ -32,7 +32,12 @@ enum class Permission(name: String) {
 
   companion object {
     fun fromString(value: String): Permission {
-      return values().find { it.name == value } ?: NONE
+      return when (value) {
+        "read" -> READ
+        "write" -> WRITE
+        "read-write" -> READ_WRITE
+        else -> NONE
+      }
     }
 
     fun toString(permission: Permission): String {

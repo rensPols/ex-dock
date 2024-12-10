@@ -59,6 +59,10 @@ class ServiceVerticle: AbstractVerticle() {
       }
 
       rowsFuture.onSuccess { res ->
+        if (res.size() < 1) {
+          message.reply("Admin already exists!")
+          return@onSuccess
+        }
         val userId = res.value().property(JDBCPool.GENERATED_KEYS).getInteger(0)
         val permissionQuery = "INSERT INTO backend_permissions " +
           "(user_id, user_permissions, server_settings, template, category_content, category_products, " +
