@@ -81,7 +81,7 @@ class TemplateJdbcVerticle: AbstractVerticle() {
       val body = message.body()
       val isPutRequest = message.headers().contains("isPutRequest")
       val templateTuple = makeTemplateTuple(body, isPutRequest)
-      val query = "INSERT INTO templates (template_data, template_key) VALUES (?,?)"
+      val query = "INSERT INTO templates (template_data, template_key, data_string) VALUES (?,?,?)"
 
       val rowsFuture = client.preparedQuery(query).execute(templateTuple)
 
@@ -102,7 +102,7 @@ class TemplateJdbcVerticle: AbstractVerticle() {
       val body = message.body()
       val isPutRequest = message.headers().contains("isPutRequest")
       val templateTuple = makeTemplateTuple(body, isPutRequest)
-      val query = "UPDATE templates SET template_data =? WHERE template_key =?"
+      val query = "UPDATE templates SET template_data =?, data_string =? WHERE template_key =?"
 
       val rowsFuture = client.preparedQuery(query).execute(templateTuple)
 
@@ -241,7 +241,8 @@ class TemplateJdbcVerticle: AbstractVerticle() {
   private fun makeTemplate(row: Row): Template {
     return Template(
       row.getString("template_key"),
-      row.getString("template_data")
+      row.getString("template_data"),
+      row.getString("data_string")
     )
   }
 
@@ -255,12 +256,14 @@ class TemplateJdbcVerticle: AbstractVerticle() {
     val templateTuple = if (isPutRequest) {
       Tuple.of(
         body.templateData,
+        body.dataString,
         body.templateKey,
       )
     } else {
       Tuple.of(
         body.templateKey,
-        body.templateData
+        body.templateData,
+        body.dataString
       )
     }
 

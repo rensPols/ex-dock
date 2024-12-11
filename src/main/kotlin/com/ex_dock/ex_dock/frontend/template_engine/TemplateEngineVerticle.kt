@@ -3,36 +3,51 @@ package com.ex_dock.ex_dock.frontend.template_engine
 import com.ex_dock.ex_dock.database.connection.getConnection
 import com.ex_dock.ex_dock.frontend.template_engine.template_data.single_use.SingleUseTemplateData
 import com.ex_dock.ex_dock.frontend.template_engine.template_data.single_use.SingleUseTemplateDataCodec
+import com.github.benmanes.caffeine.cache.Caffeine
+import com.github.benmanes.caffeine.cache.LoadingCache
 import io.pebbletemplates.pebble.PebbleEngine
 import io.pebbletemplates.pebble.loader.StringLoader
 import io.pebbletemplates.pebble.template.PebbleTemplate
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.Future
 import io.vertx.core.eventbus.EventBus
 import io.vertx.sqlclient.Pool
-import io.vertx.sqlclient.Row
-import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.Tuple
 import java.io.StringWriter
+import java.util.concurrent.TimeUnit
 
 class TemplateEngineVerticle: AbstractVerticle() {
   private lateinit var client: Pool
   private lateinit var eventBus: EventBus
+  private lateinit var templateCache: LoadingCache<String, TemplateCacheData>
+  private lateinit var compiledTemplateCache: LoadingCache<String, Future<CompiledTemplateCacheData>>
   private val engine = PebbleEngine.Builder().loader(StringLoader()).build()
-  private var compiledTemplates: MutableMap<String, PebbleTemplate> = mutableMapOf()
+
+  private val expireDuration = 10L
+  private val refreshDuration = 1L
+  private val maxHitCount = 100
 
   override fun start() {
     client = getConnection(vertx)
     eventBus = vertx.eventBus()
 
+    templateCache = Caffeine.newBuilder()
+      .expireAfterWrite(expireDuration, TimeUnit.MINUTES)
+      .refreshAfterWrite(refreshDuration, TimeUnit.MINUTES)
+      .build { k -> loadTemplateCacheData(k)}
+
+    compiledTemplateCache = Caffeine.newBuilder()
+      .build { k -> cacheCompiledTemplate(k) }
+
     singleUseTemplate()
-    compiledTemplate()
+    getCompiledTemplate()
+    invalidateCacheKey()
   }
 
   private fun singleUseTemplate() {
     eventBus.registerCodec(SingleUseTemplateDataCodec())
-    eventBus.consumer<SingleUseTemplateData>("template.generate.singleUse") { message ->
+    eventBus.consumer("template.generate.singleUse") { message ->
       val singleUseTemplateData: SingleUseTemplateData = message.body()
-
       val compiledTemplate = engine.getTemplate(singleUseTemplateData.template)
 
       val writer = StringWriter()
@@ -42,69 +57,117 @@ class TemplateEngineVerticle: AbstractVerticle() {
     }
   }
 
-  private fun compiledTemplate() {
-    compileAllTemplates()
+  private fun getCompiledTemplate() {
+    eventBus.consumer("template.generate.compiled") { message ->
+      val key = message.body()
+      var templateString = ""
 
-    // TODO: make a global data variable for this verticle
-    // TEMP:
-    var data: Map<String, Any?> = mapOf(
-      "name" to "testName",
-      "secondName" to "testSecondName",
-      "test" to "this is the test variable"
-    )
+      val future: Future<Unit> = Future.future { promise ->
+        val templateCacheData = templateCache[key]
 
-    eventBus.localConsumer<String>("template.generate.compiled") { message ->
-      var compiledTemplate: PebbleTemplate? = compiledTemplates[message.body()]
-
-      if (compiledTemplate != null) {
-        val writer = StringWriter()
-        compiledTemplate.evaluate(writer, data)
-        message.reply(writer.toString())
-        // TODO: sometimes refetch template
-        return@localConsumer
+        // Wait until the fetching of the template is done
+        templateCacheData.templateData.onFailure { err ->
+          promise.fail(err.message)
+        }.onSuccess { res ->
+          incrementTemplateHitCount(key)
+          templateString = res
+          promise.complete()
+        }
       }
 
-      client.preparedQuery(
-        "SELECT template_key, template_data FROM templates WHERE template_key=?"
-      ).execute(Tuple.of(message.body())).onFailure { e ->
-        println("Failed to execute query: $e")
-        message.reply("A failure occurred during the generation of the template, attempted template: ${message.body()}")
-      }.onSuccess { rowSet: RowSet<Row> ->
-        if (rowSet.rowCount() > 0) {
-          compiledTemplate = engine.getTemplate(rowSet.first().getString("template_data"))
-          compiledTemplates.put(
-            rowSet.first().getString("template_key"),
-            compiledTemplate
-          )
-
-          val writer = StringWriter()
-          compiledTemplate.evaluate(writer, data)
-          message.reply(writer.toString())
-          return@onSuccess
+      future.onComplete { ar ->
+        if (ar.succeeded()) {
+          message.reply(templateString)
+        } else {
+          message.fail(500, ar.cause().message)
         }
-        message.reply("The '${message.body()}' template does not exist in the database")
       }
     }
   }
 
-  private fun compileAllTemplates() {
-    var templates: MutableMap<String, String> = mutableMapOf()
-    client.preparedQuery(
-      "SELECT template_key, template_data FROM templates"
-    ).execute().onFailure { err ->
-      println("[FAILURE] query: \"SELECT template_key, template_data FROM templates\" failed")
-      println("err.message: ${err.message}")
-    }.onSuccess { res ->
-      res.forEach { templateRow ->
-        templates.put(
-          templateRow.getString("template_key"),
-          templateRow.getString("template_data")
-        )
+  private fun cacheCompiledTemplate(key: String): Future<CompiledTemplateCacheData> {
+    return Future.future { promise ->
+      val query = "SELECT template_key, template_data, data_string FROM templates WHERE template_key = ?"
+      client.preparedQuery(query).execute(Tuple.of(key)).onFailure { err ->
+        println("[FAILURE] query: \"$query\" failed")
+        println("err.message: ${err.message}")
+        promise.fail(err)
+      }.onSuccess { res ->
+        val result = engine.getTemplate(res.first().getString("template_data"))
+        promise.complete(CompiledTemplateCacheData(
+          result,
+          res.first().getString("data_string")
+          ))
+      }
+    }
+  }
+
+  private fun incrementTemplateHitCount(key: String) {
+    val templateCacheData = templateCache.getIfPresent(key)
+
+    // Check if the cache data exists and is not expired or deleted
+    if (templateCacheData != null) {
+
+      // Check if the template data hits exceed the maximum hits or if the flag is set
+      if (templateCacheData.hits >= maxHitCount) {
+        templateCache.invalidate(key)
+        println("CACHE DATA EXPIRED")
+        return
       }
 
-      for (template in templates) {
-        compiledTemplates.put(template.key, engine.getTemplate(template.value))
+      templateCacheData.hits++
+      templateCache.put(key, templateCacheData)
+    }
+  }
+
+  private fun loadTemplateCacheData(key: String): TemplateCacheData {
+    // Initialize a new TemplateData object to avoid null values
+    val templateCacheData = TemplateCacheData(
+      templateData = Future.future {},
+      hits = 0,
+    )
+
+    // Fetch the template data asynchronously
+    templateCacheData.templateData = Future.future { promise ->
+      compiledTemplateCache[key].onFailure { err ->
+        println("err.message: ${err.message}")
+        promise.fail(err)
+      }.onSuccess { res ->
+        // Fetch the data from the cache
+        eventBus.request<Map<String, Any>>("process.cache.requestData", res.dataString)
+          .onFailure { dataError ->
+            println("Failed to load data from cache: $dataError")
+            promise.fail(dataError)
+          }.onSuccess { templateData ->
+            val writer = StringWriter()
+            val compiledTemplate = res.compiledTemplate
+            compiledTemplate.evaluate(writer, templateData.body())
+            promise.complete(writer.toString())
+          }
+      }
+    }
+
+    return templateCacheData
+  }
+
+  private fun invalidateCacheKey() {
+    eventBus.consumer<String>("template.cache.invalidate") { _ ->
+      val keys = templateCache.asMap().keys
+
+      for (key in keys) {
+        templateCache.refresh(key)
+        println("CACHE DATA REFRESHED FOR KEY: $key")
       }
     }
   }
 }
+
+private data class TemplateCacheData(
+  var templateData: Future<String>,
+  var hits: Int,
+)
+
+private data class CompiledTemplateCacheData(
+  var compiledTemplate: PebbleTemplate,
+  var dataString: String,
+)
