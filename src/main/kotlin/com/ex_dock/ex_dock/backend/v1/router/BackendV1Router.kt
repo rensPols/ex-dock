@@ -24,7 +24,7 @@ fun Router.enableBackendV1Router(vertx: Vertx, absoluteMounting: Boolean = false
       .addPubSecKey(
         PubSecKeyOptions()
           .setAlgorithm("RS256")
-          .setBuffer(authProvider.publickKey)
+          .setBuffer(authProvider.publicKey)
       )
       .addPubSecKey(
         PubSecKeyOptions()

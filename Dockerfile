@@ -1,6 +1,10 @@
 # -- V4 --
 # 1st Docker build stage: build the project with Maven
-FROM maven:3.6.3-openjdk-11 as builder
+FROM maven:3.6.3-openjdk-11 AS builder
+
+RUN openssl genrsa -out private.pem 2048 \
+&& openssl rsa -in private.pem -outform PEM -pubout -out public.pem
+
 WORKDIR /project
 COPY . /project/
 RUN mvn package -DskipTests -B
