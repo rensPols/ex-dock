@@ -1,12 +1,11 @@
 package com.ex_dock.ex_dock.database.account
 
-import com.ex_dock.ex_dock.database.connection.Connection
 import com.ex_dock.ex_dock.database.connection.getConnection
+import com.ex_dock.ex_dock.frontend.cache.setCacheFlag
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
-import io.vertx.core.json.JsonObject
 import io.vertx.jdbcclient.JDBCPool
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
@@ -25,6 +24,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
     const val FAILED = "failed"
     const val NO_USER = "User does not exist"
     const val USER_DELETED_SUCCESS = "User deleted successfully"
+    const val CACHE_ADDRESS = "accounts"
 
     const val BACKEND_PERMISSION_CREATION_FAILED = "Failed to create backend permissions"
     const val BACKEND_PERMISSION_UPDATE_FAILED = "Failed to update backend permissions"
@@ -38,7 +38,6 @@ class AccountJdbcVerticle: AbstractVerticle() {
   private val backendPermissionsDeliveryOptions = DeliveryOptions().setCodecName("BackendPermissionsCodec")
   private val backendPermissionsListDeliveryOptions = DeliveryOptions().setCodecName("BackendPermissionsListCodec")
   private val fullUserDeliveryOptions = DeliveryOptions().setCodecName("FullUserCodec")
-  private val fullUserListDeliveryOptions = DeliveryOptions().setCodecName("FullUserListCodec")
   private val listDeliveryOptions = DeliveryOptions().setCodecName("ListCodec")
 
   override fun start() {
@@ -126,12 +125,13 @@ class AccountJdbcVerticle: AbstractVerticle() {
       rowsFuture.onSuccess { res ->
         val userCreation: UserCreation = message.body()
         val lastInsertID: Row = res.property(JDBCPool.GENERATED_KEYS)
-        val user: User = User(
+        val user = User(
           userId = lastInsertID.getInteger(0),
           email = userCreation.email,
           password = userCreation.password
         )
 
+        setCacheFlag(eventBus, CACHE_ADDRESS)
         message.reply(user, userDeliveryOptions)
       }
     }
@@ -152,6 +152,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply(body, userDeliveryOptions)
         } else {
           message.fail(404, NO_USER)
@@ -181,6 +182,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
         userRowsFuture.onSuccess { res ->
           if (res.value().rowCount() > 0) {
+            setCacheFlag(eventBus, CACHE_ADDRESS)
             message.reply(USER_DELETED_SUCCESS)
           } else {
             message.fail(404, NO_USER)
@@ -255,6 +257,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply(message.body(), backendPermissionsDeliveryOptions)
         } else {
           message.fail(400, BACKEND_PERMISSION_CREATION_FAILED)
@@ -284,6 +287,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply(body, backendPermissionsDeliveryOptions)
         } else {
           message.fail(400, BACKEND_PERMISSION_UPDATE_FAILED)
@@ -307,6 +311,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
       rowsFuture.onSuccess { res ->
         if (res.value().rowCount() > 0) {
+          setCacheFlag(eventBus, CACHE_ADDRESS)
           message.reply(BACKEND_PERMISSION_DELETED)
         } else {
           message.fail(400, BACKEND_PERMISSION_DELETE_FAILED)
@@ -332,9 +337,9 @@ class AccountJdbcVerticle: AbstractVerticle() {
       rowsFuture.onSuccess { res ->
         val rows = res.value()
         if (rows.size() > 0) {
-          message.reply(rows.map { row -> makeFullUserObject(row) }, fullUserListDeliveryOptions)
+          message.reply(rows.map { row -> makeFullUserObject(row) }, fullUserDeliveryOptions)
         } else {
-          message.reply(emptyList<FullUser>(), fullUserListDeliveryOptions)
+          message.reply(emptyList<FullUser>(), fullUserDeliveryOptions)
         }
       }
     }
@@ -478,16 +483,6 @@ class AccountJdbcVerticle: AbstractVerticle() {
 
   private fun hashPassword(password: String): String {
     return BCrypt.hashpw(password, BCrypt.gensalt(12))
-  }
-
-  private fun convertStringToPermission(name: String): Permission {
-    when (name) {
-      "read" -> return Permission.READ
-      "write" -> return Permission.WRITE
-      "read-write" -> return Permission.READ_WRITE
-    }
-
-    return Permission.NONE
   }
 
   private fun convertPermissionToString(permission: Permission): String {
