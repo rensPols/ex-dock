@@ -7,14 +7,18 @@ import java.util.Base64
 class AuthProvider {
   private val generator: KeyPairGenerator = KeyPairGenerator.getInstance("RSA")
   private val keyPair: KeyPair = generator.generateKeyPair()
-  private val beginPrivateKey = "-----BEGIN PRIVATE KEY-----\n"
-  private val endPrivateKey = "\n-----END PRIVATE KEY-----"
-  private val beginPublicKey = "-----BEGIN PUBLIC KEY-----\n"
-  private val endPublicKey = "\n-----END PUBLIC KEY-----"
-  val privateKey = beginPrivateKey +
+
+  private companion object {
+    const val BEGINPRIVATEKEY = "-----BEGIN PRIVATE KEY-----\n"
+    const val ENDPRIVATEKEY = "\n-----END PRIVATE KEY-----"
+    const val BEGINPUBLICKEY = "-----BEGIN PUBLIC KEY-----\n"
+    const val ENDPUBLICKEY = "\n-----END PUBLIC KEY-----"
+  }
+
+  val privateKey = BEGINPRIVATEKEY +
     Base64.getMimeEncoder().encodeToString(keyPair.private.encoded) +
-    endPrivateKey
-  val publicKey = beginPublicKey +
+    ENDPRIVATEKEY
+  val publicKey = BEGINPUBLICKEY +
     Base64.getMimeEncoder().encodeToString(keyPair.public.encoded) +
-    endPublicKey
+    ENDPUBLICKEY
 }
