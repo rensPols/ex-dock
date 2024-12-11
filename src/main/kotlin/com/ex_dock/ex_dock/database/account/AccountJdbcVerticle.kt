@@ -351,7 +351,7 @@ class AccountJdbcVerticle: AbstractVerticle() {
       val query = "SELECT u.user_id, u.email, u.password, bp.user_permissions, bp.server_settings, " +
         "bp.template, bp.category_content, bp.category_products, bp.product_content, bp.product_price, " +
         "bp.product_warehouse, bp.text_pages, bp.\"API_KEY\" FROM users u " +
-        "LEFT JOIN backend_permissions bp ON u.user_id = bp.user_id WHERE u.email =?"
+        "JOIN backend_permissions bp ON u.user_id = bp.user_id WHERE u.email =?"
       val rowsFuture = client.preparedQuery(query).execute(Tuple.of(email))
 
       rowsFuture.onFailure { res ->
