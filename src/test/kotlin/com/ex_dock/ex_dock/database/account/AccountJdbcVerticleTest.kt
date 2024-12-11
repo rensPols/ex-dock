@@ -2,6 +2,7 @@ package com.ex_dock.ex_dock.database.account
 
 import com.ex_dock.ex_dock.database.codec.GenericCodec
 import com.ex_dock.ex_dock.database.codec.GenericListCodec
+import com.ex_dock.ex_dock.database.service.ServiceVerticle
 import com.ex_dock.ex_dock.helper.deployWorkerVerticleHelper
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
@@ -50,32 +51,47 @@ class AccountJdbcVerticleTest {
       .registerCodec(fullUserCodec)
       .registerCodec(fullUserListCodec)
 
+    val deployAccountCheckpoint = testContext.checkpoint()
+    val deployServiceCheckpoint = testContext.checkpoint()
+
     deployWorkerVerticleHelper(
       vertx,
       AccountJdbcVerticle::class.qualifiedName.toString(), 5, 5
-    ).onComplete {
-      testContext.completeNow()
+    ).onFailure { err ->
+      testContext.failNow("failure with AccountJdbcVerticle deployment: ${err.message}")
+    }.onSuccess {
+      deployAccountCheckpoint.flag()
+    }
+
+    deployWorkerVerticleHelper(
+      vertx,
+      ServiceVerticle::class.qualifiedName.toString(), 1, 1
+    ).onFailure { err ->
+      testContext.failNow("failure with ServiceVerticle deployment: ${err.message}")
+    }.onSuccess {
+      deployServiceCheckpoint.flag()
     }
   }
 
   @Test
   fun getAllUsers(vertx: Vertx, testContext: VertxTestContext) {
-    val request = eventBus.request<String>("process.account.getAllUsers", "")
+    eventBus.request<String>("process.service.addAdminUser", null).onFailure { err ->
+      testContext.failNow("failure with \"process.service.addAdminUser\": ${err.message}")
+    }.onSuccess {
+      val request = eventBus.request<List<User>>("process.account.getAllUsers", "")
 
-    request.onFailure { testContext.failNow(it) }
-    request.onComplete { msg ->
-      if (msg.failed()) testContext.failNow(msg.result().toString())
-      var body: List<User> = msg.result().body() as List<User>
-      if (body[0].email != "test@test.com" || body[1].email != "test@example.com") testContext.failNow(
-        "users are not as expected.\n" +
-            "body[0]:\n" +
-            "- expected: \"test@test.com\"" +
-            "- actual: \"${body[0].email}\"" +
-            "body[1]:\n" +
-            "- expected: \"test@example.com\"" +
-            "- expected: \"${body[1].email}\""
-      )
-      testContext.completeNow()
+      request.onFailure { testContext.failNow(it) }
+      request.onComplete { msg ->
+        if (msg.failed()) testContext.failNow(msg.result().toString())
+        var body: List<User> = msg.result().body()
+        if (body[0].email != "test@test.com") testContext.failNow(
+          "user is not as expected.\n" +
+              "body[0]:\n" +
+              "- expected: \"test@test.com\"" +
+              "- actual: \"${body[0].email}\""
+        )
+        testContext.completeNow()
+      }
     }
   }
 
