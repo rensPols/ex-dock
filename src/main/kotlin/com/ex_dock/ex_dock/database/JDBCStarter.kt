@@ -4,6 +4,7 @@ import com.ex_dock.ex_dock.database.account.*
 import com.ex_dock.ex_dock.database.category.*
 import com.ex_dock.ex_dock.database.checkout.CheckoutJdbcVerticle
 import com.ex_dock.ex_dock.database.codec.GenericCodec
+import com.ex_dock.ex_dock.database.codec.GenericListCodec
 import com.ex_dock.ex_dock.database.home.HomeJdbcVerticle
 import com.ex_dock.ex_dock.database.product.*
 import com.ex_dock.ex_dock.database.scope.FullScope
@@ -49,7 +50,11 @@ class JDBCStarter : AbstractVerticle() {
           throw PopulateException("Could not populate the database with standard data. Closing the server!")
         }.onSuccess {
           println("Database populated with standard Data")
-          starPromise.complete()
+          eventBus.request<String>("process.service.addAdminUser", "").onFailure {
+            throw PopulateException("Could not add admin user. Closing the server!")
+          }.onSuccess {
+            starPromise.complete()
+          }
         }
       }
       .onFailure { error ->
@@ -176,6 +181,8 @@ class JDBCStarter : AbstractVerticle() {
       .registerCodec(GenericCodec(Template::class.java))
       .registerCodec(GenericCodec(Block::class.java))
       .registerCodec(GenericCodec(Map::class.java))
+
+      .registerCodec(GenericListCodec(FullUser::class))
   }
 
 }

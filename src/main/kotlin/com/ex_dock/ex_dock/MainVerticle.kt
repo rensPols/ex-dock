@@ -61,7 +61,7 @@ class MainVerticle : AbstractVerticle() {
     vertx
       .createHttpServer()
       .requestHandler(mainRouter)
-      .listen(props.getProperty("FRONTEND_PORT").toInt()) {http ->
+      .listen(props.getProperty("FRONTEND_PORT").toInt()) { http ->
         if (http.succeeded()) {
           println("HTTP server started on port ${props.getProperty("FRONTEND_PORT")}")
           startPromise.complete()
