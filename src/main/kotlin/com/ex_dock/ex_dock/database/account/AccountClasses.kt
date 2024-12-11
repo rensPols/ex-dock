@@ -36,12 +36,7 @@ enum class Permission(name: String) {
     }
 
     fun toString(permission: Permission): String {
-      return when (permission) {
-        NONE -> "none"
-        READ -> "read"
-        WRITE -> "write"
-        READ_WRITE -> "read-write"
-      }
+      return permission.name
     }
   }
 }
