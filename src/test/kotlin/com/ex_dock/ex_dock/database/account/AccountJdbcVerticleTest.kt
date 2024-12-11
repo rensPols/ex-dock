@@ -59,18 +59,21 @@ class AccountJdbcVerticleTest {
   }
 
   @Test
-  fun getAllUsersEmpty(vertx: Vertx, testContext: VertxTestContext) {
+  fun getAllUsers(vertx: Vertx, testContext: VertxTestContext) {
     val request = eventBus.request<String>("process.account.getAllUsers", "")
 
     request.onFailure { testContext.failNow(it) }
     request.onComplete { msg ->
       if (msg.failed()) testContext.failNow(msg.result().toString())
       var body: List<User> = msg.result().body() as List<User>
-      if (body!= emptyList<User>()) testContext.failNow(
-        "result is not equal to emptyList<User>()\nmsg.result().toString(): ${msg.result().body()}\n" +
-            "msg.result()::class: ${msg.result()::class}\n" +
-            "msg.result().body()::class: ${msg.result().body()::class}\n" +
-            "body: $body\nbody::class: ${body::class}"
+      if (body[0].email != "test@test.com" || body[1].email != "test@example.com") testContext.failNow(
+        "users are not as expected.\n" +
+            "body[0]:\n" +
+            "- expected: \"test@test.com\"" +
+            "- actual: \"${body[0].email}\"" +
+            "body[1]:\n" +
+            "- expected: \"test@example.com\"" +
+            "- expected: \"${body[1].email}\""
       )
       testContext.completeNow()
     }
