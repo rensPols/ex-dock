@@ -11,6 +11,7 @@ import io.vertx.ext.auth.authentication.UsernamePasswordCredentials
 import io.vertx.ext.auth.jwt.JWTAuth
 import io.vertx.ext.auth.jwt.JWTAuthOptions
 import io.vertx.ext.web.Router
+import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.ext.web.handler.JWTAuthHandler
 
 
@@ -33,10 +34,13 @@ fun Router.enableBackendV1Router(vertx: Vertx, absoluteMounting: Boolean = false
       )
   )
 
-  backendV1Router["/token"].handler { ctx ->
+  backendV1Router.route().handler(BodyHandler.create())
+
+  backendV1Router.post("/token").handler { ctx ->
+    val requestBody = ctx.body().asJsonObject()
     val credentials = UsernamePasswordCredentials(
-      "test@test.com",
-      "123456"
+      requestBody.getString("email"),
+      requestBody.getString("password")
     )
 
     exDockAuthHandler.authenticate(credentials) {
