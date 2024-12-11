@@ -1,12 +1,20 @@
 package com.ex_dock.ex_dock.backend.v1.router.auth
 
-import java.nio.charset.Charset
-import java.nio.file.Files
-import kotlin.io.path.Path
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.util.Base64
 
 class AuthProvider {
-  private val publicKeyFile = Path(System.getProperty("user.dir") + "\\public.pem")
-  private val privateKeyFile = Path(System.getProperty("user.dir") + "\\private.pem")
-  val publicKey = String(Files.readAllBytes(publicKeyFile), charset = Charset.defaultCharset())
-  val privateKey = String(Files.readAllBytes(privateKeyFile), charset = Charset.defaultCharset())
+  private val generator: KeyPairGenerator = KeyPairGenerator.getInstance("RSA")
+  private val keyPair: KeyPair = generator.generateKeyPair()
+  private val beginPrivateKey = "-----BEGIN PRIVATE KEY-----\n"
+  private val endPrivateKey = "\n-----END PRIVATE KEY-----"
+  private val beginPublicKey = "-----BEGIN PUBLIC KEY-----\n"
+  private val endPublicKey = "\n-----END PUBLIC KEY-----"
+  val privateKey = beginPrivateKey +
+    Base64.getMimeEncoder().encodeToString(keyPair.private.encoded) +
+    endPrivateKey
+  val publicKey = beginPublicKey +
+    Base64.getMimeEncoder().encodeToString(keyPair.public.encoded) +
+    endPublicKey
 }
