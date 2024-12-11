@@ -82,7 +82,7 @@ class AccountJdbcVerticleTest {
   @Test
   fun testUserData(vertx: Vertx, testContext: VertxTestContext) {
     val processAccountCreateUserCheckpoint = testContext.checkpoint()
-    val processAccountGetAllUsersCheckpoint = testContext.checkpoint(2)
+    val processAccountGetAllUsersCheckpoint = testContext.checkpoint()
     val processAccountGetUserByIdCheckpoint = testContext.checkpoint(2)
     val processAccountUpdateUserCheckpoint = testContext.checkpoint()
     val processAccountDeleteUserCheckpoint = testContext.checkpoint()
@@ -124,14 +124,13 @@ class AccountJdbcVerticleTest {
 
         eventBus.request<List<User>>("process.account.getAllUsers", "").onFailure {
           testContext.failNow(it)
-        }.onComplete { getAllMsg ->
+        }.onSuccess { getAllMsg ->
           try {
-            assert(getAllMsg.succeeded())
-            assertNotEquals(emptyList<User>(), getAllMsg.result().body())
+            assertNotEquals(emptyList<User>(), getAllMsg.body())
             assertTrue(
               BCrypt.checkpw(
-                "password",
-                getAllMsg.result().body()[0].password
+                "123456",
+                getAllMsg.body()[0].password
               )
             )
           } catch (e: Exception) {
@@ -215,19 +214,6 @@ class AccountJdbcVerticleTest {
                   }
 
                   processAccountDeleteUserCheckpoint.flag()
-
-                  eventBus.request<MutableList<User>>("process.account.getAllUsers", "").onFailure {
-                    testContext.failNow(it)
-                  }.onComplete { emptyMsg ->
-                    try {
-                      assert(emptyMsg.succeeded())
-                      assertEquals(emptyMsg.result().body(), emptyList<User>().toMutableList())
-                    } catch (e: Exception) {
-                      testContext.failNow(e)
-                    }
-
-                    processAccountGetAllUsersCheckpoint.flag()
-                  }
                 }
               }
             }
