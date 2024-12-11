@@ -59,7 +59,7 @@ class ServiceVerticle: AbstractVerticle() {
       }
 
       rowsFuture.onSuccess { res ->
-        if (res.size() == 0) {
+        if (res.size() < 1) {
           message.reply("Admin already exists!")
           return@onSuccess
         }
