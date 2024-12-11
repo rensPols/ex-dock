@@ -9,16 +9,16 @@ class AuthProvider {
   private val keyPair: KeyPair = generator.generateKeyPair()
 
   private companion object {
-    const val BEGINPRIVATEKEY = "-----BEGIN PRIVATE KEY-----\n"
-    const val ENDPRIVATEKEY = "\n-----END PRIVATE KEY-----"
-    const val BEGINPUBLICKEY = "-----BEGIN PUBLIC KEY-----\n"
-    const val ENDPUBLICKEY = "\n-----END PUBLIC KEY-----"
+    const val BEGIN_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\n"
+    const val END_PRIVATE_KEY = "\n-----END PRIVATE KEY-----"
+    const val BEGIN_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\n"
+    const val END_PUBLIC_KEY = "\n-----END PUBLIC KEY-----"
   }
 
-  val privateKey = BEGINPRIVATEKEY +
+  val privateKey = BEGIN_PRIVATE_KEY +
     Base64.getMimeEncoder().encodeToString(keyPair.private.encoded) +
-    ENDPRIVATEKEY
-  val publicKey = BEGINPUBLICKEY +
+    END_PRIVATE_KEY
+  val publicKey = BEGIN_PUBLIC_KEY +
     Base64.getMimeEncoder().encodeToString(keyPair.public.encoded) +
-    ENDPUBLICKEY
+    END_PUBLIC_KEY
 }
